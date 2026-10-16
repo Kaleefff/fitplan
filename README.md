@@ -16,3 +16,7 @@ Mobile application for training and nutrition planning (engineering thesis, Lubl
 ## Workflow
 
 Branch from `main` using a prefix (`db/`, `api/`, `app/`), open a Pull Request, get one approval, merge.
+
+## Getting started
+
+See [docs/setup.md](docs/setup.md) for local setup and troubleshooting.
