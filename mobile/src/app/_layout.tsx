@@ -29,7 +29,11 @@ function RootNavigator() {
   return (
     <ThemeProvider value={navigationTheme(scheme, colors)}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      <Stack />
+      <Stack>
+        {/* The tabs draw their own header */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+      </Stack>
     </ThemeProvider>
   );
 }
