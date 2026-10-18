@@ -19,4 +19,4 @@ Branch from `main` using a prefix (`db/`, `api/`, `app/`), open a Pull Request, 
 
 ## Getting started
 
-See [docs/setup.md](docs/setup.md) for local setup and troubleshooting.
+See [docs/instructions/setup.md](docs/instructions/setup.md) for local setup and troubleshooting.
