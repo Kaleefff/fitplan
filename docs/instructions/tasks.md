@@ -172,6 +172,7 @@ Problems found in `scheme_mysql.sql` and the change required:
 
 ### D-06 · Security design
 - **Owner:** API + DATA · **Branch:** `docs/` · **Reqs:** NFR security, FR-U2…U5
+- **Status:** drafted: `docs/instructions/security.md` (10 rules with T-05 checks); awaiting approval of API and DATA.
 - **Do:** Access and refresh token lifetimes with rotation and revocation; bcrypt cost; login rate limiting and lockout; password reset token (hashed, single use, expiry, no user enumeration); account deletion cascade including Mongo documents and photo files; CORS, security headers, upload validation and EXIF stripping; log hygiene (no passwords, tokens or full emails); object-level authorization rule (a user can only read own rows); HTTPS-only deployment.
 - **Done when:** a checklist exists that T-05 can execute.
 
