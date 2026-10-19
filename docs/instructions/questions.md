@@ -99,6 +99,15 @@ Agents append here when a spec is silent or contradictory. Format: `- [task id] 
 - Note: the `cursor` of a push response has the pull-cursor format (`now - 60 s`). An app that already has a pull cursor must keep its own; the push cursor is only useful as a first cursor for a fresh install that pushed before it ever pulled.
 - Note: synced workouts update personal records but never adapt the plan (contract text); the profile weight follows the newest synced measurement like the REST route.
 
+## B-01 / domain (backend skeleton, 2026-10-19)
+
+- [B-01] A wrong HTTP method (405) has no code in the contract's error list. Proposed default (implemented): code `method_not_allowed`; add it to the `Error.code` enum in `openapi.yaml`. (status: open)
+- [B-01] `/health` checks PostgreSQL with a short-lived psycopg connection because the SQLAlchemy engine belongs to DB-01. Proposed default: switch to the shared engine when DB-01 lands. (status: open)
+- [D-04] algorithms.md section 6 does not say which reason wins when the overall RPE is >= 9 and a set is also incomplete. Proposed default (implemented): `reduce_high_rpe`. (status: open)
+- [D-04] Baseline (6.4) from sets logged with weight 0 would set a planned weight of 0. Proposed default (implemented): only completed sets with weight > 0 give a baseline; otherwise the exercise is treated as "no planned weight" (6.2: one set fewer on a reduce signal). (status: open)
+- [D-04] A signal that changes nothing (one set fewer at 2 sets, +1 rep at 20, a reduction or progression that lands on the current weight) returns no adjustment, so nothing is recorded. A reduction never goes below 0 kg. (status: open)
+- [D-04] Diet compliance (section 7): "within +/-10 %" is taken as inclusive (2200 kcal for a 2000 kcal target counts). (status: open)
+- [D-04] Goal prediction (section 9): "last 28 days" is read as today and the 27 days before, like `week` in section 8; R^2 of a perfectly flat series is 1.0; the estimated date adds the days to go rounded half up. The section's vectors do not list their weigh-ins (the reference script `scripts/algorithms_reference.py` is not in the repository), so the tests use hand-computed fixtures. (status: open)
 ## D-03 (OpenAPI skeleton, 2026-10-19)
 
 The skeleton in `docs/api/openapi.yaml` follows the merged `database/init/01_schema.sql`. Where the requirements or `algorithms.md` need data the schema does not have, the contract marks it with `x-todo`. Each gap needs a decision from DATA (add the column/table) or a change to the spec:
