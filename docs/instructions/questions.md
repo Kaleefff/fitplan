@@ -98,3 +98,21 @@ Agents append here when a spec is silent or contradictory. Format: `- [task id] 
 - Decision: pull orders all three kinds by (`updated_at`, kind, id); `limit` counts all kinds together. The cursor of the last page of a catch-up is `now - 60 s` (the overlap of the contract), so the client sees items from the last minute again and must apply them idempotently. `updated_at` is the start time of the writing transaction, which is why a late commit can carry an older time.
 - Note: the `cursor` of a push response has the pull-cursor format (`now - 60 s`). An app that already has a pull cursor must keep its own; the push cursor is only useful as a first cursor for a fresh install that pushed before it ever pulled.
 - Note: synced workouts update personal records but never adapt the plan (contract text); the profile weight follows the newest synced measurement like the REST route.
+
+## D-03 (OpenAPI skeleton, 2026-10-19)
+
+The skeleton in `docs/api/openapi.yaml` follows the merged `database/init/01_schema.sql`. Where the requirements or `algorithms.md` need data the schema does not have, the contract marks it with `x-todo`. Each gap needs a decision from DATA (add the column/table) or a change to the spec:
+
+- [D-03] `user_profile` has no `experience_level` and `equipment` (FR-P1, algorithms.md 4.1). Proposed default: the training plan request carries both until DATA adds them to the profile. (status: open)
+- [D-03] DB ranges are wider than FR-U7: age 13-100 (spec 16-100), height 100-250 (spec 120-250), PAL up to 2.500 (spec offers 1.2-1.9, algorithms.md says DB accepts up to 2.40). Proposed default: the API validates the FR-U7 ranges; DATA aligns the CHECKs. (status: open)
+- [D-03] `injury.affected_muscle_group` is free text; the injury rule (algorithms.md 4.3) compares it with the exercise's main muscle group id. Proposed default: FK to `muscle_group`. (status: open)
+- [D-03] `exercise.required_equipment` is free text; algorithms.md 4.2 needs the `none/home/gym` order, and 4.6 / 6.3 need `is_compound` and `is_bodyweight`. No `injury_type_excluded_exercise` table. (status: open)
+- [D-03] No allergen tables (FR-P6, FR-N3), no `default_portion_g`, portion bounds, `portion_step_g`, `recognition_label`, vegetarian/vegan flags or suitable meal types on `food_item` (algorithms.md 5.2-5.4, 11). (status: open)
+- [D-03] `meal` has no day index, but a diet plan covers 7 days (algorithms.md 5.1). (status: open)
+- [D-03] `session_exercise.planned_weight` is NOT NULL DEFAULT 0, but algorithms.md 4.6 / 6.4 use NULL as "no baseline yet"; no `original_exercise_id` for swaps (4.9); no `skipped_muscle_group_ids` on `training_plan` (4.3). (status: open)
+- [D-03] `workout_set` has no `completed` flag and no per-set RPE; without them FR-A4 ("a set that could not be completed") and the reserve signal (algorithms.md 6.1) cannot be implemented. No `plan_adjustment` table (6, D-01 #12). (status: open)
+- [D-03] No tables for refresh tokens, password reset tokens, OAuth identities (FR-U2, FR-U3, FR-U8), device push tokens, and `notification` has no recurrence / enabled flag for reminders (FR-P9). (status: open)
+- [D-03] No sync columns (`client_uuid`, `updated_at`, `deleted_at`) on `workout_log`, `nutrition_log`, `body_metrics` (NFR-OFF); no `planned_meal_id` on `nutrition_log` for diet compliance (FR-R2). (status: open)
+- [D-03] `progress_report.weight_difference` and `avg_cals_daily` are NOT NULL, but a period without data has null metrics (algorithms.md 8); compliance % is not stored (FR-R2). (status: open)
+- [D-03] No user time zone, but the weekly job and "today" depend on it (algorithms.md 12). (status: open)
+- [D-03] Added beyond the starting endpoint list of tasks.md D-03: `GET /training-plans/{id}` and `GET /diet-plans/{id}` (the app must reopen a draft after generating it), `/analytics/summary` and `/analytics/charts/{metric}` instead of `/analytics/{metric}` (no clash with `/analytics/goal-prediction`). Needs APP review. (status: open)
