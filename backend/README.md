@@ -19,13 +19,13 @@ uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
 
-CI must run the same commands (workflow pending, see the B-28 PR).
+CI (DB-05) runs the same commands.
 
 ### Contract conformance (B-28)
 
 `tests/contract/` fails when the app drifts from `docs/api/openapi.yaml`:
 
-- every served operation must exist in the contract with the same `operationId`, parameters, request body and response schemas (`drift.py`); contract operations that are not implemented yet are skipped;
+- every served operation must exist in the contract with the same `operationId`, parameters, request body and response schemas (`drift.py`); contract operations that are not implemented yet must be listed in `tests/contract/pending.py`, and that list must equal what the app does not serve (remove an operation there when you implement it);
 - schemathesis generates requests from the contract for every implemented operation and validates the responses.
 
 A route with parameters or a body passes `responses=VALIDATION_ERROR_RESPONSE` (from `app.core.errors`), so its 422 is documented with the contract `Error` model instead of FastAPI's `HTTPValidationError`.

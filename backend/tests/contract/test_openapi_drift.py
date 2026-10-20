@@ -10,7 +10,8 @@ from fastapi import APIRouter, Query
 from app.core.errors import VALIDATION_ERROR_RESPONSE, ErrorCode
 from app.main import create_app
 from tests.conftest import FakeHealthChecker
-from tests.contract.drift import PENDING_ENUM_VALUES, compare_specs
+from tests.contract.drift import HTTP_METHODS, PENDING_ENUM_VALUES, compare_specs
+from tests.contract.pending import PENDING_OPERATIONS
 
 CONTRACT_PATH = Path(__file__).resolve().parents[3] / "docs" / "api" / "openapi.yaml"
 
@@ -27,6 +28,21 @@ def served() -> dict:
 
 def test_generated_openapi_matches_contract(served, contract):
     assert compare_specs(served, contract) == []
+
+
+def _operation_ids(spec: dict) -> set[str]:
+    return {
+        operation["operationId"]
+        for item in spec["paths"].values()
+        for method, operation in item.items()
+        if method in HTTP_METHODS
+    }
+
+
+def test_pending_list_equals_the_missing_operations(served, contract):
+    assert len(PENDING_OPERATIONS) == len(set(PENDING_OPERATIONS)), "duplicate in pending.py"
+    missing = _operation_ids(contract) - _operation_ids(served)
+    assert set(PENDING_OPERATIONS) == missing
 
 
 def test_error_codes_match_contract(contract):
