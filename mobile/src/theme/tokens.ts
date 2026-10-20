@@ -2,7 +2,6 @@ import type { TextStyle } from 'react-native';
 
 export type ColorScheme = 'light' | 'dark';
 
-// Light values follow the chapter 7 mockups; dark values are lighter shades of the same hues.
 export const lightColors = {
   background: '#F9FAFB',
   surface: '#FFFFFF',
@@ -16,7 +15,6 @@ export const lightColors = {
   warning: '#D97706',
   danger: '#DC2626',
 
-  // One hue per module, as on the Home screen tiles
   training: '#2563EB',
   trainingTint: '#EFF6FF',
   diet: '#16A34A',
@@ -26,7 +24,6 @@ export const lightColors = {
   analytics: '#EA580C',
   analyticsTint: '#FFF7ED',
 
-  // Macro colours used on the diet screens
   kcal: '#2563EB',
   protein: '#9333EA',
   carbs: '#EA580C',
@@ -69,7 +66,6 @@ export const colors: Record<ColorScheme, ThemeColors> = {
   dark: darkColors,
 };
 
-// 4-point spacing scale; 16 is the screen gutter
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -98,5 +94,4 @@ export const typography = {
 
 export type TypographyVariant = keyof typeof typography;
 
-// Minimum size of anything the user can tap (Android guideline)
 export const minTouchSize = 48;

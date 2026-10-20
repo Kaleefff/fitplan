@@ -9,11 +9,9 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 
 type PlaceholderScreenProps = {
   module: ModuleKey;
-  /** What this screen will contain once it is built */
   upcoming: string[];
 };
 
-// Temporary content of a tab whose feature is not built yet
 export function PlaceholderScreen({ module, upcoming }: PlaceholderScreenProps) {
   const { title, description, icon, color, tint } = getModule(module);
   const { colors, spacing } = useAppTheme();

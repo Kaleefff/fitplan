@@ -11,7 +11,6 @@ type ModuleIconProps = {
   size?: number;
 };
 
-// Coloured rounded square with a white icon, as on the mockup tiles
 export function ModuleIcon({ icon, color, size = 48 }: ModuleIconProps) {
   const { colors, radius, scheme } = useAppTheme();
   return (
