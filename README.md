@@ -4,19 +4,15 @@ Mobile application for training and nutrition planning (engineering thesis, Lubl
 
 ## Structure
 
-- `backend/` – FastAPI application (Python)
-- `database/` – PostgreSQL schema and seed data
+- `backend/` – FastAPI application
+- `database/` – PostgreSQL schema, MongoDB init, seed data
 - `mobile/` – React Native (Expo) application
-
-## Local setup
-
-1. `cp .env.example .env`
-2. `docker compose up -d`
-
-## Workflow
-
-Branch from `main` using a prefix (`db/`, `api/`, `app/`), open a Pull Request, get one approval, merge.
+- `docs/instructions/` – requirements, decisions, algorithms, API rules, tasks, setup
 
 ## Getting started
 
-See [docs/instructions/setup.md](docs/instructions/setup.md) for local setup and troubleshooting.
+`cp .env.example .env`, set passwords, `docker compose up -d`. Details and troubleshooting: [docs/instructions/setup.md](docs/instructions/setup.md).
+
+## Workflow
+
+Rules for people and agents are in [CLAUDE.md](CLAUDE.md); the work plan is [docs/instructions/tasks.md](docs/instructions/tasks.md).

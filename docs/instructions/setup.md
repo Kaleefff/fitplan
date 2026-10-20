@@ -44,7 +44,7 @@ docker exec fitplan-postgres psql -U fitplan -d fitplan -c "\dt"
 docker exec fitplan-mongo mongosh -u fitplan -p YOUR_PASSWORD --authenticationDatabase admin --quiet --eval "db.getSiblingDB('fitplan').meal_recognitions.getIndexes()"
 ```
 
-Expected: 26 tables, and 3 indexes on `meal_recognitions`.
+Expected: the tables of `01_schema.sql`, and 3 indexes on `meal_recognitions` (`_id_`, `expiresAt_1`, `userId_1_status_1`).
 
 ## 5. Connect from tools
 
@@ -72,11 +72,10 @@ docker compose down -v
 docker compose up -d
 ```
 
-This deletes all local data. Only use it while the databases hold test data. |
+This deletes all local data. Only use it while the databases hold test data. After DB-01 the schema is managed by Alembic migrations (`alembic upgrade head`) instead.
 
 ## Git workflow
 
-- Never commit directly to `main`.
-- Before starting work: `git switch main`, `git pull`, then create a branch: `db/...` (Kyryl), `api/...` (Max), `app/...` (Alex).
-- Commit small steps with clear messages and push your branch.
-- Open a Pull Request on GitHub. Another team member reviews it before it is merged.
+- Never commit to `main`; it is protected.
+- `git switch main && git pull`, then a branch named by task: `db/DB-02-reference-seeds`, `api/B-03-auth`, `app/M-04-login`, `docs/...`.
+- Small commits with clear messages; push the branch and open a Pull Request. Someone else reviews and merges it (`CLAUDE.md`).
