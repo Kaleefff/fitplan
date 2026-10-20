@@ -10,7 +10,7 @@ from app.core.security import (
     hash_opaque_token,
     hash_password,
     new_opaque_token,
-    password_length_ok,
+    password_policy_ok,
     verify_password,
 )
 from tests.conftest import TEST_JWT_SECRET
@@ -26,34 +26,37 @@ LIFETIME = timedelta(minutes=15)
 @pytest.mark.parametrize(
     ("password", "ok"),
     [
-        ("a" * 7, False),
-        ("a" * 8, True),
-        ("a" * 72, True),
-        ("a" * 73, False),
-        ("ł" * 36, True),  # 72 bytes in UTF-8
-        ("ł" * 36 + "a", False),  # 73 bytes, only 37 characters
+        ("a" * 6 + "1", False),
+        ("a" * 7 + "1", True),
+        ("a" * 71 + "1", True),
+        ("a" * 72 + "1", False),
+        ("ł" * 35 + "12", True),  # 72 bytes in UTF-8
+        ("ł" * 35 + "123", False),  # 73 bytes, only 38 characters
+        ("abcdefgh", False),  # no digit
+        ("12345678", False),  # no letter
     ],
 )
-def test_password_length_is_counted_in_bytes(password, ok):
-    assert password_length_ok(password) is ok
+def test_password_policy(password, ok):
+    assert password_policy_ok(password) is ok
 
 
 def test_hash_is_bcrypt_and_verifies():
-    hashed = hash_password("correct horse", ROUNDS)
+    hashed = hash_password("correct horse 1", ROUNDS)
     assert hashed.startswith("$2b$04$")
     assert "correct horse" not in hashed
-    assert verify_password("correct horse", hashed)
-    assert not verify_password("wrong horse", hashed)
+    assert verify_password("correct horse 1", hashed)
+    assert not verify_password("wrong horse 1", hashed)
 
 
-def test_hash_rejects_out_of_range_password():
+@pytest.mark.parametrize("password", ["a" * 72 + "1", "no digits here"])
+def test_hash_rejects_a_password_outside_the_policy(password):
     with pytest.raises(ValueError):
-        hash_password("a" * 73, ROUNDS)
+        hash_password(password, ROUNDS)
 
 
 def test_verify_is_false_for_long_password_and_social_only_account():
-    hashed = hash_password("a" * 72, ROUNDS)
-    assert not verify_password("a" * 73, hashed)  # bcrypt alone would ignore byte 73
+    hashed = hash_password("a" * 71 + "1", ROUNDS)
+    assert not verify_password("a" * 71 + "12", hashed)  # bcrypt alone would ignore byte 73
     assert not verify_password("anything", None)
 
 

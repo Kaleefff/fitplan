@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import bcrypt
 import jwt
 
-PASSWORD_MIN_BYTES = 8
-PASSWORD_MAX_BYTES = 72  # bcrypt ignores everything after 72 bytes, so longer input is rejected
+# bcrypt ignores everything after 72 bytes, so longer input is rejected
+from app.domain.constants import PASSWORD_MAX_BYTES, PASSWORD_MIN_BYTES
 
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_TYPE = "access"
@@ -19,13 +19,18 @@ class InvalidTokenError(Exception):
     """The access token is missing, malformed, tampered with or expired."""
 
 
-def password_length_ok(password: str) -> bool:
-    return PASSWORD_MIN_BYTES <= len(password.encode("utf-8")) <= PASSWORD_MAX_BYTES
+def password_policy_ok(password: str) -> bool:
+    """algorithms.md 0: 8-72 bytes in UTF-8, at least one letter and one digit."""
+    return (
+        PASSWORD_MIN_BYTES <= len(password.encode("utf-8")) <= PASSWORD_MAX_BYTES
+        and any(char.isalpha() for char in password)
+        and any(char.isdigit() for char in password)
+    )
 
 
 def hash_password(password: str, rounds: int) -> str:
-    if not password_length_ok(password):
-        raise ValueError(f"password must be {PASSWORD_MIN_BYTES}-{PASSWORD_MAX_BYTES} bytes")
+    if not password_policy_ok(password):
+        raise ValueError("password does not meet the policy")
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds)).decode("ascii")
 
 
