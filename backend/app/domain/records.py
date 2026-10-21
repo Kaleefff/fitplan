@@ -1,4 +1,4 @@
-"""Personal records with estimated one-rep max (algorithms.md 6.5)."""
+"""Personal records with estimated one-rep max (algorithms.md section 6)."""
 
 from decimal import Decimal
 

@@ -1,4 +1,4 @@
-"""Personal records and e1RM (algorithms.md 6.5)."""
+"""Personal records and e1RM (algorithms.md section 6)."""
 
 from decimal import Decimal as D
 
