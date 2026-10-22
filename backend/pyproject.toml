@@ -12,6 +12,9 @@ dependencies = [
     "psycopg[binary]>=3.2",
     # D18: MongoDB async driver (AsyncMongoClient)
     "pymongo>=4.13",
+    # B-02: password hashing and access tokens (D4)
+    "bcrypt>=5.0.0",
+    "pyjwt>=2.15.1",
 ]
 
 [dependency-groups]
