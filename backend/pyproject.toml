@@ -12,6 +12,8 @@ dependencies = [
     "psycopg[binary]>=3.2",
     # D18: MongoDB async driver (AsyncMongoClient)
     "pymongo>=4.13",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "alembic>=1.14",
 ]
 
 [dependency-groups]
@@ -35,6 +37,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
 # test vector tables stay one case per line
