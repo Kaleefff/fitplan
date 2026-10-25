@@ -34,13 +34,11 @@ class Settings(BaseSettings):
 
     health_check_timeout_seconds: float = 2.0
 
-    def postgres_conninfo(self) -> str:
-        """libpq connection string for psycopg (D17)."""
-        return (
-            f"host={self.postgres_host} port={self.postgres_port} "
-            f"dbname={self.postgres_db} user={self.postgres_user} "
-            f"password={self.postgres_password.get_secret_value()}"
-        )
+    # Hardening (api-rules.md). Native Android sends no Origin; list web origins as JSON,
+    # e.g. CORS_ORIGINS='["http://localhost:8081"]' for Expo web.
+    cors_origins: list[str] = []
+    max_body_bytes: int = 1024 * 1024
+    max_upload_body_bytes: int = 9 * 1024 * 1024
 
     def mongo_client_kwargs(self) -> dict[str, object]:
         """Keyword arguments for pymongo.AsyncMongoClient (D18)."""

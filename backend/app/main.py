@@ -10,9 +10,12 @@ from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.middleware import add_middleware
+from app.db.session import get_async_engine
 from app.services.health import DependencyHealthChecker, HealthChecker
 
 API_PREFIX = "/api/v1"
+DOCS_URL = f"{API_PREFIX}/docs"
 
 
 def create_app(
@@ -31,22 +34,25 @@ def create_app(
             **settings.mongo_client_kwargs(),
             serverSelectionTimeoutMS=int(settings.health_check_timeout_seconds * 1000),
         )
+        engine = get_async_engine()
         app.state.mongo = mongo
-        app.state.health_checker = DependencyHealthChecker(settings, mongo)
+        app.state.health_checker = DependencyHealthChecker(settings, engine, mongo)
         try:
             yield
         finally:
             await mongo.close()
+            await engine.dispose()
 
     app = FastAPI(
         title="FitPlan Pro API",
         version=settings.app_version,
         openapi_url=f"{API_PREFIX}/openapi.json",
-        docs_url=f"{API_PREFIX}/docs",
+        docs_url=DOCS_URL,
         redoc_url=None,
         lifespan=lifespan,
     )
     register_error_handlers(app)
+    add_middleware(app, settings, docs_path=DOCS_URL)
     app.include_router(api_router, prefix=API_PREFIX)
     return app
 
