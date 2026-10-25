@@ -1,4 +1,4 @@
-"""Test vectors A-J of algorithms.md section 6 (FR-A4, FR-A5); planned 3 sets x 10 reps."""
+"""Test vectors A-K of algorithms.md section 6 (FR-A4, FR-A5); planned 3 sets x 10 reps."""
 
 from decimal import Decimal as D
 
@@ -73,6 +73,10 @@ def test_j_one_rep_short_changes_nothing():
     assert adapt(planned("60"), sets, overall_rpe=6) is None
 
 
+def test_k_lighter_than_planned_changes_nothing():
+    assert adapt(planned("60"), [done("55")] * 3, overall_rpe=6) is None
+
+
 # --- rules around the vectors ------------------------------------------------
 
 
@@ -105,11 +109,20 @@ def test_bodyweight_reps_capped_at_20():
     assert adapt(planned(bodyweight=True, reps=20), [done(reps=20)] * 3, overall_rpe=5) is None
 
 
-def test_progression_uses_lowest_completed_weight():
-    sets = [done("60"), done("62.5"), done("57.5")]
-    # 57.5 + 2.5 = 60 equals the plan: no change
+def test_progression_adds_the_step_to_the_planned_weight():
+    # heavier sets than planned still progress from the plan, not from what was lifted
+    result = adapt(planned("60"), [done("60"), done("65"), done("70")], overall_rpe=6)
+    assert result == Adjustment(AdjustmentReason.PROGRESSION, 3, 10, D("62.5"))
+
+
+def test_one_set_below_planned_weight_is_no_reserve():
+    sets = [done("60"), done("60"), done("57.5")]
     assert adapt(planned("60"), sets, overall_rpe=6) is None
-    assert adapt(planned("57.5"), sets, overall_rpe=6).weight_kg == D("60")
+
+
+def test_weighted_exercise_without_planned_weight_does_not_progress():
+    # only 0 kg sets: no baseline, and no planned weight to add the step to
+    assert adapt(planned(None), [done("0")] * 3, overall_rpe=6) is None
 
 
 def test_core_uses_upper_step():

@@ -8,7 +8,7 @@
   An unknown token, or one of another user, is 401 and revokes nothing.
 - Access tokens stay valid until they expire (no deny list).
 
-Storage is `refresh_token` in `database/init/01_schema.sql`; DATA implements the repository.
+Storage is the `RefreshToken` model (`app/db/models/user.py`); DATA implements the repository.
 """
 
 import uuid

@@ -56,7 +56,7 @@ class Adjustment:
 
 
 def reduce_signal(sets: list[LoggedSet], overall_rpe: int | None) -> AdjustmentReason | None:
-    """6.1: overall RPE >= 9 (checked first) or a set that was not completed."""
+    """Overall RPE >= 9 or a set that was not completed; RPE wins when both hold."""
     if overall_rpe is not None and overall_rpe >= REDUCE_RPE_THRESHOLD:
         return AdjustmentReason.REDUCE_HIGH_RPE
     if any(not s.completed for s in sets):
@@ -67,8 +67,15 @@ def reduce_signal(sets: list[LoggedSet], overall_rpe: int | None) -> AdjustmentR
 def reserve_signal(
     planned: PlannedExercise, sets: list[LoggedSet], overall_rpe: int | None
 ) -> bool:
-    """6.1: every planned set completed with all reps, highest RPE at most 7."""
-    full_sets = [s for s in sets if s.completed and s.reps >= planned.reps]
+    """Every planned set completed with all reps at the planned weight or more (when set),
+    and the highest set RPE (else the overall RPE) at most 7. No RPE at all: no signal."""
+    full_sets = [
+        s
+        for s in sets
+        if s.completed
+        and s.reps >= planned.reps
+        and (planned.weight_kg is None or s.weight_kg >= planned.weight_kg)
+    ]
     if len(full_sets) < planned.sets:
         return False
     set_rpes = [s.rpe for s in sets if s.rpe is not None]
@@ -81,7 +88,7 @@ def adapt(
 ) -> Adjustment | None:
     reduce = reduce_signal(sets, overall_rpe)
 
-    # 6.4 Baseline: a weighted exercise without a planned weight.
+    # Baseline: a weighted exercise without a planned weight.
     if not planned.is_bodyweight and planned.weight_kg is None:
         weights = [s.weight_kg for s in sets if s.completed and s.weight_kg > 0]
         if weights:
@@ -93,13 +100,13 @@ def adapt(
                 round_to_step(max(weights) * factor),
             )
 
-    # 6.2 Reduction wins over progression.
+    # Reduction wins over progression.
     if reduce is not None:
         return _reduce(planned, reduce)
 
-    # 6.3 Progression.
+    # Progression.
     if reserve_signal(planned, sets, overall_rpe):
-        return _progress(planned, sets)
+        return _progress(planned)
 
     return None
 
@@ -120,15 +127,16 @@ def _reduce(planned: PlannedExercise, reason: AdjustmentReason) -> Adjustment | 
     return Adjustment(reason, new_sets, planned.reps, planned.weight_kg)
 
 
-def _progress(planned: PlannedExercise, sets: list[LoggedSet]) -> Adjustment | None:
+def _progress(planned: PlannedExercise) -> Adjustment | None:
     if planned.is_bodyweight:
         new_reps = min(planned.reps + 1, BODYWEIGHT_MAX_REPS)
         if new_reps == planned.reps:
             return None
         return Adjustment(AdjustmentReason.PROGRESSION, planned.sets, new_reps, planned.weight_kg)
 
-    lowest = min(s.weight_kg for s in sets if s.completed)
-    new_weight = lowest + PROGRESSION_STEP_KG[planned.region]
-    if new_weight == planned.weight_kg:
+    # A weighted exercise still without a planned weight (only 0 kg sets) has nothing to
+    # add the step to; algorithms.md 6 is silent (questions.md, B-16).
+    if planned.weight_kg is None:
         return None
+    new_weight = planned.weight_kg + PROGRESSION_STEP_KG[planned.region]
     return Adjustment(AdjustmentReason.PROGRESSION, planned.sets, planned.reps, new_weight)

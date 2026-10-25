@@ -1,4 +1,4 @@
-"""In-memory stand-ins for DATA's repositories until DB-01 lands."""
+"""In-memory stand-ins for DATA's repositories until they exist in `app/db/`."""
 
 import dataclasses
 import uuid
