@@ -20,6 +20,7 @@ dependencies = [
     # B-01 hardening: X-Request-ID and security headers (api-rules.md)
     "asgi-correlation-id>=5.0.1",
     "secure>=2.0.1",
+    "scipy>=1.14",
 ]
 
 [dependency-groups]

@@ -44,6 +44,29 @@ class Equipment(StrEnum):
     GYM = "gym"
 
 
+class MealType(StrEnum):
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+    SNACK = "snack"
+
+
+class DietRole(StrEnum):
+    PROTEIN = "protein"
+    CARB = "carb"
+    VEGETABLE = "vegetable"
+    FRUIT = "fruit"
+    DAIRY = "dairy"
+    FAT = "fat"
+    DISH = "dish"
+
+
+class DietType(StrEnum):
+    OMNIVORE = "omnivore"
+    VEGETARIAN = "vegetarian"
+    VEGAN = "vegan"
+
+
 class InjurySeverity(StrEnum):
     MILD = "mild"
     MODERATE = "moderate"
@@ -172,6 +195,56 @@ SETS_REPS_REST = {
 SESSION_BASE_SECONDS = 600
 SECONDS_PER_SET = 45
 DURATION_STEP_MINUTES = 5
+
+# --- Section 5: diet plan -------------------------------------------------
+DIET_PLAN_DAYS = 7
+# 5.1 meals per day: (meal type, share of the day, planned time)
+MEAL_SLOTS = {
+    3: (
+        (MealType.BREAKFAST, 0.30, "08:00"),
+        (MealType.LUNCH, 0.40, "13:00"),
+        (MealType.DINNER, 0.30, "19:00"),
+    ),
+    4: (
+        (MealType.BREAKFAST, 0.25, "08:00"),
+        (MealType.LUNCH, 0.35, "13:00"),
+        (MealType.SNACK, 0.10, "16:00"),
+        (MealType.DINNER, 0.30, "19:00"),
+    ),
+    5: (
+        (MealType.BREAKFAST, 0.25, "08:00"),
+        (MealType.SNACK, 0.10, "10:30"),
+        (MealType.LUNCH, 0.30, "13:30"),
+        (MealType.SNACK, 0.10, "16:30"),
+        (MealType.DINNER, 0.25, "19:00"),
+    ),
+}
+# 5.3 composition: each entry is one role slot, filled from the roles listed
+MEAL_ROLES = {
+    MealType.BREAKFAST: (
+        (DietRole.PROTEIN, DietRole.DAIRY),
+        (DietRole.CARB,),
+        (DietRole.FRUIT,),
+        (DietRole.FAT,),
+    ),
+    MealType.LUNCH: ((DietRole.PROTEIN,), (DietRole.CARB,), (DietRole.VEGETABLE,), (DietRole.FAT,)),
+    MealType.DINNER: (
+        (DietRole.PROTEIN,),
+        (DietRole.CARB,),
+        (DietRole.VEGETABLE,),
+        (DietRole.FAT,),
+    ),
+    MealType.SNACK: ((DietRole.FRUIT, DietRole.DAIRY),),
+}
+SNACK_OPTIONAL_ROLE = DietRole.FAT
+# 5.4 weights of the relative errors: kcal, protein, fat, carbs
+GRAM_FIT_WEIGHTS = (3.0, 2.0, 1.0, 1.5)
+# 5.5 day tolerances: kcal, protein, fat, carbs
+DAY_TOLERANCES = (0.05, 0.10, 0.15, 0.10)
+DIET_ATTEMPTS = 5
+DIET_EXTRA_ATTEMPTS = 12
+DIET_MEAL_CANDIDATES = 8
+GOOD_MEAL_ERROR = 0.01
 
 # --- Section 6: adaptation and progression ---------------------------------
 REDUCE_RPE_THRESHOLD = 9
