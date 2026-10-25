@@ -6,7 +6,6 @@ import { Screen } from '@/components/screen';
 import { MODULES } from '@/constants/modules';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
-// Home screen (Rys. 7.5); profile metrics are added once the API is connected
 export default function HomeScreen() {
   const { spacing } = useAppTheme();
 

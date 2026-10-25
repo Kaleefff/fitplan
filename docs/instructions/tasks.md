@@ -1,6 +1,6 @@
 # Tasks
 
-Schedule and owners follow `docs/Plan_implementacji.xlsx` (D20) with the split of D21. Specs: `requirements.md`, `algorithms.md`, `api-rules.md`, `database/init/01_schema.sql`, `docs/database/mongo_buffer.md`, `docs/api/openapi.yaml`.
+Schedule and owners follow `docs/Plan_implementacji.xlsx` (D20) with the split of D21. Specs: `requirements.md`, `algorithms.md`, `api-rules.md`, `backend/app/db/models/`, `docs/database/mongo_buffer.md`, `docs/api/openapi.yaml`.
 
 | Role | Person | Area |
 | --- | --- | --- |
