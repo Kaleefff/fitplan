@@ -29,8 +29,8 @@ Rules: one task = one branch (`db/`, `api/`, `app/`, `docs/` + id) = one PR, rev
 Open: request IDs, CORS, security headers, body size limits, backend Dockerfile and compose service; `/health` switches to the shared engine once DB-01 is merged.
 Done: `docker compose up -d` serves `/api/v1/health`; tests and lint pass in CI (DB-05).
 
-**D-03 · OpenAPI contract** · API, reviewed by APP · Reqs: all FR · Depends: requirements, `api-rules.md` · Status: skeleton merged (PR #12); `x-todo` marks the fields that wait for DB-01.
-Do: `docs/api/openapi.yaml`: every endpoint below with schemas, error model, codes, pagination, bearer auth, upload limits. Each operation's fields are completed by the task that implements it; afterwards it changes only by a contract PR reviewed by API and APP (no gate G1). Still missing from the skeleton: `PATCH /users/me`, `/users/me/excluded-foods`, `PATCH /training-sessions/{id}`, `PATCH /session-exercises/{id}`, `PUT/DELETE /workouts/{id}`, `DELETE /body-metrics/{id}`, `PATCH/DELETE /nutrition-logs/{id}`, `DELETE /meals/recognitions/{id}`, `GET /notifications`, `DELETE /devices/push-token`; `405 method_not_allowed` in the `Error.code` enum.
+**D-03 · OpenAPI contract** · API, reviewed by APP · Reqs: all FR · Depends: requirements, `api-rules.md` · Status: skeleton merged (PR #12) and completed with every endpoint below; `x-todo` marks the fields that wait for DB-01 or an open question.
+Do: `docs/api/openapi.yaml`: every endpoint below with schemas, error model, codes, pagination, bearer auth, upload limits. Each operation's fields are completed by the task that implements it; afterwards it changes only by a contract PR reviewed by API and APP (no gate G1).
 
 | Area | Endpoints |
 | --- | --- |

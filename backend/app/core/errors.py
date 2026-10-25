@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
+from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,29 @@ _CODE_BY_STATUS = {
     413: ErrorCode.PAYLOAD_TOO_LARGE,
     422: ErrorCode.VALIDATION_ERROR,
     429: ErrorCode.RATE_LIMITED,
+}
+
+
+class ErrorDetail(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    field: str | SkipJsonSchema[None] = None
+    code: str
+    message: str
+
+
+class Error(BaseModel):
+    """Contract `Error` schema; documents error responses in the generated OpenAPI."""
+
+    code: ErrorCode
+    message: str
+    details: list[ErrorDetail]
+
+
+# Routes with parameters or a body pass this as `responses=`, otherwise FastAPI
+# documents its own HTTPValidationError instead of the contract model.
+VALIDATION_ERROR_RESPONSE: dict[int | str, dict[str, Any]] = {
+    422: {"model": Error, "description": "Invalid input"},
 }
 
 
