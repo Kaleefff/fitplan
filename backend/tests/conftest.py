@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.services.health import HealthReport
+from tests.fakes import fake_repositories
 
 TEST_JWT_SECRET = "test-secret-with-at-least-32-bytes!"
 
@@ -36,6 +37,8 @@ def settings() -> Settings:
 
 @pytest.fixture
 def client(health_checker: FakeHealthChecker, settings: Settings) -> Iterator[TestClient]:
-    app = create_app(settings=settings, health_checker=health_checker)
+    app = create_app(
+        settings=settings, health_checker=health_checker, repositories=fake_repositories()
+    )
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
