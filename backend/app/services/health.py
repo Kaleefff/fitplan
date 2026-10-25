@@ -1,17 +1,13 @@
-"""Dependency checks for GET /health.
-
-PostgreSQL is checked with a short-lived psycopg connection, not through an
-SQLAlchemy engine: the engine and sessions belong to DATA (`backend/app/db/`,
-DB-01). Switch to the shared engine once it exists.
-"""
+"""Dependency checks for GET /health, through the shared engine of `app.db.session`."""
 
 import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-import psycopg
 from pymongo import AsyncMongoClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import Settings
 
@@ -36,8 +32,11 @@ class HealthChecker(Protocol):
 
 
 class DependencyHealthChecker:
-    def __init__(self, settings: Settings, mongo_client: AsyncMongoClient) -> None:
+    def __init__(
+        self, settings: Settings, engine: AsyncEngine, mongo_client: AsyncMongoClient
+    ) -> None:
         self._settings = settings
+        self._engine = engine
         self._mongo = mongo_client
 
     async def check(self) -> HealthReport:
@@ -45,14 +44,12 @@ class DependencyHealthChecker:
         return HealthReport(postgres=postgres, mongo=mongo, version=self._settings.app_version)
 
     async def _check_postgres(self) -> DependencyStatus:
-        timeout = self._settings.health_check_timeout_seconds
         try:
-            async with asyncio.timeout(timeout):
-                conn = await psycopg.AsyncConnection.connect(
-                    self._settings.postgres_conninfo(), connect_timeout=max(1, int(timeout))
-                )
-                async with conn:
-                    await conn.execute("SELECT 1")
+            async with (
+                asyncio.timeout(self._settings.health_check_timeout_seconds),
+                self._engine.connect() as conn,
+            ):
+                await conn.execute(text("SELECT 1"))
         except Exception as exc:
             logger.warning("PostgreSQL health check failed: %s", type(exc).__name__)
             return "down"
