@@ -44,7 +44,6 @@ PENDING_OPERATIONS = (
     "updateTrainingSession",  # PATCH /training-sessions/{training_session_id}
     "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
     "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
-    "getNutritionTargets",  # GET /nutrition/targets
     "generateDietPlan",  # POST /diet-plans/generate
     "getActiveDietPlan",  # GET /diet-plans/active
     "getDietPlan",  # GET /diet-plans/{plan_id}
