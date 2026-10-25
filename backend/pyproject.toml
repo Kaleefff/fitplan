@@ -17,6 +17,9 @@ dependencies = [
     # B-02: password hashing and access tokens (D4)
     "bcrypt>=5.0.0",
     "pyjwt>=2.15.1",
+    # B-01 hardening: X-Request-ID and security headers (api-rules.md)
+    "asgi-correlation-id>=5.0.1",
+    "secure>=2.0.1",
 ]
 
 [dependency-groups]
