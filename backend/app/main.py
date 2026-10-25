@@ -10,6 +10,7 @@ from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.rate_limit import RateLimiter
 from app.services.health import DependencyHealthChecker, HealthChecker
 
 API_PREFIX = "/api/v1"
@@ -45,6 +46,10 @@ def create_app(
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=None,
         lifespan=lifespan,
+    )
+    app.state.settings = settings
+    app.state.auth_rate_limiter = RateLimiter(
+        settings.auth_rate_limit, settings.auth_rate_window_seconds
     )
     register_error_handlers(app)
     app.include_router(api_router, prefix=API_PREFIX)

@@ -12,12 +12,25 @@ uv run uvicorn app.main:app --reload      # http://localhost:8000/api/v1/docs
 
 Settings come from the repository `.env` (see `.env.example`). Start the data stores first with `docker compose up -d` from the repository root; without them `/api/v1/health` answers `degraded`.
 
+Auth needs `JWT_SECRET` (at least 32 random bytes, e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`) in `.env`; without it the app starts but issuing or checking a token fails. Other auth settings (`BCRYPT_ROUNDS`, `AUTH_RATE_LIMIT`, `AUTH_RATE_WINDOW_SECONDS`) have the defaults of `api-rules.md`.
+
 ## Check
 
 ```bash
 uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
+
+CI (DB-05) runs the same commands.
+
+### Contract conformance (B-28)
+
+`tests/contract/` fails when the app drifts from `docs/api/openapi.yaml`:
+
+- every served operation must exist in the contract with the same `operationId`, parameters, request body and response schemas (`drift.py`); contract operations that are not implemented yet must be listed in `tests/contract/pending.py`, and that list must equal what the app does not serve (remove an operation there when you implement it);
+- schemathesis generates requests from the contract for every implemented operation and validates the responses.
+
+A route with parameters or a body passes `responses=VALIDATION_ERROR_RESPONSE` (from `app.core.errors`), so its 422 is documented with the contract `Error` model instead of FastAPI's `HTTPValidationError`.
 
 ## Layout
 
