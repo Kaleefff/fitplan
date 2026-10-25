@@ -8,6 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# HS256 keys shorter than the hash output are rejected (RFC 7518, 3.2)
+MIN_JWT_SECRET_BYTES = 32
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -33,6 +36,20 @@ class Settings(BaseSettings):
     mongo_password: SecretStr = SecretStr("")
 
     health_check_timeout_seconds: float = 2.0
+
+    # Auth (api-rules.md "Auth and account"). JWT_SECRET has no default on purpose.
+    jwt_secret: SecretStr = SecretStr("")
+    access_token_minutes: int = 15
+    refresh_token_days: int = 30
+    bcrypt_rounds: int = 12
+    auth_rate_limit: int = 10
+    auth_rate_window_seconds: int = 60
+
+    def jwt_signing_key(self) -> str:
+        key = self.jwt_secret.get_secret_value()
+        if len(key.encode("utf-8")) < MIN_JWT_SECRET_BYTES:
+            raise RuntimeError(f"JWT_SECRET must be set to at least {MIN_JWT_SECRET_BYTES} bytes")
+        return key
 
     def postgres_conninfo(self) -> str:
         """libpq connection string for psycopg (D17)."""

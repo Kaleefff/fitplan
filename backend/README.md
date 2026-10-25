@@ -12,6 +12,8 @@ uv run uvicorn app.main:app --reload      # http://localhost:8000/api/v1/docs
 
 Settings come from the repository `.env` (see `.env.example`). Start the data stores first with `docker compose up -d` from the repository root; without them `/api/v1/health` answers `degraded`.
 
+Auth needs `JWT_SECRET` (at least 32 random bytes, e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`) in `.env`; without it the app starts but issuing or checking a token fails. Other auth settings (`BCRYPT_ROUNDS`, `AUTH_RATE_LIMIT`, `AUTH_RATE_WINDOW_SECONDS`) have the defaults of `api-rules.md`.
+
 ## Check
 
 ```bash
