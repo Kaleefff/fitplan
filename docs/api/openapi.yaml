@@ -237,6 +237,25 @@ paths:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+    patch:
+      tags: [account]
+      operationId: updateMe
+      summary: Change name, surname or time zone (FR-U4)
+      description: Email and password have their own routes, which need the current password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserPatch" }
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /users/me/email:
     post:
       tags: [account]
@@ -418,6 +437,43 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /users/me/excluded-foods:
+    get:
+      tags: [account]
+      operationId: getExcludedFoods
+      summary: Foods the user never wants in a diet plan (FR-P6)
+      responses:
+        "200":
+          description: Excluded foods
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FoodItem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [account]
+      operationId: putExcludedFoods
+      summary: Replace the excluded food list
+      description: |
+        Duplicate ids are dropped. An unknown or inactive id is 422 with
+        `details[].code` `not_found`, and nothing changes (api-rules.md Profile).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExcludedFoodsInput" }
+      responses:
+        "200":
+          description: Saved list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FoodItem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /injury-types:
     get:
       tags: [account]
@@ -518,6 +574,13 @@ paths:
       tags: [library]
       operationId: listExerciseAlternatives
       summary: Alternatives with the same main muscle group (FR-A1, algorithms.md 4.9)
+      parameters:
+        - name: session_exercise_id
+          in: query
+          description: |
+            Checks against the plan's level and equipment snapshot, the same check
+            as the swap; without it the profile is used (algorithms.md 4.9)
+          schema: { type: integer, minimum: 1 }
       responses:
         "200":
           description: Eligible alternatives for the current user
@@ -656,6 +719,54 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TrainingPlan" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /training-sessions/{training_session_id}:
+    parameters:
+      - $ref: "#/components/parameters/TrainingSessionId"
+    patch:
+      tags: [schedule]
+      operationId: updateTrainingSession
+      summary: Move a session to another weekday (FR-P9)
+      description: A weekday already used by another session of the plan is 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrainingSessionPatch" }
+      responses:
+        "200":
+          description: Updated session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrainingSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /session-exercises/{session_exercise_id}:
+    parameters:
+      - $ref: "#/components/parameters/SessionExerciseId"
+    patch:
+      tags: [training]
+      operationId: updateSessionExercise
+      summary: Edit sets, reps, rest or weight of a planned exercise (FR-A1)
+      description: Allowed on a draft or active plan; an archived plan is 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionExercisePatch" }
+      responses:
+        "200":
+          description: Updated session exercise
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionExercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -834,6 +945,41 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+    delete:
+      tags: [schedule]
+      operationId: unregisterPushToken
+      summary: Remove the device's push token, for example on logout (FR-R7)
+      x-todo:
+        - "Answer for a token that is not registered for the user (questions.md, D-03)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushTokenRef" }
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /notifications:
+    get:
+      tags: [schedule]
+      operationId: listNotifications
+      summary: The user's notifications, such as weekly reports and records (FR-P9, FR-R7)
+      x-todo:
+        - "Which rows are listed (unsent, dismissed) and their order (questions.md, D-03)"
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: A page of notifications
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   # ---------------------------------------------------------------- workouts
   /sessions/next:
     get:
@@ -889,6 +1035,40 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
+
+  /workouts/{workout_id}:
+    parameters:
+      - $ref: "#/components/parameters/WorkoutId"
+    put:
+      tags: [workouts]
+      operationId: updateWorkout
+      summary: Correct a logged workout (FR-A2)
+      description: |
+        Replaces the workout. Its `client_uuid` is kept (a different one in the
+        body is ignored), the plan is not adapted and records are not recomputed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutInput" }
+      responses:
+        "200":
+          description: Updated workout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [workouts]
+      operationId: deleteWorkout
+      summary: Delete a workout (soft)
+      description: Plan adjustments and personal records it produced are kept.
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------------------------------------------------------- nutrition
   /meals/recognitions:
@@ -1066,6 +1246,37 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /nutrition-logs/{nutrition_log_id}:
+    parameters:
+      - $ref: "#/components/parameters/NutritionLogId"
+    patch:
+      tags: [nutrition]
+      operationId: updateNutritionLog
+      summary: Correct a nutrition log (FR-A3)
+      description: When `items` is sent it replaces all items and the totals are recomputed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NutritionLogPatch" }
+      responses:
+        "200":
+          description: Updated log
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NutritionLog" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [nutrition]
+      operationId: deleteNutritionLog
+      summary: Delete a nutrition log (soft)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /nutrition/daily-summary:
     get:
       tags: [nutrition]
@@ -1137,6 +1348,21 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /body-metrics/{body_metrics_id}:
+    parameters:
+      - $ref: "#/components/parameters/BodyMetricsId"
+    delete:
+      tags: [body]
+      operationId: deleteBodyMetrics
+      summary: Delete a measurement (soft)
+      description: |
+        Deleting the newest measurement restores the previous one as
+        `user_profile.current_weight` and recomputes `tdee` (api-rules.md Logs).
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # ---------------------------------------------------------------- analytics
   /analytics/summary:
     get:
@@ -1203,6 +1429,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReportPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+    post:
+      tags: [analytics]
+      operationId: generateReport
+      summary: Generate the progress report of a period (FR-R1)
+      description: |
+        `report_type` is derived from the period. Generating the same period again
+        replaces the stored report. Fewer than 7 days of history is 422
+        `insufficient_data` (api-rules.md Reports).
+      x-todo:
+        - "Error.code needs insufficient_data (api-rules.md Reports); added with B-25"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GenerateReportRequest" }
+      responses:
+        "201":
+          description: The report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Report" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
@@ -1351,6 +1601,26 @@ components:
       in: path
       required: true
       schema: { type: integer, minimum: 1 }
+    TrainingSessionId:
+      name: training_session_id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    WorkoutId:
+      name: workout_id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    NutritionLogId:
+      name: nutrition_log_id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    BodyMetricsId:
+      name: body_metrics_id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
     RecognitionId:
       name: recognition_id
       in: path
@@ -1425,6 +1695,7 @@ components:
             - invalid_credentials
             - forbidden
             - not_found
+            - method_not_allowed
             - conflict
             - rate_limited
             - payload_too_large
@@ -1548,13 +1819,24 @@ components:
     User:
       type: object
       description: Table `app_user` (password hash is never returned)
-      required: [id, email, name, surname, registration_date]
+      required: [id, email, name, surname, timezone, registration_date]
       properties:
         id: { type: integer }
         email: { type: string, format: email }
         name: { type: string }
         surname: { type: string }
+        timezone: { type: string, description: "IANA name, for example Europe/Warsaw" }
         registration_date: { type: string, format: date }
+    UserPatch:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        surname: { type: string, minLength: 1, maxLength: 100 }
+        timezone:
+          type: string
+          maxLength: 64
+          description: IANA time zone name, validated by the server (api-rules.md Conventions)
     ChangeEmailRequest:
       type: object
       required: [new_email, current_password]
@@ -1662,6 +1944,14 @@ components:
           type: array
           items: { type: integer, minimum: 1 }
           uniqueItems: true
+    ExcludedFoodsInput:
+      type: object
+      required: [food_item_ids]
+      properties:
+        food_item_ids:
+          type: array
+          description: Duplicates are dropped
+          items: { type: integer, minimum: 1 }
 
     # ------------------------------------------------------------ library
     MuscleGroup:
@@ -1797,6 +2087,19 @@ components:
         sessions:
           type: array
           items: { $ref: "#/components/schemas/TrainingSession" }
+    SessionExercisePatch:
+      type: object
+      minProperties: 1
+      properties:
+        planned_sets: { type: integer, minimum: 1 }
+        planned_reps: { type: integer, minimum: 1 }
+        planned_weight: { type: number, minimum: 0, maximum: 999.99, description: kg }
+        rest_seconds: { type: integer, minimum: 0 }
+    TrainingSessionPatch:
+      type: object
+      required: [day_of_week]
+      properties:
+        day_of_week: { type: integer, minimum: 1, maximum: 7, description: "1 = Monday" }
     SwapRequest:
       type: object
       required: [exercise_id]
@@ -1903,6 +2206,37 @@ components:
       properties:
         token: { type: string, description: Expo push token }
         platform: { type: string, enum: [android, ios] }
+    PushTokenRef:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, description: Expo push token }
+    Notification:
+      type: object
+      description: Table `notification`
+      required: [id, message_type, scheduled_at, message, is_sent, is_dismissed]
+      properties:
+        id: { type: integer }
+        message_type:
+          type: string
+          enum: [meal_reminder, training_reminder, progress_update, achievement, motivational]
+        scheduled_at: { type: string, format: date-time }
+        message: { type: string }
+        data:
+          type: [object, "null"]
+          description: "For example {\"report_id\": 12} on progress_update (algorithms.md 12)"
+        is_sent: { type: boolean }
+        sent_at: { type: [string, "null"], format: date-time }
+        is_dismissed: { type: boolean }
+    NotificationPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Notification" }
 
     # ------------------------------------------------------------ workouts
     NextSession:
@@ -2103,6 +2437,20 @@ components:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/NutritionLogItemInput" }
+    NutritionLogPatch:
+      type: object
+      minProperties: 1
+      properties:
+        log_date: { type: string, format: date }
+        meal_type: { $ref: "#/components/schemas/MealType" }
+        planned_meal_id: { type: [integer, "null"], minimum: 1 }
+        hunger_level_before: { type: [integer, "null"], minimum: 1, maximum: 10 }
+        hunger_level_after: { type: [integer, "null"], minimum: 1, maximum: 10 }
+        items:
+          type: array
+          minItems: 1
+          description: Replaces all items
+          items: { $ref: "#/components/schemas/NutritionLogItemInput" }
     NutritionLog:
       type: object
       required: [id, log_date, meal_type, actual_cals, actual_protein, actual_fat, actual_carbs, logged_at, items]
@@ -2275,6 +2623,12 @@ components:
         avg_cals_daily: { type: [integer, "null"] }
         estimated_goal_completion_date: { type: [string, "null"], format: date }
         generated_at: { type: string, format: date-time }
+    GenerateReportRequest:
+      type: object
+      required: [period_start, period_end]
+      properties:
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date, description: Inclusive, not before period_start }
     ReportPage:
       allOf:
         - $ref: "#/components/schemas/PageMeta"
