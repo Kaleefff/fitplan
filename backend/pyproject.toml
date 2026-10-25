@@ -14,6 +14,9 @@ dependencies = [
     "pymongo>=4.13",
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.14",
+    # B-02: password hashing and access tokens (D4)
+    "bcrypt>=5.0.0",
+    "pyjwt>=2.15.1",
 ]
 
 [dependency-groups]
