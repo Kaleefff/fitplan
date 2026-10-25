@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
 from app.db.session import database_url
@@ -133,6 +134,7 @@ def api(sessions) -> Iterator[TestClient]:
         refresh_tokens=SqlRefreshTokenRepository(factory),
         profiles=SqlProfileReader(factory),
         workouts=SqlWorkoutUnitOfWork(factory),
+        training_plans=SqlTrainingPlanUnitOfWork(factory),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories

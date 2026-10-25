@@ -699,6 +699,7 @@ paths:
               schema: { $ref: "#/components/schemas/TrainingPlan" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /training-plans/{plan_id}/accept:
     parameters:
@@ -2038,13 +2039,11 @@ components:
       type: object
       properties:
         start_date:
-          type: string
+          type: [string, "null"]
           format: date
-          description: Defaults to today; end date = start + 56 days
+          description: Absent or null = today in the user's time zone; end date = start + 56 days
     SessionExercise:
       type: object
-      x-todo:
-        - "planned_weight is NOT NULL DEFAULT 0 in the DB; algorithms.md 4.6 / 6.4 need NULL until the baseline workout"
       required: [id, exercise_id, exercise_name, sort_order, planned_sets, planned_reps, planned_weight, rest_seconds]
       properties:
         id: { type: integer }
@@ -2053,14 +2052,18 @@ components:
         sort_order: { type: integer, minimum: 1 }
         planned_sets: { type: integer, minimum: 1 }
         planned_reps: { type: integer, minimum: 1 }
-        planned_weight: { type: number, minimum: 0, description: kg }
+        planned_weight:
+          type: [number, "null"]
+          minimum: 0
+          description: kg; null until the baseline workout (algorithms.md 6)
         rest_seconds: { type: integer, minimum: 0 }
     TrainingSession:
       type: object
-      required: [id, session_order, day_of_week, estimated_duration, exercises]
+      required: [id, session_order, session_name, day_of_week, estimated_duration, exercises]
       properties:
         id: { type: integer }
         session_order: { type: integer, minimum: 1 }
+        session_name: { type: string, maxLength: 30, description: "Split name of algorithms.md 4.5" }
         day_of_week: { type: integer, minimum: 1, maximum: 7, description: "1 = Monday" }
         estimated_duration: { type: integer, description: minutes }
         exercises:
@@ -2068,14 +2071,14 @@ components:
           items: { $ref: "#/components/schemas/SessionExercise" }
     TrainingPlan:
       type: object
-      x-todo:
-        - "skipped_muscle_groups is not stored (algorithms.md 4.3: training_plan.skipped_muscle_group_ids)"
-      required: [id, plan_name, goal, num_training_days, generated_at, status, sessions]
+      required: [id, plan_name, goal, num_training_days, experience_level, equipment, generated_at, status, skipped_muscle_groups, sessions]
       properties:
         id: { type: integer }
         plan_name: { type: string, maxLength: 45 }
         goal: { $ref: "#/components/schemas/Goal" }
         num_training_days: { type: integer }
+        experience_level: { $ref: "#/components/schemas/DifficultyLevel" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
         generated_at: { type: string, format: date-time }
         start_date: { type: [string, "null"], format: date }
         end_date: { type: [string, "null"], format: date }

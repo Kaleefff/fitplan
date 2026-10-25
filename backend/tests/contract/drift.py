@@ -121,8 +121,8 @@ def _parameters(
 
 
 def _optional_param_schema(spec: Schema, param: Schema) -> Schema:
-    """FastAPI writes an optional parameter as `X | null`; a query string cannot carry
-    null, so for a parameter that is not required the null adds nothing."""
+    """FastAPI writes an optional parameter or body as `X | null`; a query string cannot
+    carry null and an optional body is simply left out, so the null adds nothing."""
     schema = _normalize(spec, param.get("schema"))
     if not param.get("required") and isinstance(schema.get("type"), list):
         rest = [t for t in schema["type"] if t != "null"]
@@ -180,6 +180,11 @@ def _compare_operation(
     if (served_body is None) != (contract_body is None):
         problems.append(f"{where}: request body declared on one side only")
     elif served_body is not None:
+        # an optional body (FastAPI: `X | null`) is absent, not null: compare it as X
+        holder = _resolve(served, served_op["requestBody"])
+        served_body = _optional_param_schema(
+            served, {"schema": served_body, "required": holder.get("required", False)}
+        )
         problems += compare_schemas(served, served_body, contract, contract_body, f"{where} body")
 
     contract_responses = contract_op.get("responses", {})

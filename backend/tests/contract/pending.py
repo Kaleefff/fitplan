@@ -33,10 +33,6 @@ PENDING_OPERATIONS = (
     "listFoods",  # GET /foods
     "getFood",  # GET /foods/{food_id}
     "listFoodCategories",  # GET /food-categories
-    "generateTrainingPlan",  # POST /training-plans/generate
-    "getActiveTrainingPlan",  # GET /training-plans/active
-    "getTrainingPlan",  # GET /training-plans/{plan_id}
-    "acceptTrainingPlan",  # POST /training-plans/{plan_id}/accept
     "updateTrainingSession",  # PATCH /training-sessions/{training_session_id}
     "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
     "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
