@@ -50,10 +50,6 @@ PENDING_OPERATIONS = (
     "unregisterPushToken",  # DELETE /devices/push-token
     "listNotifications",  # GET /notifications
     "getNextSession",  # GET /sessions/next
-    "listWorkouts",  # GET /workouts
-    "createWorkout",  # POST /workouts
-    "updateWorkout",  # PUT /workouts/{workout_id}
-    "deleteWorkout",  # DELETE /workouts/{workout_id}
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}

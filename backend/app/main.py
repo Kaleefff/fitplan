@@ -17,6 +17,7 @@ from app.services.auth import AuthService
 from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.repositories import Repositories, sql_repositories
 from app.services.tokens import TokenService
+from app.services.workouts import WorkoutService
 
 API_PREFIX = "/api/v1"
 DOCS_URL = f"{API_PREFIX}/docs"
@@ -60,6 +61,8 @@ def create_app(
     )
     app.state.settings = settings
     app.state.profile_reader = repositories.profiles
+    app.state.users = repositories.users
+    app.state.workout_service = WorkoutService(repositories.workouts)
     app.state.auth_service = AuthService(
         settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
     )

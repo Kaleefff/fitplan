@@ -109,9 +109,25 @@ def _json_schema(spec: Schema, holder: Any) -> Any:
     return holder.get("content", {}).get("application/json", {}).get("schema")
 
 
-def _parameters(spec: Schema, operation: Schema) -> dict[tuple[str, str], Schema]:
-    params = [_resolve(spec, param) for param in operation.get("parameters", [])]
+def _parameters(
+    spec: Schema, operation: Schema, path_item: Schema | None = None
+) -> dict[tuple[str, str], Schema]:
+    """Path-item parameters apply to every operation of the path; the operation's win."""
+    params = [
+        _resolve(spec, param)
+        for param in [*(path_item or {}).get("parameters", []), *operation.get("parameters", [])]
+    ]
     return {(param["in"], param["name"]): param for param in params}
+
+
+def _optional_param_schema(spec: Schema, param: Schema) -> Schema:
+    """FastAPI writes an optional parameter as `X | null`; a query string cannot carry
+    null, so for a parameter that is not required the null adds nothing."""
+    schema = _normalize(spec, param.get("schema"))
+    if not param.get("required") and isinstance(schema.get("type"), list):
+        rest = [t for t in schema["type"] if t != "null"]
+        schema["type"] = rest[0] if len(rest) == 1 else rest
+    return schema
 
 
 def compare_specs(served: Schema, contract: Schema) -> list[str]:
@@ -128,13 +144,18 @@ def compare_specs(served: Schema, contract: Schema) -> list[str]:
                 problems.append(f"{where}: operation not in the contract")
                 continue
             problems += _compare_operation(
-                served, served_item[method], contract, contract_op, where
+                served, served_item[method], contract, contract_op, where, contract_paths[path]
             )
     return problems
 
 
 def _compare_operation(
-    served: Schema, served_op: Schema, contract: Schema, contract_op: Schema, where: str
+    served: Schema,
+    served_op: Schema,
+    contract: Schema,
+    contract_op: Schema,
+    where: str,
+    contract_item: Schema,
 ) -> list[str]:
     problems: list[str] = []
     served_id, contract_id = served_op.get("operationId"), contract_op.get("operationId")
@@ -142,13 +163,13 @@ def _compare_operation(
         problems.append(f"{where}: operationId {served_id} != {contract_id}")
 
     served_params = _parameters(served, served_op)
-    contract_params = _parameters(contract, contract_op)
+    contract_params = _parameters(contract, contract_op, contract_item)
     if set(served_params) != set(contract_params):
         problems.append(f"{where}: parameters {sorted(served_params)} != {sorted(contract_params)}")
     for key in sorted(set(served_params) & set(contract_params)):
         problems += compare_schemas(
             served,
-            served_params[key].get("schema"),
+            _optional_param_schema(served, served_params[key]),
             contract,
             contract_params[key].get("schema"),
             f"{where} param {key[1]}",

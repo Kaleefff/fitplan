@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,22 @@ async def _validation_error_handler(_: Request, exc: RequestValidationError) -> 
     )
 
 
-async def _http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+_HTTP_METHODS = ("DELETE", "GET", "HEAD", "PATCH", "POST", "PUT")
+
+
+def _allowed_methods(request: Request) -> str:
+    """Every method some route serves on this path; Starlette lists only the first route's."""
+    routes = request.app.router.routes
+    return ", ".join(
+        method
+        for method in _HTTP_METHODS
+        if any(
+            route.matches({**request.scope, "method": method})[0] == Match.FULL for route in routes
+        )
+    )
+
+
+async def _http_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     if exc.status_code == 400:
         # FastAPI's 400 is a body it could not decode (not UTF-8); invalid input is 422
         return JSONResponse(
@@ -126,10 +142,11 @@ async def _http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONRe
         )
     code = _CODE_BY_STATUS.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
     message = exc.detail if isinstance(exc.detail, str) else HTTPStatus(exc.status_code).phrase
+    headers = dict(getattr(exc, "headers", None) or {})
+    if exc.status_code == 405:
+        headers["Allow"] = _allowed_methods(request)
     return JSONResponse(
-        status_code=exc.status_code,
-        content=error_body(code, message),
-        headers=getattr(exc, "headers", None),
+        status_code=exc.status_code, content=error_body(code, message), headers=headers or None
     )
 
 

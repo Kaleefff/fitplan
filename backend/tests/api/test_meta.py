@@ -82,3 +82,21 @@ def test_unhandled_error_hides_internals(client):
 def test_openapi_is_served_under_prefix(client):
     spec = client.get("/api/v1/openapi.json").json()
     assert spec["paths"]["/api/v1/health"]["get"]["operationId"] == "getHealth"
+
+
+def test_405_lists_every_method_of_the_path(client):
+    router = APIRouter()
+
+    @router.get("/_test/things")
+    async def list_things() -> dict:
+        return {}
+
+    @router.post("/_test/things")
+    async def create_thing() -> dict:
+        return {}
+
+    client.app.include_router(router, prefix="/api/v1")
+    response = client.delete("/api/v1/_test/things")
+
+    assert response.status_code == 405
+    assert response.headers["Allow"] == "GET, POST"
