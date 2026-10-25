@@ -12,9 +12,6 @@ from typing import Any
 API_PREFIX = "/api/v1"
 HTTP_METHODS = ("get", "put", "post", "delete", "patch")
 
-# Values the backend emits that are not in the contract yet (questions.md, B-01).
-PENDING_ENUM_VALUES = {"method_not_allowed"}
-
 Schema = dict[str, Any]
 
 
@@ -74,7 +71,7 @@ def compare_schemas(
         problems.append(f"{where}: type {sorted(_types(served))} != {sorted(_types(contract))}")
         return problems
     if "enum" in contract or "enum" in served:
-        served_enum = set(served.get("enum", [])) - PENDING_ENUM_VALUES
+        served_enum = set(served.get("enum", []))
         if served_enum != set(contract.get("enum", [])):
             problems.append(f"{where}: enum {sorted(served_enum)} != {contract.get('enum')}")
     if served.get("format") != contract.get("format") and "format" in contract:

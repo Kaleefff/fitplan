@@ -14,6 +14,7 @@ PENDING_OPERATIONS = (
     "signInWithGoogle",  # POST /auth/google
     "signInWithApple",  # POST /auth/apple
     "getMe",  # GET /users/me
+    "updateMe",  # PATCH /users/me
     "changeEmail",  # POST /users/me/email
     "changePassword",  # POST /users/me/password
     "deleteAccount",  # POST /users/me/delete
@@ -25,6 +26,8 @@ PENDING_OPERATIONS = (
     "deleteInjury",  # DELETE /users/me/injuries/{injury_id}
     "getAllergies",  # GET /users/me/allergies
     "putAllergies",  # PUT /users/me/allergies
+    "getExcludedFoods",  # GET /users/me/excluded-foods
+    "putExcludedFoods",  # PUT /users/me/excluded-foods
     "listInjuryTypes",  # GET /injury-types
     "listAllergens",  # GET /allergens
     "listMuscleGroups",  # GET /muscle-groups
@@ -38,6 +41,8 @@ PENDING_OPERATIONS = (
     "getActiveTrainingPlan",  # GET /training-plans/active
     "getTrainingPlan",  # GET /training-plans/{plan_id}
     "acceptTrainingPlan",  # POST /training-plans/{plan_id}/accept
+    "updateTrainingSession",  # PATCH /training-sessions/{training_session_id}
+    "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
     "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
     "getNutritionTargets",  # GET /nutrition/targets
     "generateDietPlan",  # POST /diet-plans/generate
@@ -47,9 +52,13 @@ PENDING_OPERATIONS = (
     "listReminders",  # GET /reminders
     "putReminders",  # PUT /reminders
     "registerPushToken",  # POST /devices/push-token
+    "unregisterPushToken",  # DELETE /devices/push-token
+    "listNotifications",  # GET /notifications
     "getNextSession",  # GET /sessions/next
     "listWorkouts",  # GET /workouts
     "createWorkout",  # POST /workouts
+    "updateWorkout",  # PUT /workouts/{workout_id}
+    "deleteWorkout",  # DELETE /workouts/{workout_id}
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}
@@ -59,14 +68,18 @@ PENDING_OPERATIONS = (
     "confirmRecognition",  # POST /meals/recognitions/{recognition_id}/confirm
     "listNutritionLogs",  # GET /nutrition-logs
     "createNutritionLog",  # POST /nutrition-logs
+    "updateNutritionLog",  # PATCH /nutrition-logs/{nutrition_log_id}
+    "deleteNutritionLog",  # DELETE /nutrition-logs/{nutrition_log_id}
     "getDailySummary",  # GET /nutrition/daily-summary
     "getMealSuggestions",  # GET /nutrition/suggestions
     "listBodyMetrics",  # GET /body-metrics
     "saveBodyMetrics",  # POST /body-metrics
+    "deleteBodyMetrics",  # DELETE /body-metrics/{body_metrics_id}
     "getAnalyticsSummary",  # GET /analytics/summary
     "getAnalyticsChart",  # GET /analytics/charts/{metric}
     "getGoalPrediction",  # GET /analytics/goal-prediction
     "listReports",  # GET /reports
+    "generateReport",  # POST /reports
     "getReport",  # GET /reports/{report_id}
     "exportReport",  # GET /reports/{report_id}/export
     "syncPush",  # POST /sync/push

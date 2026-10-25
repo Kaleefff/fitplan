@@ -64,7 +64,10 @@ def test_null_allowed_on_one_side_only_is_reported():
     assert _compare(served, {"type": "string"}) == ["X: type ['null', 'string'] != ['string']"]
 
 
-def test_enum_values_are_compared_and_pending_values_ignored():
+def test_enum_values_are_compared():
     contract = {"type": "string", "enum": ["a", "b"]}
-    assert _compare({"type": "string", "enum": ["a", "b", "method_not_allowed"]}, contract) == []
+    assert _compare({"type": "string", "enum": ["b", "a"]}, contract) == []
     assert _compare({"type": "string", "enum": ["a"]}, contract) == ["X: enum ['a'] != ['a', 'b']"]
+    assert _compare({"type": "string", "enum": ["a", "b", "c"]}, contract) == [
+        "X: enum ['a', 'b', 'c'] != ['a', 'b']"
+    ]

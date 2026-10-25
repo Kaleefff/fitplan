@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query
 from app.core.errors import VALIDATION_ERROR_RESPONSE, ErrorCode
 from app.main import create_app
 from tests.conftest import FakeHealthChecker
-from tests.contract.drift import HTTP_METHODS, PENDING_ENUM_VALUES, compare_specs
+from tests.contract.drift import HTTP_METHODS, compare_specs
 from tests.contract.pending import PENDING_OPERATIONS
 
 CONTRACT_PATH = Path(__file__).resolve().parents[3] / "docs" / "api" / "openapi.yaml"
@@ -47,7 +47,7 @@ def test_pending_list_equals_the_missing_operations(served, contract):
 
 def test_error_codes_match_contract(contract):
     contract_codes = set(contract["components"]["schemas"]["Error"]["properties"]["code"]["enum"])
-    assert {code.value for code in ErrorCode} - PENDING_ENUM_VALUES == contract_codes
+    assert {code.value for code in ErrorCode} == contract_codes
 
 
 def test_drift_in_a_response_schema_is_reported(served, contract):
