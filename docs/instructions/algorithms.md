@@ -1,6 +1,6 @@
 # Algorithms
 
-Formulas, constants and test vectors. The vectors are unit tests. Constants live in one backend module (`app/domain/constants.py`). Column names are those of `database/init/01_schema.sql` after DB-01. If this file is silent, do not invent: add a question to `questions.md`.
+Formulas, constants and test vectors. The vectors are unit tests. Constants live in one backend module (`app/domain/constants.py`). Column names are those of the models in `backend/app/db/models/` (DB-01). If this file is silent, do not invent: add a question to `questions.md`.
 
 ## 0. Constants
 

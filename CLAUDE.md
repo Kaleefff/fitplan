@@ -18,7 +18,7 @@ Merged code wins for what already exists (names, types, constraints, file layout
 2. `docs/instructions/decisions.md`
 3. `docs/instructions/algorithms.md` (formulas, constants, test vectors)
 4. `docs/instructions/api-rules.md` (API behaviour, security checklist)
-5. `database/init/01_schema.sql` (until the Alembic baseline of DB-01) and `docs/database/mongo_buffer.md`
+5. `backend/app/db/models/` and the Alembic migrations in `backend/alembic/` (revision 0001 is frozen in `database/reference/01_schema.sql`), and `docs/database/mongo_buffer.md`
 6. `docs/api/openapi.yaml` (the contract, D-03; changed only by a contract PR reviewed by API and APP)
 7. `docs/instructions/tasks.md` (what, who, which stage)
 
@@ -55,5 +55,6 @@ Code and tests green in CI; linters clean; OpenAPI conformance (backend contract
 ## Commands
 
 - Start data stores: `docker compose up -d`
-- Reset after a schema change (deletes local data): `docker compose down -v && docker compose up -d`
+- Apply schema migrations: `cd backend && uv run alembic upgrade head`
+- Reset local data (deletes it): `docker compose down -v && docker compose up -d`, then apply the migrations again
 - Setup and troubleshooting: `docs/instructions/setup.md`

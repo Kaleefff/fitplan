@@ -1,4 +1,5 @@
 -- FitPlan Pro: PostgreSQL schema
+-- Frozen at Alembic revision 0001. Schema changes are Alembic migrations (backend/alembic/).
 
 -- Types
 
@@ -112,6 +113,7 @@ CREATE TABLE notification (
     message TEXT NOT NULL,
     data JSONB,
     is_sent BOOLEAN NOT NULL DEFAULT FALSE,
+    sent_at TIMESTAMPTZ,
     is_dismissed BOOLEAN NOT NULL DEFAULT FALSE
 );
 
@@ -636,3 +638,19 @@ CREATE TABLE progress_report (
         report_period_end
     )
 );
+
+-- updated_at changes on every UPDATE (sync, soft deletes)
+
+CREATE FUNCTION set_updated_at() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER workout_log_set_updated_at BEFORE UPDATE ON workout_log FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER nutrition_log_set_updated_at BEFORE UPDATE ON nutrition_log FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER body_metrics_set_updated_at BEFORE UPDATE ON body_metrics FOR EACH ROW EXECUTE FUNCTION set_updated_at();
