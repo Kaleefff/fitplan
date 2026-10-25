@@ -9,6 +9,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
 from app.services.health import HealthChecker
+from app.services.nutrition import ProfileReader
 
 # Same scheme name as the contract (`components.securitySchemes.bearerAuth`)
 _bearer = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
@@ -20,6 +21,14 @@ def get_health_checker(request: Request) -> HealthChecker:
 
 def get_app_settings(request: Request) -> Settings:
     return request.app.state.settings
+
+
+def get_profile_reader(request: Request) -> ProfileReader:
+    reader = request.app.state.profile_reader
+    if reader is None:
+        # DATA's repository is not merged yet (questions.md, B-03): 500 internal_error
+        raise RuntimeError("No ProfileReader configured")
+    return reader
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,7 @@ import dataclasses
 import uuid
 from datetime import datetime
 
+from app.services.nutrition import ProfileRecord
 from app.services.tokens import RefreshTokenRecord
 
 
@@ -59,3 +60,11 @@ class InMemoryRefreshTokenRepository:
 
     def live(self) -> list[RefreshTokenRecord]:
         return [row for row in self.rows.values() if row.revoked_at is None]
+
+
+class InMemoryProfileReader:
+    def __init__(self, profiles: dict[int, ProfileRecord] | None = None) -> None:
+        self.profiles = profiles or {}
+
+    async def get_profile(self, user_id: int) -> ProfileRecord | None:
+        return self.profiles.get(user_id)

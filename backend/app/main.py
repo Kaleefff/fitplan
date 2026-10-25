@@ -14,13 +14,16 @@ from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
 from app.services.health import DependencyHealthChecker, HealthChecker
+from app.services.nutrition import ProfileReader
 
 API_PREFIX = "/api/v1"
 DOCS_URL = f"{API_PREFIX}/docs"
 
 
 def create_app(
-    settings: Settings | None = None, health_checker: HealthChecker | None = None
+    settings: Settings | None = None,
+    health_checker: HealthChecker | None = None,
+    profile_reader: ProfileReader | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -53,6 +56,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.profile_reader = profile_reader
     app.state.auth_rate_limiter = RateLimiter(
         settings.auth_rate_limit, settings.auth_rate_window_seconds
     )

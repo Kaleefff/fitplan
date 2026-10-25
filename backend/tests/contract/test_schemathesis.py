@@ -7,10 +7,16 @@ response that drifts from the contract fails here even if FastAPI documents it.
 import schemathesis
 
 from app.main import create_app
-from tests.conftest import FakeHealthChecker
+from tests.conftest import FakeHealthChecker, make_settings
 from tests.contract.test_openapi_drift import CONTRACT_PATH
+from tests.fakes import InMemoryProfileReader
 
-app = create_app(health_checker=FakeHealthChecker())
+# test settings (JWT secret) and fakes, so authenticated operations answer like in production
+app = create_app(
+    settings=make_settings(),
+    health_checker=FakeHealthChecker(),
+    profile_reader=InMemoryProfileReader(),
+)
 app.state.health_checker = FakeHealthChecker()
 
 IMPLEMENTED = sorted(
