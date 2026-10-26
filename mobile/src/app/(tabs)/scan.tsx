@@ -5,7 +5,10 @@ export default function ScanScreen() {
     <PlaceholderScreen
       module="scan"
       upcoming={[
-        'scaaaan looooll lmaaaoooo 6767676767676767676767676767676767676767676767676767676767676767676767676767676767676767'
+        'Take a meal photo or pick one from the gallery',
+        'Review recognised products and correct the grams',
+        'Allergy warnings before saving',
+        "Today's nutrition: calories, protein, carbs, fats",
       ]}
     />
   );

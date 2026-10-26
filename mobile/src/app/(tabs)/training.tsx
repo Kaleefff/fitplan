@@ -5,7 +5,10 @@ export default function TrainingScreen() {
     <PlaceholderScreen
       module="training"
       upcoming={[
-        'generate a plan bla bla blaaaaaaaaaa'
+        'Generate a plan from goal, training days, level and equipment',
+        'Sessions for each training day with sets and reps',
+        'Swap an exercise for an alternative',
+        'Log a workout and rate it with RPE',
       ]}
     />
   );
