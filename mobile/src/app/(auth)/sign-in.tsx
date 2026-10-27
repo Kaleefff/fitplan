@@ -1,9 +1,11 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fieldErrors, toApiError, userMessage } from '@/api/errors';
 import { useSession } from '@/auth/session';
+import { checkEmail } from '@/auth/validation';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { FormMessage } from '@/components/form-message';
@@ -23,8 +25,9 @@ export default function SignInScreen() {
 
   async function submit() {
     const missing: Record<string, string> = {};
-    if (!email.trim()) {
-      missing.email = 'Enter your email.';
+    const emailError = checkEmail(email);
+    if (emailError) {
+      missing.email = emailError;
     }
     if (!password) {
       missing.password = 'Enter your password.';
@@ -85,6 +88,7 @@ export default function SignInScreen() {
         />
 
         <Button title="Sign in" onPress={submit} loading={busy} />
+        <Button title="Create an account" variant="ghost" onPress={() => router.replace('/sign-up')} />
       </Screen>
     </SafeAreaView>
   );
