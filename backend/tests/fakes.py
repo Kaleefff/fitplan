@@ -1,10 +1,12 @@
-"""In-memory stand-ins for DATA's repositories until they exist in `app/db/`."""
+"""In-memory stand-ins for the repositories of `app/db/repositories/`."""
 
 import dataclasses
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
+from app.db.repositories.users import EmailTakenError, UserRecord
 from app.services.nutrition import ProfileRecord
+from app.services.repositories import Repositories
 from app.services.tokens import RefreshTokenRecord
 
 
@@ -68,3 +70,41 @@ class InMemoryProfileReader:
 
     async def get_profile(self, user_id: int) -> ProfileRecord | None:
         return self.profiles.get(user_id)
+
+
+class InMemoryUserRepository:
+    def __init__(self) -> None:
+        self.rows: dict[int, UserRecord] = {}
+
+    async def add(
+        self, *, email: str, password_hash: str | None, name: str, surname: str
+    ) -> UserRecord:
+        if any(row.email == email for row in self.rows.values()):
+            raise EmailTakenError
+        record = UserRecord(
+            id=len(self.rows) + 1,
+            email=email,
+            password_hash=password_hash,
+            name=name,
+            surname=surname,
+            timezone="Europe/Warsaw",
+            registration_date=date(2026, 10, 25),
+        )
+        self.rows[record.id] = record
+        return record
+
+    async def get_by_email(self, email: str) -> UserRecord | None:
+        return next((row for row in self.rows.values() if row.email == email), None)
+
+    async def get_by_id(self, user_id: int) -> UserRecord | None:
+        return self.rows.get(user_id)
+
+
+def fake_repositories(**overrides: object) -> Repositories:
+    values = {
+        "users": InMemoryUserRepository(),
+        "refresh_tokens": InMemoryRefreshTokenRepository(),
+        "profiles": InMemoryProfileReader(),
+        **overrides,
+    }
+    return Repositories(**values)

@@ -9,13 +9,13 @@ import schemathesis
 from app.main import create_app
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.contract.test_openapi_drift import CONTRACT_PATH
-from tests.fakes import InMemoryProfileReader
+from tests.fakes import fake_repositories
 
 # test settings (JWT secret) and fakes, so authenticated operations answer like in production
 app = create_app(
     settings=make_settings(),
     health_checker=FakeHealthChecker(),
-    profile_reader=InMemoryProfileReader(),
+    repositories=fake_repositories(),
 )
 app.state.health_checker = FakeHealthChecker()
 

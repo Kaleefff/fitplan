@@ -5,10 +5,6 @@ serve. Remove an operation here in the PR that implements it.
 """
 
 PENDING_OPERATIONS = (
-    "register",  # POST /auth/register
-    "login",  # POST /auth/login
-    "refreshTokens",  # POST /auth/refresh
-    "logout",  # POST /auth/logout
     "forgotPassword",  # POST /auth/password/forgot
     "resetPassword",  # POST /auth/password/reset
     "signInWithGoogle",  # POST /auth/google
