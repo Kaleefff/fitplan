@@ -239,10 +239,15 @@ def _duration_minutes(exercises: list[PlanExercise]) -> int:
     return math.ceil(seconds / 60 / DURATION_STEP_MINUTES) * DURATION_STEP_MINUTES
 
 
+def goal_label(goal: Goal) -> str:
+    """muscle_gain -> "Muscle gain", for plan names (4.8, 5.5)."""
+    return goal.value.replace("_", " ").capitalize()
+
+
 def plan_name(goal: Goal, num_days: int) -> str:
     """4.8: "<Goal>, <n> day(s) per week"."""
     days = "day" if num_days == 1 else "days"
-    return f"{goal.value.replace('_', ' ').capitalize()}, {num_days} {days} per week"
+    return f"{goal_label(goal)}, {num_days} {days} per week"
 
 
 def generate_training_plan(
