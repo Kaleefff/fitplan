@@ -25,16 +25,16 @@ cp .env.example .env
 
 Open `.env` and set your own passwords. Docker Compose reads only `.env`, never `.env.example`.
 `.env` is in `.gitignore` and must never be committed. Check with `git check-ignore .env`; it should print `.env`.
+Set `JWT_SECRET` as well (the command is in the comment above it); without it login and registration fail.
 
-## 3. Start the databases and create the schema
+## 3. Start the services and create the schema
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 docker compose ps
 ```
 
-After about 15 seconds both `fitplan-postgres` and `fitplan-mongo` should show `healthy`.
-On the first start, MongoDB runs `database/mongo-init/01_meal_recognitions.js` automatically.
+After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up.
 
 The PostgreSQL schema is created by the Alembic migrations:
 
@@ -56,6 +56,14 @@ docker exec fitplan-mongo mongosh -u fitplan -p YOUR_PASSWORD --authenticationDa
 
 Expected: 36 tables plus `alembic_version`, and 3 indexes on `meal_recognitions` (`_id_`, `expiresAt_1`, `userId_1_status_1`).
 
+The backend and the mail catcher:
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+Expected: `postgres` and `mongo` are `ok`. The Mailpit inbox (mails sent by the backend, e.g. password reset) is at http://localhost:8025.
+
 ## 5. Connect from tools
 
 | Tool                      | Settings                                                                         |
@@ -65,13 +73,16 @@ Expected: 36 tables plus `alembic_version`, and 3 indexes on `meal_recognitions`
 
 ## Daily use
 
-| Command                        | What it does                                   |
-| ------------------------------ | ---------------------------------------------- |
-| `docker compose up -d`         | Start the databases in the background          |
-| `docker compose stop`          | Stop them; data is kept                        |
-| `docker compose down`          | Remove the containers; data is kept in volumes |
-| `docker compose down -v`       | Remove the containers **and all data**         |
-| `docker compose logs postgres` | Show the Postgres log (same for `mongo`)       |
+| Command                                | What it does                                       |
+| -------------------------------------- | -------------------------------------------------- |
+| `docker compose up -d`                 | Start all services in the background               |
+| `docker compose up -d --build backend` | Rebuild the backend after pulling backend changes  |
+| `docker compose stop`                  | Stop them; data is kept                            |
+| `docker compose down`                  | Remove the containers; data is kept in volumes     |
+| `docker compose down -v`               | Remove the containers **and all data**             |
+| `docker compose logs backend`          | Show a service's log (`postgres`, `mongo`, `mailpit` too) |
+
+To run the backend with `uv run uvicorn` instead, stop the container first (`docker compose stop backend`) or change `BACKEND_PORT`, since both use port 8000.
 
 ## After the schema changes
 
