@@ -14,7 +14,10 @@ export function Screen({ children }: ScreenProps) {
     <ScrollView
       style={[styles.fill, { backgroundColor: colors.background }]}
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}
-      contentInsetAdjustmentBehavior="automatic">
+      contentInsetAdjustmentBehavior="automatic"
+      // A tap on a button works while the keyboard is open; scrolling closes the keyboard
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag">
       {children}
     </ScrollView>
   );

@@ -8,6 +8,7 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
+from app.services.auth import AuthService
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
 
@@ -24,11 +25,11 @@ def get_app_settings(request: Request) -> Settings:
 
 
 def get_profile_reader(request: Request) -> ProfileReader:
-    reader = request.app.state.profile_reader
-    if reader is None:
-        # DATA's repository is not merged yet (questions.md, B-03): 500 internal_error
-        raise RuntimeError("No ProfileReader configured")
-    return reader
+    return request.app.state.profile_reader
+
+
+def get_auth_service(request: Request) -> AuthService:
+    return request.app.state.auth_service
 
 
 @dataclass(frozen=True)

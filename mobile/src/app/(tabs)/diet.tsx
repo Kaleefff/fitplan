@@ -5,7 +5,10 @@ export default function DietScreen() {
     <PlaceholderScreen
       module="diet"
       upcoming={[
-        'simply lovely'
+        'TDEE and daily calorie target',
+        'Protein, carbs and fat targets',
+        'Meals of the day with products and grams',
+        'Regenerate or accept the plan',
       ]}
     />
   );
