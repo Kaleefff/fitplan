@@ -1452,9 +1452,9 @@ export interface components {
         AcceptPlanRequest: {
             /**
              * Format: date
-             * @description Defaults to today; end date = start + 56 days
+             * @description Absent or null = today in the user's time zone; end date = start + 56 days
              */
-            start_date?: string;
+            start_date?: string | null;
         };
         SessionExercise: {
             id: number;
@@ -1463,13 +1463,15 @@ export interface components {
             sort_order: number;
             planned_sets: number;
             planned_reps: number;
-            /** @description kg */
-            planned_weight: number;
+            /** @description kg; null until the baseline workout (algorithms.md 6) */
+            planned_weight: number | null;
             rest_seconds: number;
         };
         TrainingSession: {
             id: number;
             session_order: number;
+            /** @description Split name of algorithms.md 4.5 */
+            session_name: string;
             /** @description 1 = Monday */
             day_of_week: number;
             /** @description minutes */
@@ -1481,6 +1483,8 @@ export interface components {
             plan_name: string;
             goal: components["schemas"]["Goal"];
             num_training_days: number;
+            experience_level: components["schemas"]["DifficultyLevel"];
+            equipment: components["schemas"]["Equipment"];
             /** Format: date-time */
             generated_at: string;
             /** Format: date */
@@ -1489,7 +1493,7 @@ export interface components {
             end_date?: string | null;
             status: components["schemas"]["PlanStatus"];
             /** @description Required groups skipped because of injuries (algorithms.md 4.3) */
-            skipped_muscle_groups?: string[];
+            skipped_muscle_groups: string[];
             sessions: components["schemas"]["TrainingSession"][];
         };
         SessionExercisePatch: {
@@ -2166,6 +2170,7 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
         };
     };
     forgotPassword: {
@@ -2918,6 +2923,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     acceptTrainingPlan: {
@@ -3413,6 +3419,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     createRecognition: {
