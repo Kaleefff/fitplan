@@ -13,8 +13,10 @@ from app.core.logging import configure_logging
 from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
+from app.services.auth import AuthService
 from app.services.health import DependencyHealthChecker, HealthChecker
-from app.services.nutrition import ProfileReader
+from app.services.repositories import Repositories, sql_repositories
+from app.services.tokens import TokenService
 
 API_PREFIX = "/api/v1"
 DOCS_URL = f"{API_PREFIX}/docs"
@@ -23,9 +25,10 @@ DOCS_URL = f"{API_PREFIX}/docs"
 def create_app(
     settings: Settings | None = None,
     health_checker: HealthChecker | None = None,
-    profile_reader: ProfileReader | None = None,
+    repositories: Repositories | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
+    repositories = repositories or sql_repositories()
     configure_logging(settings.log_level)
 
     @asynccontextmanager
@@ -56,7 +59,10 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = settings
-    app.state.profile_reader = profile_reader
+    app.state.profile_reader = repositories.profiles
+    app.state.auth_service = AuthService(
+        settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
+    )
     app.state.auth_rate_limiter = RateLimiter(
         settings.auth_rate_limit, settings.auth_rate_window_seconds
     )

@@ -114,8 +114,6 @@ paths:
       operationId: refreshTokens
       summary: Rotate the refresh token and issue a new pair
       security: []
-      x-todo:
-        - "DB: refresh token storage with rotation and reuse detection (D-01 #19)"
       requestBody:
         required: true
         content:
@@ -143,6 +141,7 @@ paths:
       responses:
         "204": { description: Logged out }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /auth/password/forgot:
     post:

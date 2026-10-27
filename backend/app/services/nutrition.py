@@ -1,7 +1,7 @@
 """Energy and macro targets of the user's profile (B-10, FR-P4, FR-P5).
 
-The profile is read through `ProfileReader`; DATA implements it over the DB-01
-`UserProfile` model (questions.md, B-03). Until then only tests provide one.
+The profile is read through `ProfileReader`, implemented over the DB-01 `UserProfile`
+model in `app/db/repositories/profiles.py`.
 """
 
 from dataclasses import dataclass
