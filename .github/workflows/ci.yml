@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# a new push to the same branch cancels the run still going
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff, pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: fitplan
+          POSTGRES_USER: fitplan
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitplan -d fitplan"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mongo:
+        image: mongo:8
+        env:
+          MONGO_INITDB_ROOT_USERNAME: fitplan
+          MONGO_INITDB_ROOT_PASSWORD: ci-password
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.hello().ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    # same variable names as .env.example; CI-only throwaway passwords
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fitplan
+      POSTGRES_USER: fitplan
+      POSTGRES_PASSWORD: ci-password
+      MONGO_HOST: localhost
+      MONGO_PORT: 27017
+      MONGO_USER: fitplan
+      MONGO_PASSWORD: ci-password
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.5"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      # fails loudly if PostgreSQL is unreachable; the db tests would only skip
+      - name: Migrate an empty database
+        run: uv run alembic upgrade head
+
+      - name: Tests
+        run: uv run pytest -q -rs
+
+  mobile:
+    name: Mobile (lint, types, tests, API types)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test -- --ci
+
+      # generated types must match docs/api/openapi.yaml (definition of done)
+      - name: API types up to date
+        run: npm run api:check
