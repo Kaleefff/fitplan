@@ -33,10 +33,6 @@ PENDING_OPERATIONS = (
     "listFoods",  # GET /foods
     "getFood",  # GET /foods/{food_id}
     "listFoodCategories",  # GET /food-categories
-    "generateTrainingPlan",  # POST /training-plans/generate
-    "getActiveTrainingPlan",  # GET /training-plans/active
-    "getTrainingPlan",  # GET /training-plans/{plan_id}
-    "acceptTrainingPlan",  # POST /training-plans/{plan_id}/accept
     "updateTrainingSession",  # PATCH /training-sessions/{training_session_id}
     "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
     "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
@@ -50,10 +46,6 @@ PENDING_OPERATIONS = (
     "unregisterPushToken",  # DELETE /devices/push-token
     "listNotifications",  # GET /notifications
     "getNextSession",  # GET /sessions/next
-    "listWorkouts",  # GET /workouts
-    "createWorkout",  # POST /workouts
-    "updateWorkout",  # PUT /workouts/{workout_id}
-    "deleteWorkout",  # DELETE /workouts/{workout_id}
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}

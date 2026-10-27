@@ -8,9 +8,11 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
-from app.services.auth import AuthService
+from app.services.auth import AuthService, UserRepository
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
+from app.services.training_plans import TrainingPlanService
+from app.services.workouts import WorkoutService
 
 # Same scheme name as the contract (`components.securitySchemes.bearerAuth`)
 _bearer = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
@@ -30,6 +32,18 @@ def get_profile_reader(request: Request) -> ProfileReader:
 
 def get_auth_service(request: Request) -> AuthService:
     return request.app.state.auth_service
+
+
+def get_user_repository(request: Request) -> UserRepository:
+    return request.app.state.users
+
+
+def get_workout_service(request: Request) -> WorkoutService:
+    return request.app.state.workout_service
+
+
+def get_training_plan_service(request: Request) -> TrainingPlanService:
+    return request.app.state.training_plan_service
 
 
 @dataclass(frozen=True)

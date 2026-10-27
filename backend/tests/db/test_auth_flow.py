@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
+from app.db.repositories.workouts import SqlWorkoutUnitOfWork
 from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
@@ -32,6 +34,8 @@ def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
         users=SqlUserRepository(sessions),
         refresh_tokens=SqlRefreshTokenRepository(sessions),
         profiles=SqlProfileReader(sessions),
+        workouts=SqlWorkoutUnitOfWork(sessions),
+        training_plans=SqlTrainingPlanUnitOfWork(sessions),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories

@@ -100,11 +100,17 @@ class InMemoryUserRepository:
         return self.rows.get(user_id)
 
 
+def _no_workout_store():
+    raise AssertionError("workouts and plans need PostgreSQL: see tests/db/")
+
+
 def fake_repositories(**overrides: object) -> Repositories:
     values = {
         "users": InMemoryUserRepository(),
         "refresh_tokens": InMemoryRefreshTokenRepository(),
         "profiles": InMemoryProfileReader(),
+        "workouts": _no_workout_store,
+        "training_plans": _no_workout_store,
         **overrides,
     }
     return Repositories(**values)
