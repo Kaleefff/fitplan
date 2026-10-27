@@ -12,7 +12,7 @@ from app.main import create_app
 from app.services.nutrition import ProfileRecord
 from tests.conftest import TEST_JWT_SECRET, FakeHealthChecker, make_settings
 from tests.domain.test_nutrition import VECTORS
-from tests.fakes import InMemoryProfileReader
+from tests.fakes import InMemoryProfileReader, fake_repositories
 
 URL = "/api/v1/nutrition/targets"
 
@@ -30,7 +30,9 @@ def profiles() -> InMemoryProfileReader:
 @pytest.fixture
 def api(profiles):
     app = create_app(
-        settings=make_settings(), health_checker=FakeHealthChecker(), profile_reader=profiles
+        settings=make_settings(),
+        health_checker=FakeHealthChecker(),
+        repositories=fake_repositories(profiles=profiles),
     )
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
