@@ -86,3 +86,37 @@ jobs:
 
       - name: Tests
         run: uv run pytest -q -rs
+
+  mobile:
+    name: Mobile (lint, types, tests, API types)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test -- --ci
+
+      # generated types must match docs/api/openapi.yaml (definition of done)
+      - name: API types up to date
+        run: npm run api:check
