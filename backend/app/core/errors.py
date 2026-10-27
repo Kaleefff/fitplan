@@ -114,6 +114,16 @@ async def _validation_error_handler(_: Request, exc: RequestValidationError) -> 
 
 
 async def _http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+    if exc.status_code == 400:
+        # FastAPI's 400 is a body it could not decode (not UTF-8); invalid input is 422
+        return JSONResponse(
+            status_code=422,
+            content=error_body(
+                ErrorCode.VALIDATION_ERROR,
+                "Request validation failed",
+                [{"field": "body", "code": "json_invalid", "message": "Body is not valid JSON"}],
+            ),
+        )
     code = _CODE_BY_STATUS.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
     message = exc.detail if isinstance(exc.detail, str) else HTTPStatus(exc.status_code).phrase
     return JSONResponse(
