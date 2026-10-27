@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "pydantic>=2.8",
+    "pydantic[email]>=2.8",
     "pydantic-settings>=2.4",
     # D17: PostgreSQL driver for the async API and the sync Alembic/scripts
     "psycopg[binary]>=3.2",
@@ -29,6 +29,7 @@ dev = [
     "ruff>=0.6",
     "schemathesis>=4.32.1",
     "pyyaml>=6.0.3",
+    "hypothesis>=6.170.9",
 ]
 
 [tool.uv]
