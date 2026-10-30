@@ -1,0 +1,17 @@
+type_name,description,avg_healing_time_days
+Shoulder strain,"Overstretched or slightly torn shoulder muscles, usually from overuse or a sudden load.",21
+Rotator cuff tendinopathy,"Irritated rotator cuff tendons; pain when lifting the arm sideways or overhead.",42
+Tennis elbow,"Overloaded tendons on the outer elbow; pain when gripping or extending the wrist.",56
+Wrist sprain,"Stretched wrist ligaments, often after a fall on the hand; pain when bearing weight on it.",21
+Neck strain,"Strained neck muscles; stiffness and pain when turning or tilting the head.",14
+Lower back strain,"Strained lower back muscles; pain when bending, lifting or twisting.",14
+Groin strain,"Strained inner thigh muscles; pain when bringing the legs together or changing direction.",21
+Hamstring strain,"Strained muscles at the back of the thigh; pain when bending the knee or sprinting.",21
+Knee pain,"Non-acute pain around the kneecap; worse when squatting, kneeling or using stairs.",28
+Patellar tendinopathy,"Overloaded tendon below the kneecap; pain when jumping, squatting or landing.",42
+Shin splints,"Pain along the inner shin bone from repeated impact, common in running and jumping.",28
+Calf strain,"Strained calf muscles; pain when pushing off, rising on the toes or running.",21
+Achilles tendinopathy,"Overloaded tendon above the heel; stiffness in the morning and pain when pushing off.",56
+Ankle sprain,"Stretched ankle ligaments, usually from rolling the foot inward; swelling and pain when walking.",21
+Fracture,"Broken bone confirmed or suspected; the affected area must not be loaded until a doctor allows it.",56
+Dislocation,"Joint forced out of position, usually the shoulder or a finger; needs medical care before any training.",42
