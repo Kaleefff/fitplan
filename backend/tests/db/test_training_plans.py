@@ -302,3 +302,36 @@ def test_generate_accept_train_adapt(api):
         e for s in active["sessions"] for e in s["exercises"] if e["id"] == weighted["id"]
     )
     assert planned["planned_weight"] == 40.0
+
+
+def test_next_session_follows_the_schedule_and_skips_a_done_one(api):
+    headers = _login(api)
+    assert api.get("/api/v1/sessions/next", headers=headers).status_code == 404
+
+    plan = _generate(api, headers, days=7).json()  # a session on every weekday
+    api.post(f"/api/v1/training-plans/{plan['id']}/accept", headers=headers)
+    today = api.get("/api/v1/sessions/next", headers=headers).json()
+
+    assert (today["training_plan_id"], today["date"]) == (plan["id"], TODAY.isoformat())
+    assert today["session"]["day_of_week"] == TODAY.isoweekday()
+    first = today["session"]["exercises"][0]
+    api.post(
+        "/api/v1/workouts",
+        json={
+            "training_session_id": today["session"]["id"],
+            "log_date": TODAY.isoformat(),
+            "rpe_rating": 7,
+            "exercises": [
+                {
+                    "exercise_id": first["exercise_id"],
+                    "sort_order": 1,
+                    "sets": [{"set_number": 1, "reps": 5, "weight": 0, "completed": True}],
+                }
+            ],
+        },
+        headers=headers,
+    )
+
+    tomorrow = api.get("/api/v1/sessions/next", headers=headers).json()
+    assert tomorrow["date"] == (TODAY + timedelta(1)).isoformat()
+    assert tomorrow["session"]["day_of_week"] == (TODAY + timedelta(1)).isoweekday()
