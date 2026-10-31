@@ -1,27 +1,16 @@
--- TEMPORARY development seed: muscle groups, exercises and injury types.
+-- TEMPORARY development seed: exercises, until DB-03.
 --
--- Lets the training plan generator (B-11) run end to end before the real seeds of
--- DB-02 (muscle groups, injury types) and DB-03 (exercises) exist. Delete this file
--- and the rows it inserted when they are merged. Group names follow algorithms.md 3.
+-- Lets the training plan generator (B-11) run end to end before the exercise seed of
+-- DB-03 exists. Delete this file and the rows it inserted when DB-03 is merged.
+-- Muscle groups and injury types come from the DB-02 seed (`python -m app.db.seed`),
+-- which has to be loaded first; groups and injury types are found by name.
 -- Every group has a beginner exercise without equipment, so every goal, level and
 -- equipment tier gets a plan. Idempotent: rows are keyed by name.
 --
--- Load: docker exec -i fitplan-postgres psql -U fitplan -d fitplan < database/dev/temporary_training_seed.sql
+-- Load: cd backend && uv run python -m app.db.seed, then
+--   docker exec -i fitplan-postgres psql -U fitplan -d fitplan < database/dev/temporary_training_seed.sql
 
 BEGIN;
-
-INSERT INTO muscle_group (group_name, region, description) VALUES
-  ('chest', 'upper', 'Temporary seed'),
-  ('back', 'upper', 'Temporary seed'),
-  ('shoulders', 'upper', 'Temporary seed'),
-  ('biceps', 'upper', 'Temporary seed'),
-  ('triceps', 'upper', 'Temporary seed'),
-  ('quadriceps', 'lower', 'Temporary seed'),
-  ('hamstrings', 'lower', 'Temporary seed'),
-  ('glutes', 'lower', 'Temporary seed'),
-  ('calves', 'lower', 'Temporary seed'),
-  ('core', 'core', 'Temporary seed')
-ON CONFLICT (group_name) DO NOTHING;
 
 INSERT INTO exercise (name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction) VALUES
   ('Push-up', 'beginner', 'none', true, true, 'Temporary seed', 'Temporary seed'),
@@ -152,12 +141,6 @@ SELECT e.id, m.id, v.is_primary FROM (VALUES
 JOIN exercise e ON e.name = v.exercise
 JOIN muscle_group m ON m.group_name = v.muscle_group
 ON CONFLICT DO NOTHING;
-
-INSERT INTO injury_type (type_name, description, avg_healing_time_days) VALUES
-  ('Shoulder strain', 'Overuse or minor tear of the shoulder muscles', 21),
-  ('Lower back strain', 'Strained lower back muscles', 14),
-  ('Knee pain', 'Non-acute pain around the knee', 28)
-ON CONFLICT (type_name) DO NOTHING;
 
 INSERT INTO injury_type_excluded_exercise (injury_type_id, exercise_id)
 SELECT t.id, e.id FROM (VALUES

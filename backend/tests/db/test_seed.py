@@ -140,37 +140,43 @@ def test_changed_row_is_updated_in_place(db, seed_copy):
     assert row.description.startswith("Pectoralis Major")
 
 
-def test_replaces_temporary_seed_and_keeps_its_links(db):
+def test_temporary_exercises_load_on_top_and_survive_a_reload(db):
+    """The temporary exercises (until DB-03) link to the seeded groups and injury types by
+    name; a second reference load keeps every link."""
+    run(db)
     raw = db.raw_connection()
     try:
         raw.autocommit = True
         raw.cursor().execute(TEMPORARY_SEED.read_text(encoding="utf-8"))
     finally:
         raw.close()
-    with db.connect() as connection:
-        before = connection.execute(
-            text("SELECT group_name, id FROM muscle_group ORDER BY id")
-        ).all()
-        links = connection.execute(
-            text("SELECT count(*) FROM injury_type_excluded_exercise")
-        ).scalar_one()
 
+    def state() -> tuple:
+        with db.connect() as connection:
+            return (
+                connection.execute(
+                    text("SELECT group_name, id FROM muscle_group ORDER BY id")
+                ).all(),
+                connection.execute(text("SELECT count(*) FROM exercise_muscle_group")).scalar_one(),
+                connection.execute(
+                    text("SELECT count(*) FROM injury_type_excluded_exercise")
+                ).scalar_one(),
+                connection.execute(
+                    text(
+                        "SELECT count(*) FROM exercise e WHERE NOT EXISTS (SELECT 1 FROM"
+                        " exercise_muscle_group l WHERE l.exercise_id = e.id AND l.is_primary)"
+                    )
+                ).scalar_one(),
+            )
+
+    before = state()
     run(db)
 
-    with db.connect() as connection:
-        placeholders = connection.execute(
-            text("SELECT count(*) FROM muscle_group WHERE description = 'Temporary seed'")
-        ).scalar_one()
-        after = connection.execute(
-            text("SELECT group_name, id FROM muscle_group ORDER BY id")
-        ).all()
-        links_after = connection.execute(
-            text("SELECT count(*) FROM injury_type_excluded_exercise")
-        ).scalar_one()
-    assert placeholders == 0
-    assert after == before
-    assert links > 0
-    assert links_after == links
+    groups, group_links, injury_links, without_primary = before
+    assert len(groups) == 10
+    assert group_links > 0 and injury_links > 0
+    assert without_primary == 0
+    assert state() == before
 
 
 def test_broken_file_changes_nothing(db, seed_copy):

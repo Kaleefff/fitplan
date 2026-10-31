@@ -1,7 +1,8 @@
-"""Training plans on PostgreSQL with the temporary seed (B-11).
+"""Training plans on PostgreSQL with the DB-02 seed and the temporary exercises (B-11).
 
-Loads database/dev/temporary_training_seed.sql into the throwaway database; skipped
-without PostgreSQL. Delete the seed-coverage test with the seed when DB-02/DB-03 land.
+Loads the reference seed and database/dev/temporary_training_seed.sql into the
+throwaway database; skipped without PostgreSQL. When DB-03 lands, load its exercises
+instead and keep the coverage test: it then checks DB-03's coverage.
 """
 
 import functools
@@ -20,6 +21,7 @@ from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
 from app.db.repositories.training_plans import SqlTrainingPlanStore, SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
+from app.db.seed import load
 from app.db.session import database_url
 from app.domain.constants import DifficultyLevel, Equipment, Goal
 from app.domain.training import generate_training_plan
@@ -46,6 +48,9 @@ def _close_sync_engine():
 
 
 def _load_seed() -> None:
+    """The DB-02 reference seed, then the temporary exercises (until DB-03)."""
+    with _sync_engine().begin() as db:
+        load(db)
     connection = _sync_engine().raw_connection()
     try:
         connection.autocommit = True
