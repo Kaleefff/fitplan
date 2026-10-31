@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
@@ -81,6 +82,7 @@ def api(migrated_db, inbox) -> Iterator[TestClient]:  # noqa: F811
         training_plans=SqlTrainingPlanUnitOfWork(factory),
         profile_data=SqlProfileUnitOfWork(factory),
         password_resets=SqlPasswordResetRepository(factory),
+        body_metrics=SqlBodyMetricsUnitOfWork(factory),
     )
     settings = make_settings(smtp_host="127.0.0.1", smtp_port=inbox[1])
     app = create_app(

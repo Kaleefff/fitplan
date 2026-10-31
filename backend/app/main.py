@@ -16,6 +16,7 @@ from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
 from app.services.account import AccountService
 from app.services.auth import AuthService
+from app.services.body_metrics import BodyMetricsService
 from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
@@ -71,6 +72,7 @@ def create_app(
     app.state.workout_service = WorkoutService(repositories.workouts)
     app.state.training_plan_service = TrainingPlanService(repositories.training_plans)
     app.state.profile_service = ProfileService(repositories.profile_data)
+    app.state.body_metrics_service = BodyMetricsService(repositories.body_metrics)
     app.state.account_service = AccountService(
         settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
     )
