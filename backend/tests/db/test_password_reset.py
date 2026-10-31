@@ -18,6 +18,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
@@ -85,6 +86,7 @@ def api(migrated_db, inbox) -> Iterator[TestClient]:  # noqa: F811
         password_resets=SqlPasswordResetRepository(factory),
         body_metrics=SqlBodyMetricsUnitOfWork(factory),
         schedule=SqlScheduleUnitOfWork(factory),
+        diet_plans=SqlDietPlanUnitOfWork(factory),
     )
     settings = make_settings(smtp_host="127.0.0.1", smtp_port=inbox[1])
     app = create_app(
