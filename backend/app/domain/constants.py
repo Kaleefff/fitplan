@@ -263,6 +263,11 @@ PR_MAX_REPS = 12
 # --- Section 7: compliance -------------------------------------------------
 DIET_COMPLIANCE_TOLERANCE = Decimal("0.10")
 
+# --- Section 8: analytics --------------------------------------------------
+PERIOD_DAYS = {"week": 7, "month": 30, "3months": 90}
+MIN_HISTORY_DAYS = 7  # FR-R5: distinct days with any record over the whole history
+KEY_LIFTS = 3
+
 # --- Section 9: goal prediction --------------------------------------------
 PREDICTION_WINDOW_DAYS = 28
 PREDICTION_MIN_WEIGH_INS = 3

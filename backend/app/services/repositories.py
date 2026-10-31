@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.password_resets import SqlPasswordResetRepository
@@ -13,6 +14,7 @@ from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
 from app.db.session import get_sessionmaker
+from app.services.analytics import AnalyticsUnitOfWork
 from app.services.auth import UserRepository
 from app.services.body_metrics import BodyMetricsUnitOfWork
 from app.services.diet_plans import DietPlanUnitOfWork
@@ -37,6 +39,7 @@ class Repositories:
     body_metrics: BodyMetricsUnitOfWork
     schedule: ScheduleUnitOfWork
     diet_plans: DietPlanUnitOfWork
+    analytics: AnalyticsUnitOfWork
 
 
 def sql_repositories() -> Repositories:
@@ -53,4 +56,5 @@ def sql_repositories() -> Repositories:
         body_metrics=SqlBodyMetricsUnitOfWork(sessions),
         schedule=SqlScheduleUnitOfWork(sessions),
         diet_plans=SqlDietPlanUnitOfWork(sessions),
+        analytics=SqlAnalyticsUnitOfWork(sessions),
     )

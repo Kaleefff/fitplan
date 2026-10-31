@@ -9,6 +9,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
 from app.services.account import AccountService
+from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService, UserRepository
 from app.services.body_metrics import BodyMetricsService
 from app.services.diet_plans import DietPlanService
@@ -74,6 +75,10 @@ def get_schedule_service(request: Request) -> ScheduleService:
 
 def get_diet_plan_service(request: Request) -> DietPlanService:
     return request.app.state.diet_plan_service
+
+
+def get_analytics_service(request: Request) -> AnalyticsService:
+    return request.app.state.analytics_service
 
 
 @dataclass(frozen=True)
