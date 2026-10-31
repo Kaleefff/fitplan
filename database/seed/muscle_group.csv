@@ -1,0 +1,11 @@
+group_name,region,description,image_url
+chest,upper,"Pectoralis major and minor; push the arms forward and across the body, as in presses and push-ups.",
+back,upper,"Latissimus dorsi, trapezius and rhomboids; pull the arms down and back and keep the shoulder blades stable.",
+shoulders,upper,"Deltoids (front, side and rear); raise the arms forward, sideways and back and press overhead.",
+biceps,upper,"Biceps brachii and brachialis; bend the elbow and turn the forearm palm up.",
+triceps,upper,"Triceps brachii; straighten the elbow, as in dips, close-grip presses and pushdowns.",
+quadriceps,lower,"Four muscles at the front of the thigh; straighten the knee, as in squats, lunges and leg extensions.",
+hamstrings,lower,"Three muscles at the back of the thigh; bend the knee and extend the hip, as in leg curls and Romanian deadlifts.",
+glutes,lower,"Gluteus maximus, medius and minimus; extend and stabilise the hip, as in hip thrusts, bridges and squats.",
+calves,lower,"Gastrocnemius and soleus; point the foot down, as in calf raises, and absorb landing in running and jumping.",
+core,core,"Abdominals, obliques and deep trunk muscles; brace and stabilise the spine and resist bending and rotation.",

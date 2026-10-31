@@ -7,6 +7,7 @@ FastAPI application, API prefix `/api/v1`. Uses Python 3.12 and [uv](https://doc
 ```bash
 cd backend
 uv run alembic upgrade head               # create or update the PostgreSQL schema
+uv run python -m app.db.seed              # load or refresh the reference data
 uv run uvicorn app.main:app --reload      # http://localhost:8000/api/v1/docs
 ```
 
@@ -54,5 +55,6 @@ A route with parameters or a body passes `responses=VALIDATION_ERROR_RESPONSE` (
 | `app/domain/` | Pure functions of `docs/instructions/algorithms.md`; `constants.py` holds every constant |
 | `app/db/` | DATA: `base.py` (declarative base, naming convention), `enums.py`, `session.py` (sync and async engines, D17), `models/` (one module per schema module) |
 | `alembic/` | DATA: migrations; `0001_baseline` creates the whole schema |
+| `app/db/seed.py` | DATA: loads `database/seed/*.csv` (one file per table, header = column names); upsert by name, one transaction (DB-02) |
 
 Drivers (decisions D17, D18): psycopg 3 for PostgreSQL, PyMongo async for MongoDB.

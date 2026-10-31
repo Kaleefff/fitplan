@@ -84,6 +84,16 @@ jobs:
       - name: Migrate an empty database
         run: uv run alembic upgrade head
 
+      # DB-02: a broken seed row fails here; a second load must change nothing
+      - name: Load reference seeds
+        run: |
+          uv run python -m app.db.seed
+          uv run python -m app.db.seed | tee "$RUNNER_TEMP/second-load.txt"
+          if grep -qE "(inserted|updated) +[1-9]" "$RUNNER_TEMP/second-load.txt"; then
+            echo "::error::the second seed load changed rows"
+            exit 1
+          fi
+
       - name: Tests
         run: uv run pytest -q -rs
 

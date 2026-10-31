@@ -36,14 +36,17 @@ docker compose ps
 
 After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up.
 
-The PostgreSQL schema is created by the Alembic migrations:
+The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories) by the seed loader:
 
 ```bash
 cd backend
 uv sync
 uv run alembic upgrade head
+uv run python -m app.db.seed
 cd ..
 ```
+
+The loader can be run any time; a second run reports every row as `unchanged`.
 
 ## 4. Check that it works
 
@@ -86,11 +89,12 @@ To run the backend with `uv run uvicorn` instead, stop the container first (`doc
 
 ## After the schema changes
 
-The schema is managed by Alembic (`backend/alembic/`). After pulling, apply new migrations:
+The schema is managed by Alembic (`backend/alembic/`) and the reference data by `database/seed/`. After pulling, apply new migrations and seed changes:
 
 ```bash
 cd backend
 uv run alembic upgrade head
+uv run python -m app.db.seed
 ```
 
 To change the schema (DATA): edit the models in `backend/app/db/models/`, then run `uv run alembic revision --autogenerate -m "short description"`, review the generated file, and run `uv run alembic upgrade head`. `uv run alembic check` reports whether the models and the database still differ.
