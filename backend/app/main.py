@@ -14,6 +14,7 @@ from app.core.mail import MailSender, SmtpMailSender
 from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
+from app.services.account import AccountService
 from app.services.auth import AuthService
 from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.password_reset import PasswordResetService
@@ -70,6 +71,9 @@ def create_app(
     app.state.workout_service = WorkoutService(repositories.workouts)
     app.state.training_plan_service = TrainingPlanService(repositories.training_plans)
     app.state.profile_service = ProfileService(repositories.profile_data)
+    app.state.account_service = AccountService(
+        settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
+    )
     app.state.password_reset_service = PasswordResetService(
         settings,
         repositories.users,

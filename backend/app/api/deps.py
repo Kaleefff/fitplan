@@ -8,6 +8,7 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
+from app.services.account import AccountService
 from app.services.auth import AuthService, UserRepository
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
@@ -54,6 +55,10 @@ def get_profile_service(request: Request) -> ProfileService:
 
 def get_password_reset_service(request: Request) -> PasswordResetService:
     return request.app.state.password_reset_service
+
+
+def get_account_service(request: Request) -> AccountService:
+    return request.app.state.account_service
 
 
 @dataclass(frozen=True)
