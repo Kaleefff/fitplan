@@ -16,8 +16,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.password_resets import SqlPasswordResetRepository
+from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
@@ -135,6 +139,10 @@ def api(sessions) -> Iterator[TestClient]:
         profiles=SqlProfileReader(factory),
         workouts=SqlWorkoutUnitOfWork(factory),
         training_plans=SqlTrainingPlanUnitOfWork(factory),
+        profile_data=SqlProfileUnitOfWork(factory),
+        password_resets=SqlPasswordResetRepository(factory),
+        body_metrics=SqlBodyMetricsUnitOfWork(factory),
+        schedule=SqlScheduleUnitOfWork(factory),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories
