@@ -20,6 +20,7 @@ from app.db.models import (
     SessionExercise,
     TrainingPlan,
     TrainingSession,
+    WorkoutLog,
 )
 from app.domain.constants import DifficultyLevel, Equipment, InjurySeverity
 from app.domain.training import ActiveInjury, ExerciseInfo, GeneratedPlan
@@ -165,6 +166,16 @@ class SqlTrainingPlanStore:
             .where(TrainingPlan.id == plan_id)
             .values(status=PlanStatus.ACTIVE, start_date=start, end_date=end)
         )
+
+    async def workout_days(self, session_ids: list[int], since: date) -> set[tuple[int, date]]:
+        rows = await self._session.execute(
+            select(WorkoutLog.training_session_id, WorkoutLog.log_date).where(
+                WorkoutLog.training_session_id.in_(session_ids),
+                WorkoutLog.log_date >= since,
+                WorkoutLog.deleted_at.is_(None),
+            )
+        )
+        return {(session_id, day) for session_id, day in rows}
 
     async def _view(self, plan: TrainingPlan) -> PlanView:
         await self._session.refresh(plan)  # server defaults and the updates above
