@@ -15,6 +15,7 @@ from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.schedule import ScheduleService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
 
@@ -64,6 +65,10 @@ def get_account_service(request: Request) -> AccountService:
 
 def get_body_metrics_service(request: Request) -> BodyMetricsService:
     return request.app.state.body_metrics_service
+
+
+def get_schedule_service(request: Request) -> ScheduleService:
+    return request.app.state.schedule_service
 
 
 @dataclass(frozen=True)

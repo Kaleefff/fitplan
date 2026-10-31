@@ -893,8 +893,6 @@ paths:
       tags: [schedule]
       operationId: listReminders
       summary: Training and meal reminders (FR-P9)
-      x-todo:
-        - "DB: notification has no recurrence / enabled flag (D-01 #18)"
       responses:
         "200":
           description: Reminders
@@ -914,6 +912,7 @@ paths:
           application/json:
             schema:
               type: array
+              maxItems: 50
               items: { $ref: "#/components/schemas/ReminderInput" }
       responses:
         "200":

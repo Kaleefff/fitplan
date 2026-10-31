@@ -8,6 +8,7 @@ from app.api.v1 import (
     nutrition,
     profile,
     reference,
+    schedule,
     training_plans,
     workouts,
 )
@@ -23,3 +24,4 @@ api_router.include_router(reference.router)
 api_router.include_router(account.router)
 api_router.include_router(training_plans.sessions_router)
 api_router.include_router(body_metrics.router)
+api_router.include_router(schedule.router)

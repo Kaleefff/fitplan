@@ -21,6 +21,7 @@ from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
 from app.services.repositories import Repositories, sql_repositories
+from app.services.schedule import ScheduleService
 from app.services.tokens import TokenService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
@@ -73,6 +74,7 @@ def create_app(
     app.state.training_plan_service = TrainingPlanService(repositories.training_plans)
     app.state.profile_service = ProfileService(repositories.profile_data)
     app.state.body_metrics_service = BodyMetricsService(repositories.body_metrics)
+    app.state.schedule_service = ScheduleService(repositories.schedule)
     app.state.account_service = AccountService(
         settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
     )

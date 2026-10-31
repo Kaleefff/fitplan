@@ -19,7 +19,7 @@ from app.domain.constants import (
     Goal,
 )
 from app.services.auth import UserRepository
-from app.services.training_plans import PlanRequest, PlanView, TrainingPlanService
+from app.services.training_plans import PlanRequest, PlanView, SessionView, TrainingPlanService
 
 router = APIRouter(prefix="/training-plans", tags=["training"])
 
@@ -86,32 +86,31 @@ class TrainingPlanOut(BaseModel):
             end_date=plan.end_date,
             status=plan.status,
             skipped_muscle_groups=list(plan.skipped_muscle_groups),
-            sessions=[
-                TrainingSessionOut(
-                    id=s.id,
-                    session_order=s.session_order,
-                    session_name=s.session_name,
-                    day_of_week=s.day_of_week,
-                    estimated_duration=s.estimated_duration,
-                    exercises=[
-                        SessionExerciseOut(
-                            id=e.id,
-                            exercise_id=e.exercise_id,
-                            exercise_name=e.exercise_name,
-                            sort_order=e.sort_order,
-                            planned_sets=e.planned_sets,
-                            planned_reps=e.planned_reps,
-                            planned_weight=None
-                            if e.planned_weight is None
-                            else float(e.planned_weight),
-                            rest_seconds=e.rest_seconds,
-                        )
-                        for e in s.exercises
-                    ],
-                )
-                for s in plan.sessions
-            ],
+            sessions=[session_out(s) for s in plan.sessions],
         )
+
+
+def session_out(s: SessionView) -> TrainingSessionOut:
+    return TrainingSessionOut(
+        id=s.id,
+        session_order=s.session_order,
+        session_name=s.session_name,
+        day_of_week=s.day_of_week,
+        estimated_duration=s.estimated_duration,
+        exercises=[
+            SessionExerciseOut(
+                id=e.id,
+                exercise_id=e.exercise_id,
+                exercise_name=e.exercise_name,
+                sort_order=e.sort_order,
+                planned_sets=e.planned_sets,
+                planned_reps=e.planned_reps,
+                planned_weight=None if e.planned_weight is None else float(e.planned_weight),
+                rest_seconds=e.rest_seconds,
+            )
+            for e in s.exercises
+        ],
+    )
 
 
 def _error(description: str) -> dict:
@@ -208,5 +207,4 @@ async def get_next_session(
     if account is None:
         raise AppError(401, ErrorCode.UNAUTHORIZED, "Unknown user")
     plan, session, day = await service.next_session(user.id, account.timezone, datetime.now(UTC))
-    session_out = TrainingPlanOut.of(plan).sessions[plan.sessions.index(session)]
-    return NextSessionOut(training_plan_id=plan.id, date=day, session=session_out)
+    return NextSessionOut(training_plan_id=plan.id, date=day, session=session_out(session))

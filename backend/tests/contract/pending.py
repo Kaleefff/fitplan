@@ -13,18 +13,14 @@ PENDING_OPERATIONS = (
     "listFoods",  # GET /foods
     "getFood",  # GET /foods/{food_id}
     "listFoodCategories",  # GET /food-categories
-    "updateTrainingSession",  # PATCH /training-sessions/{training_session_id}
     "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
     "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
     "generateDietPlan",  # POST /diet-plans/generate
     "getActiveDietPlan",  # GET /diet-plans/active
     "getDietPlan",  # GET /diet-plans/{plan_id}
     "acceptDietPlan",  # POST /diet-plans/{plan_id}/accept
-    "listReminders",  # GET /reminders
-    "putReminders",  # PUT /reminders
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
-    "listNotifications",  # GET /notifications
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}
