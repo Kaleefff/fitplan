@@ -5,28 +5,8 @@ serve. Remove an operation here in the PR that implements it.
 """
 
 PENDING_OPERATIONS = (
-    "forgotPassword",  # POST /auth/password/forgot
-    "resetPassword",  # POST /auth/password/reset
     "signInWithGoogle",  # POST /auth/google
     "signInWithApple",  # POST /auth/apple
-    "getMe",  # GET /users/me
-    "updateMe",  # PATCH /users/me
-    "changeEmail",  # POST /users/me/email
-    "changePassword",  # POST /users/me/password
-    "deleteAccount",  # POST /users/me/delete
-    "getProfile",  # GET /users/me/profile
-    "putProfile",  # PUT /users/me/profile
-    "listInjuries",  # GET /users/me/injuries
-    "createInjury",  # POST /users/me/injuries
-    "updateInjury",  # PATCH /users/me/injuries/{injury_id}
-    "deleteInjury",  # DELETE /users/me/injuries/{injury_id}
-    "getAllergies",  # GET /users/me/allergies
-    "putAllergies",  # PUT /users/me/allergies
-    "getExcludedFoods",  # GET /users/me/excluded-foods
-    "putExcludedFoods",  # PUT /users/me/excluded-foods
-    "listInjuryTypes",  # GET /injury-types
-    "listAllergens",  # GET /allergens
-    "listMuscleGroups",  # GET /muscle-groups
     "listExercises",  # GET /exercises
     "getExercise",  # GET /exercises/{exercise_id}
     "listExerciseAlternatives",  # GET /exercises/{exercise_id}/alternatives
@@ -45,7 +25,6 @@ PENDING_OPERATIONS = (
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
     "listNotifications",  # GET /notifications
-    "getNextSession",  # GET /sessions/next
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}

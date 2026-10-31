@@ -8,9 +8,12 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
+from app.services.account import AccountService
 from app.services.auth import AuthService, UserRepository
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
+from app.services.password_reset import PasswordResetService
+from app.services.profile import ProfileService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
 
@@ -44,6 +47,18 @@ def get_workout_service(request: Request) -> WorkoutService:
 
 def get_training_plan_service(request: Request) -> TrainingPlanService:
     return request.app.state.training_plan_service
+
+
+def get_profile_service(request: Request) -> ProfileService:
+    return request.app.state.profile_service
+
+
+def get_password_reset_service(request: Request) -> PasswordResetService:
+    return request.app.state.password_reset_service
+
+
+def get_account_service(request: Request) -> AccountService:
+    return request.app.state.account_service
 
 
 @dataclass(frozen=True)

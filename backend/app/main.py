@@ -10,11 +10,15 @@ from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.mail import MailSender, SmtpMailSender
 from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
+from app.services.account import AccountService
 from app.services.auth import AuthService
 from app.services.health import DependencyHealthChecker, HealthChecker
+from app.services.password_reset import PasswordResetService
+from app.services.profile import ProfileService
 from app.services.repositories import Repositories, sql_repositories
 from app.services.tokens import TokenService
 from app.services.training_plans import TrainingPlanService
@@ -28,6 +32,7 @@ def create_app(
     settings: Settings | None = None,
     health_checker: HealthChecker | None = None,
     repositories: Repositories | None = None,
+    mail_sender: MailSender | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     repositories = repositories or sql_repositories()
@@ -65,6 +70,16 @@ def create_app(
     app.state.users = repositories.users
     app.state.workout_service = WorkoutService(repositories.workouts)
     app.state.training_plan_service = TrainingPlanService(repositories.training_plans)
+    app.state.profile_service = ProfileService(repositories.profile_data)
+    app.state.account_service = AccountService(
+        settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
+    )
+    app.state.password_reset_service = PasswordResetService(
+        settings,
+        repositories.users,
+        repositories.password_resets,
+        mail_sender or SmtpMailSender(settings),
+    )
     app.state.auth_service = AuthService(
         settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
     )
