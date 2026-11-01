@@ -34,7 +34,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       mongo:
-        image: mongo:8
+        image: mongo:8.2
         env:
           MONGO_INITDB_ROOT_USERNAME: fitplan
           MONGO_INITDB_ROOT_PASSWORD: ci-password
