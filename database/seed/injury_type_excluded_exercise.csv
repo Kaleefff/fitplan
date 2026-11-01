@@ -1,1 +1,138 @@
 injury_type,exercise
+Shoulder strain,Incline barbell bench press
+Shoulder strain,Weighted dip
+Shoulder strain,Deficit push-up on dumbbells
+Shoulder strain,Archer push-up
+Shoulder strain,Weighted pull-up
+Shoulder strain,Archer pull-up
+Shoulder strain,Machine shoulder press
+Shoulder strain,Barbell overhead press
+Shoulder strain,Push press
+Shoulder strain,Dumbbell shoulder press
+Shoulder strain,Arnold press
+Shoulder strain,Dumbbell Z press
+Shoulder strain,Pike push-up
+Shoulder strain,Wall handstand push-up
+Shoulder strain,Parallel bar dip
+Shoulder strain,Chair dip
+Shoulder strain,Ab wheel rollout
+Shoulder strain,Towel ab rollout
+Rotator cuff tendinopathy,Incline barbell bench press
+Rotator cuff tendinopathy,Weighted dip
+Rotator cuff tendinopathy,Archer push-up
+Rotator cuff tendinopathy,Weighted pull-up
+Rotator cuff tendinopathy,Archer pull-up
+Rotator cuff tendinopathy,Machine shoulder press
+Rotator cuff tendinopathy,Cable lateral raise
+Rotator cuff tendinopathy,Barbell overhead press
+Rotator cuff tendinopathy,Push press
+Rotator cuff tendinopathy,Dumbbell shoulder press
+Rotator cuff tendinopathy,Lateral raise
+Rotator cuff tendinopathy,Arnold press
+Rotator cuff tendinopathy,Dumbbell Z press
+Rotator cuff tendinopathy,Pike push-up
+Rotator cuff tendinopathy,Wall handstand push-up
+Rotator cuff tendinopathy,Parallel bar dip
+Rotator cuff tendinopathy,Chair dip
+Rotator cuff tendinopathy,Ab wheel rollout
+Rotator cuff tendinopathy,Towel ab rollout
+Tennis elbow,Barbell row
+Tennis elbow,Barbell deadlift
+Tennis elbow,Weighted pull-up
+Tennis elbow,Pull-up
+Tennis elbow,Chin-up
+Tennis elbow,Archer pull-up
+Tennis elbow,Single-arm inverted row
+Tennis elbow,Hammer curl
+Tennis elbow,Dumbbell skull crusher
+Tennis elbow,Hanging knee raise
+Wrist sprain,Weighted dip
+Wrist sprain,Deficit push-up on dumbbells
+Wrist sprain,Push-up
+Wrist sprain,Decline push-up
+Wrist sprain,Archer push-up
+Wrist sprain,Pike push-up
+Wrist sprain,Wall handstand push-up
+Wrist sprain,Parallel bar dip
+Wrist sprain,Chair dip
+Wrist sprain,Diamond push-up
+Wrist sprain,Barbell front squat
+Wrist sprain,Ab wheel rollout
+Wrist sprain,Towel ab rollout
+Neck strain,Barbell deadlift
+Neck strain,Wall handstand push-up
+Neck strain,Barbell back squat
+Neck strain,Good morning
+Neck strain,Barbell walking lunge
+Neck strain,V-up
+Lower back strain,Barbell row
+Lower back strain,Barbell deadlift
+Lower back strain,Barbell overhead press
+Lower back strain,Push press
+Lower back strain,Leg press
+Lower back strain,Barbell back squat
+Lower back strain,Barbell front squat
+Lower back strain,Jump squat
+Lower back strain,Barbell Romanian deadlift
+Lower back strain,Good morning
+Lower back strain,Dumbbell Romanian deadlift
+Lower back strain,Single-leg dumbbell Romanian deadlift
+Lower back strain,Barbell walking lunge
+Lower back strain,Cable woodchop
+Lower back strain,Landmine rotation
+Lower back strain,V-up
+Groin strain,Bulgarian split squat
+Groin strain,Front-foot-elevated dumbbell split squat
+Groin strain,Jump squat
+Groin strain,Pistol squat
+Groin strain,Barbell walking lunge
+Groin strain,Skater squat
+Hamstring strain,Barbell deadlift
+Hamstring strain,Jump squat
+Hamstring strain,Barbell walking lunge
+Hamstring strain,Skater squat
+Knee pain,Leg extension
+Knee pain,Barbell back squat
+Knee pain,Barbell front squat
+Knee pain,Dumbbell step-up
+Knee pain,Bulgarian split squat
+Knee pain,Front-foot-elevated dumbbell split squat
+Knee pain,Reverse lunge
+Knee pain,Jump squat
+Knee pain,Pistol squat
+Knee pain,Nordic curl
+Knee pain,Barbell walking lunge
+Knee pain,Skater squat
+Knee pain,Cable crunch
+Knee pain,Ab wheel rollout
+Knee pain,Towel ab rollout
+Patellar tendinopathy,Leg extension
+Patellar tendinopathy,Barbell back squat
+Patellar tendinopathy,Barbell front squat
+Patellar tendinopathy,Bulgarian split squat
+Patellar tendinopathy,Front-foot-elevated dumbbell split squat
+Patellar tendinopathy,Jump squat
+Patellar tendinopathy,Pistol squat
+Patellar tendinopathy,Barbell walking lunge
+Patellar tendinopathy,Skater squat
+Shin splints,Jump squat
+Calf strain,Push press
+Calf strain,Jump squat
+Calf strain,Barbell walking lunge
+Achilles tendinopathy,Push press
+Achilles tendinopathy,Jump squat
+Achilles tendinopathy,Pistol squat
+Achilles tendinopathy,Barbell walking lunge
+Achilles tendinopathy,Seated calf raise machine
+Achilles tendinopathy,Standing calf raise machine
+Achilles tendinopathy,Single-leg dumbbell calf raise
+Achilles tendinopathy,Standing calf raise
+Achilles tendinopathy,Single-leg calf raise
+Ankle sprain,Jump squat
+Ankle sprain,Pistol squat
+Ankle sprain,Single-leg dumbbell Romanian deadlift
+Ankle sprain,Single-leg hip hinge
+Ankle sprain,Barbell walking lunge
+Ankle sprain,Skater squat
+Ankle sprain,Single-leg dumbbell calf raise
+Ankle sprain,Single-leg calf raise
