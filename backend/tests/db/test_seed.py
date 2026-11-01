@@ -1,4 +1,4 @@
-"""DB-02, DB-03: the reference seed loads, a second load changes nothing, and a broken
+"""DB-02, DB-03, DB-04: the reference seed loads, a second load changes nothing, and a broken
 file changes nothing at all.
 
 Uses its own throwaway database (fitplan_seed_test) on the PostgreSQL from docker
@@ -298,5 +298,120 @@ def test_broken_exercise_files_change_nothing(db, exercise_seed, file, old, new,
 
     with pytest.raises(SeedError, match=message):
         run(db, exercise_seed)
+
+    assert snapshot(db) == before
+
+
+# ---------------------------------------------------------------- foods (DB-04)
+
+FOODS = """\
+name,cals_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g,diet_role,suitable_meal_types,\
+is_vegetarian,is_vegan,default_portion_g,min_portion_g,max_portion_g,portion_step_g,categories,\
+allergens,source
+Tofu,144,17.3,8.7,2.8,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Plant proteins,\
+Soybeans,FDC:172475
+Bagel,264,10.6,1.32,52.4,carb,breakfast;lunch,true,true,90,50,150,10,Bread and bakery,\
+Gluten;Sesame,FDC:174899
+Goulash,75,8.3,2.8,3.6,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,SLV:1068
+"""
+FOOD_TABLES = ["food_item", "food_item_category", "food_item_allergen"]
+
+
+@pytest.fixture
+def food_seed(seed_copy: Path) -> Path:
+    (seed_copy / "food_item.csv").write_text(FOODS, encoding="utf-8")
+    return seed_copy
+
+
+def food_links(engine: Engine) -> dict[str, set[tuple]]:
+    queries = {
+        "categories": "SELECT f.name, c.category_name FROM food_item_category l"
+        " JOIN food_item f ON f.id = l.food_item_id"
+        " JOIN food_category c ON c.id = l.food_category_id",
+        "allergens": "SELECT f.name, a.name FROM food_item_allergen l"
+        " JOIN food_item f ON f.id = l.food_item_id JOIN allergen a ON a.id = l.allergen_id",
+    }
+    with engine.connect() as connection:
+        return {k: {tuple(r) for r in connection.execute(text(q))} for k, q in queries.items()}
+
+
+def food_row(engine: Engine, name: str):
+    with engine.connect() as connection:
+        return connection.execute(
+            text(
+                "SELECT id, suitable_meal_types::text[] AS meals, is_active"
+                " FROM food_item WHERE name = :name"
+            ),
+            {"name": name},
+        ).one()
+
+
+def test_foods_load_with_categories_and_allergens(db, food_seed):
+    first = by_table(run(db, food_seed))
+    second = by_table(run(db, food_seed))
+
+    assert food_links(db) == {
+        "categories": {
+            ("Tofu", "Plant proteins"),
+            ("Bagel", "Bread and bakery"),
+            ("Goulash", "Prepared dishes"),
+        },
+        "allergens": {("Tofu", "Soybeans"), ("Bagel", "Gluten"), ("Bagel", "Sesame")},
+    }
+    assert food_row(db, "Tofu").meals == ["breakfast", "lunch", "dinner"]
+    assert [first[t].inserted for t in FOOD_TABLES] == [3, 3, 3]
+    assert [second[t].unchanged for t in FOOD_TABLES] == [3, 3, 3]
+    assert all(second[t].inserted + second[t].updated + second[t].deleted == 0 for t in FOOD_TABLES)
+
+
+def test_changed_food_is_updated_and_its_links_synced(db, food_seed):
+    run(db, food_seed)
+    before = food_row(db, "Bagel").id
+    replace_line(food_seed / "food_item.csv", "breakfast;lunch,true", "breakfast,true")
+    replace_line(food_seed / "food_item.csv", "Gluten;Sesame", "Gluten")
+
+    results = by_table(run(db, food_seed))
+
+    assert results["food_item"].updated == 1
+    assert results["food_item_allergen"].deleted == 1
+    assert ("Bagel", "Sesame") not in food_links(db)["allergens"]
+    assert food_row(db, "Bagel").id == before
+    assert food_row(db, "Bagel").meals == ["breakfast"]
+
+
+def test_a_reload_keeps_is_active(db, food_seed):
+    run(db, food_seed)
+    with db.begin() as connection:
+        connection.execute(text("UPDATE food_item SET is_active = false WHERE name = 'Bagel'"))
+
+    run(db, food_seed)
+
+    assert food_row(db, "Bagel").is_active is False
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("Plant proteins,", "Tofu products,", "unknown categories"),
+        ("Plant proteins,", ",", r"empty \['categories'\]"),
+        ("Plant proteins,", ";,", "no categories"),
+        ("Gluten;Sesame", "Gluten;Celery stalks", "unknown allergens"),
+        ("Gluten;Sesame", "Gluten;Gluten", "listed twice"),
+        ("breakfast;lunch,true", "brunch;lunch,true", "not a valid MealType"),
+        ("breakfast;lunch,true", "lunch;lunch,true", "listed twice"),
+        ("dish,lunch", "starter,lunch", "not a valid DietRole"),
+        (",SLV:1068", ",USDA", "source 'USDA'"),
+        ("150,50,300,10", "150,50,300,", r"empty \['portion_step_g'\]"),
+        ("true,true,150", "false,true,150", "food_item_check"),
+        ("350,200,500,50", "550,200,500,50", "food_item_check1"),
+    ],
+)
+def test_broken_food_file_changes_nothing(db, food_seed, old, new, message):
+    run(db, food_seed)
+    before = snapshot(db)
+    replace_line(food_seed / "food_item.csv", old, new)
+
+    with pytest.raises(SeedError, match=message):
+        run(db, food_seed)
 
     assert snapshot(db) == before

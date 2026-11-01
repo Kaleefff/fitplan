@@ -17,7 +17,7 @@ Formulas, constants and test vectors. The vectors are unit tests. Constants live
 | Recognition candidates K / low confidence | 3 / < 0.30 | FR-N2 |
 | Weight step / rounding | 2.5 kg | 6 |
 | Diet search | stage 1: 5 attempts; stage 2: `DIET_EXTRA_ATTEMPTS` 12, `DIET_MEAL_CANDIDATES` 8, `GOOD_MEAL_ERROR` 0.01 | 5.5 |
-| Seed kcal check | \|kcal − (4P + 4C + 9F)\| ≤ max(12 % of kcal, 15 kcal) | DB-04 |
+| Seed kcal check | \|kcal − (4P + 4C + 9F)\| ≤ max(12 % of kcal, 15 kcal); C is FDC carbohydrate by difference (fibre included), available carbohydrate for `SLV:` rows | DB-04 |
 
 Rounding: half up. Kcal are integers; grams and macros one decimal in responses. Hunger is stored and reported and never changes a plan.
 

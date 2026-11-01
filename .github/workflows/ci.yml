@@ -84,7 +84,7 @@ jobs:
       - name: Migrate an empty database
         run: uv run alembic upgrade head
 
-      # DB-02, DB-03: a broken seed row fails here; a second load must change nothing
+      # DB-02, DB-03, DB-04: a broken seed row fails here; a second load must change nothing
       - name: Load reference seeds
         run: |
           uv run python -m app.db.seed

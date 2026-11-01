@@ -92,7 +92,7 @@ Do: exercises with every field, secondary groups and `injury_type_excluded_exerc
 Done: no empty field; coverage report committed; Kyryl spot-checked the exclusions.
 
 **DB-04 · Food seed** · Reqs: FR-N2, N3, P6, P8 · Depends: DB-02
-Do: per 100 g values from USDA FoodData Central or Polish tables, categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` for Food-101 labels; unmapped labels listed in `database/seed/food101_unmapped.txt`. Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
+Do: per 100 g values from USDA FoodData Central (SR Legacy, FNDDS; dishes FNDDS lacks from the Swedish Food Agency, CC BY 4.0), categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` for Food-101 labels; unmapped labels listed in `database/seed/food101_unmapped.txt`. Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
 Done: validation passes; a sample (dish allergens included) spot-checked against the source.
 
 **DB-05 · CI and compose** · Depends: DB-01

@@ -1,2 +1,505 @@
-name,cals_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g,diet_role,suitable_meal_types,is_vegetarian,is_vegan,default_portion_g,min_portion_g,max_portion_g,portion_step_g,recognition_label,categories,allergens,source
-Chicken breast,roasted,165,31.0,3.6,0.0,protein,lunch;dinner,false,false,150,50,300,10,,Poultry,,FDC:171477
+name,cals_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g,diet_role,suitable_meal_types,is_vegetarian,is_vegan,default_portion_g,min_portion_g,max_portion_g,portion_step_g,categories,allergens,source
+"Lean ground beef, cooked",230,28.4,12,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:171794
+"Ground beef 80/20, cooked",272,27,17.4,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:171799
+"Beef sirloin steak, grilled",178,29.4,5.84,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:174054
+"Beef tenderloin steak, grilled",200,29,8.39,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:171811
+"Beef rib eye steak, grilled",205,28.9,9.01,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:169438
+"Beef chuck, braised",212,33.4,7.67,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:170615
+"Beef eye of round, roasted",157,29.5,3.43,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:170635
+"Beef liver, pan-fried",175,26.5,4.68,5.16,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:168627
+"Veal leg, braised",203,36.7,5.09,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:175270
+"Pork tenderloin, roasted",143,26.2,3.51,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:168250
+"Pork loin chop, cooked",180,26.8,7.29,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:168240
+"Pork shoulder, roasted",230,25.3,13.5,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:167846
+"Ground pork, cooked",297,25.7,20.8,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:167903
+"Lamb leg, roasted",191,28.3,7.74,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:174314
+"Venison, roasted",158,30.2,3.19,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:175085
+"Rabbit, roasted",197,29.1,8.05,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:172522
+"Ham, sliced",164,16.6,8.8,3.63,protein,breakfast;lunch,false,false,60,20,120,10,Meat,,FDC:173864
+"Ham, extra lean",145,20.9,5.53,1.5,protein,breakfast;lunch;dinner,false,false,60,20,120,10,Meat,,FDC:167871
+"Pork spareribs, braised",397,29.1,30.3,0,other,lunch;dinner,false,false,200,100,400,50,Meat,,FDC:167854
+"Bacon, pan-fried",468,33.9,35.1,1.7,other,breakfast;lunch;dinner,false,false,30,10,60,10,Meat,,FDC:168322
+Polish sausage (kielbasa),301,12.1,26.6,1.98,other,breakfast;lunch;dinner;snack,false,false,100,50,200,10,Meat,,FDC:172954
+Frankfurters,269,12.8,23.7,0.28,other,breakfast;lunch;dinner;snack,false,false,100,50,200,10,Meat,,FDC:172964
+Salami,336,21.8,25.9,2.4,other,breakfast;lunch;dinner;snack,false,false,30,10,60,10,Meat,,FDC:172936
+Liver pate,319,14.2,28,1.5,other,breakfast;lunch,false,false,30,10,60,10,Meat,,FDC:172930
+Blood sausage,379,14.6,34.5,1.29,other,lunch;dinner,false,false,150,50,300,50,Meat,,FDC:171618
+Beef jerky,410,33.2,25.6,11,other,snack,false,false,30,10,60,10,Meat,,FDC:167536
+"Chicken breast, roasted",165,31,3.57,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171477
+"Chicken thigh, roasted",179,24.8,8.15,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:172388
+"Chicken drumstick, roasted",155,24.2,5.7,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:172376
+"Ground chicken, cooked",189,23.3,10.9,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171117
+"Chicken liver, simmered",167,24.5,6.51,0.87,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171061
+"Chicken gizzards, simmered",154,30.4,2.68,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171457
+"Turkey breast, roasted",147,30.1,2.08,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171496
+"Turkey dark meat, roasted",173,27.7,6.04,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171091
+"Ground turkey, cooked",213,27.1,11.6,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:172851
+Turkey breast slices,106,14.8,3.77,2.2,protein,breakfast;lunch;dinner,false,false,60,20,120,10,Poultry,,FDC:172941
+"Duck, roasted",201,23.5,11.2,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:172411
+"Chicken wings, roasted",254,23.8,16.9,0,other,lunch;dinner,false,false,150,50,300,50,Poultry,,FDC:173630
+Chicken nuggets,307,15.9,20.4,14.9,other,lunch;dinner,false,false,100,50,200,10,Poultry,Gluten,FDC:2706093
+"Salmon, baked",206,22.1,12.4,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:175168
+Smoked salmon,117,18.3,4.32,0,protein,breakfast;lunch;dinner,false,false,60,20,120,10,Fish and seafood,Fish,FDC:173687
+"Cod, baked",105,22.8,0.86,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:171956
+"Alaska pollock, baked",86.6,19.4,1,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:173726
+"Haddock, baked",90,20,0.55,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:174198
+"Flounder, baked",86,15.2,2.37,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:174197
+"Tilapia, baked",128,26.2,2.65,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:175177
+"Rainbow trout, baked",168,23.8,7.38,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:173718
+"Carp, baked",162,22.9,7.17,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:174185
+"Mackerel, baked",262,23.8,17.8,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:175120
+"Yellowfin tuna, grilled",130,29.2,0.59,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:172006
+"Tuna, canned in water",116,25.5,0.82,0,protein,breakfast;lunch;dinner,false,false,100,50,200,10,Fish and seafood,Fish,FDC:171986
+"Tuna, canned in oil",198,29.1,8.21,0,protein,breakfast;lunch;dinner,false,false,100,50,200,10,Fish and seafood,Fish,FDC:173708
+"Sardines, canned in oil",208,24.6,11.4,0,protein,breakfast;lunch;dinner,false,false,90,30,150,10,Fish and seafood,Fish,FDC:175139
+Pickled herring,262,14.2,18,9.64,protein,breakfast;lunch;dinner,false,false,80,20,150,10,Fish and seafood,Fish,FDC:175118
+Surimi (crab sticks),99,15.2,0.9,6.85,protein,breakfast;lunch;dinner,false,false,100,50,200,10,Fish and seafood,Fish,FDC:173702
+"Shrimp, cooked",99,24,0.28,0.2,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Crustaceans,FDC:175180
+"Crab, cooked",97,19.4,1.54,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Crustaceans,FDC:174202
+"Lobster, cooked",89,19,0.86,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Crustaceans,FDC:174209
+"Mussels, cooked",172,23.8,4.48,7.39,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Molluscs,FDC:174217
+"Clams, cooked",148,25.6,1.95,5.13,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Molluscs,FDC:171975
+"Scallops, cooked",111,20.5,0.84,5.41,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Molluscs,FDC:167742
+"Oysters, raw",51,5.71,1.71,2.72,protein,lunch;dinner,false,false,100,50,200,10,Fish and seafood,Molluscs,FDC:171978
+"Squid, fried",175,17.9,7.48,7.79,other,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Molluscs;Gluten,FDC:171982
+Fish sticks,277,11,16.2,21.7,other,lunch;dinner,false,false,120,50,250,10,Fish and seafood,Fish;Gluten,FDC:174195
+"Eggs, boiled",155,12.6,10.6,1.12,protein,breakfast;lunch;dinner,true,false,120,50,200,10,Eggs,Eggs,FDC:173424
+"Eggs, poached",143,12.5,9.47,0.71,protein,breakfast;lunch;dinner,true,false,120,50,200,10,Eggs,Eggs,FDC:172186
+"Eggs, fried",196,13.6,14.8,0.83,protein,breakfast;lunch;dinner,true,false,120,50,200,10,Eggs,Eggs,FDC:173423
+"Eggs, scrambled",149,9.99,11,1.61,protein,breakfast;lunch;dinner,true,false,120,50,200,10,Eggs,Eggs;Milk;Lactose,FDC:172187
+"Omelette, plain",154,10.6,11.7,0.64,protein,breakfast;lunch;dinner,true,false,120,50,200,10,Eggs,Eggs,FDC:172185
+"Egg whites, cooked",52,10.7,0,2.35,protein,breakfast;lunch;dinner,true,false,150,50,300,10,Eggs,Eggs,FDC:2707170
+"Lentils, boiled",116,9.02,0.38,20.1,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:172421
+"Chickpeas, boiled",164,8.86,2.59,27.4,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:173757
+"Red kidney beans, boiled",127,8.67,0.5,22.8,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:175194
+"Black beans, boiled",132,8.86,0.54,23.7,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:173735
+"White beans, boiled",139,9.73,0.35,25.1,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:175203
+"Pinto beans, boiled",143,9.01,0.65,26.2,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:175200
+"Split peas, boiled",118,8.34,0.39,21.1,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:172429
+"Broad beans, boiled",110,7.6,0.4,19.6,protein,lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:173753
+"Soybeans, boiled",172,18.2,8.97,8.36,protein,lunch;dinner,true,true,180,50,300,10,Legumes,Soybeans,FDC:174271
+Edamame,121,11.9,5.2,8.91,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Legumes,Soybeans,FDC:168411
+Baked beans,94,4.75,0.37,21.1,protein,breakfast;lunch;dinner,true,true,180,50,300,10,Legumes,,FDC:175182
+Hummus,237,7.78,17.8,15,fat,breakfast;lunch;dinner;snack,true,true,50,20,100,10,Legumes,Sesame,FDC:174289
+"Tofu, firm",144,17.3,8.72,2.78,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Plant proteins,Soybeans,FDC:172475
+"Tofu, extra firm",83,9.98,5.26,1.18,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Plant proteins,Soybeans,FDC:174290
+"Tofu, silken",61,7.17,3.69,1.18,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Plant proteins,Soybeans,FDC:172449
+"Tofu, fried",270,18.8,20.2,8.86,protein,lunch;dinner,true,true,100,50,200,10,Plant proteins,Soybeans,FDC:172451
+"Tempeh, cooked",195,19.9,11.4,7.62,protein,breakfast;lunch;dinner,true,true,150,50,300,10,Plant proteins,Soybeans,FDC:172467
+"Textured vegetable protein, dry",366,51.1,3.33,32.9,protein,breakfast;lunch;dinner,true,true,40,20,80,10,Plant proteins,Soybeans,FDC:2707451
+"Milk, whole",61,3.15,3.25,4.8,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:171265
+"Milk, 2%",50,3.3,1.98,4.8,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:171267
+"Milk, 1%",42,3.37,0.97,4.99,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:170872
+"Milk, skim",34,3.37,0.08,4.96,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:171269
+"Milk, lactose-free",50,3.36,1.9,4.9,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk,FDC:2705391
+Buttermilk,40,3.31,1.07,4.79,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:170874
+Kefir,52,3.59,0.96,7.48,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:2705394
+Drinking yogurt,74,3.65,1.07,12.6,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:2705442
+Chocolate milk,76,2.99,1.9,12.1,other,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:170880
+"Greek yogurt, plain, nonfat",59,10.2,0.39,3.6,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170894
+"Greek yogurt, plain, low fat",73,9.95,1.92,3.94,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170903
+"Greek yogurt, plain, whole milk",97,9,5,3.98,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:171304
+"Natural yogurt, whole milk",61,3.47,3.25,4.66,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:171284
+"Natural yogurt, low fat",63,5.25,1.55,7.04,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170886
+"Natural yogurt, nonfat",56,5.73,0.18,7.68,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170887
+"Fruit yogurt, low fat",99,3.98,1.15,18.6,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170889
+"Vanilla yogurt, low fat",85,4.93,1.25,13.8,dairy,breakfast;snack,true,false,200,100,400,50,Dairy,Milk;Lactose,FDC:170888
+"Cottage cheese, low fat",81,10.4,2.27,4.76,dairy,breakfast;snack,true,false,150,50,300,50,Dairy,Milk;Lactose,FDC:172182
+"Cottage cheese, full fat",98,11.1,4.3,3.38,dairy,breakfast;snack,true,false,150,50,300,50,Dairy,Milk;Lactose,FDC:172179
+"Cottage cheese, nonfat",72,10.3,0.29,6.66,dairy,breakfast;snack,true,false,150,50,300,50,Dairy,Milk;Lactose,FDC:172181
+"Ricotta, part skim",138,11.4,7.91,5.14,dairy,breakfast;snack,true,false,100,50,200,10,Dairy,Milk;Lactose,FDC:171248
+Feta,265,14.2,21.5,3.88,dairy,breakfast;lunch;dinner;snack,true,false,40,10,80,10,Dairy,Milk;Lactose,FDC:173420
+"Goat cheese, soft",264,18.5,21.1,0,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:173435
+"Mozzarella, part skim",254,24.3,15.9,2.77,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:170847
+"Mozzarella, whole milk",299,22.2,22.1,2.4,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:170845
+Cream cheese,350,6.15,34.4,5.52,fat,breakfast,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:173418
+Gouda,356,24.9,27.4,2.22,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:171241
+Edam,357,25,28.6,1.43,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:173419
+Cheddar,403,22.9,33.3,3.37,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:173414
+Emmental (Swiss cheese),393,27,31,1.44,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:171251
+Parmesan,392,35.8,25,3.22,dairy,breakfast;lunch;dinner;snack,true,false,20,10,40,10,Dairy,Milk,FDC:170848
+Brie,334,20.8,27.7,0.45,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:172177
+Camembert,300,19.8,24.3,0.46,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:172178
+Blue cheese,353,21.4,28.7,2.34,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:172175
+Sour cream,198,2.44,19.4,4.63,fat,breakfast;lunch;dinner,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:171257
+Heavy cream,340,2.84,36.1,2.84,fat,lunch;dinner,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:170859
+"Whipped cream, aerosol",257,3.2,22.2,12.5,other,snack,true,false,20,10,40,10,Dairy,Milk;Lactose,FDC:170860
+"Soy milk, unsweetened",38,3.55,2.12,1.29,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,Soybeans,FDC:2705405
+"Soy milk, sweetened",53,3.41,2.05,5.22,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,Soybeans,FDC:2705404
+"Almond milk, unsweetened",15,0.4,0.96,1.31,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,Tree nuts,FDC:174832
+Oat drink,45,0.66,2.33,5.37,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,Gluten,FDC:2705412
+Rice drink,47,0.28,0.97,9.17,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,,FDC:171942
+Coconut drink,31,0.21,2.08,2.92,dairy,breakfast;snack,true,true,250,100,400,50,Plant-based alternatives,,FDC:2705413
+Soy yogurt,90,4.83,2.63,12.3,dairy,breakfast;snack,true,true,200,100,400,50,Plant-based alternatives,Soybeans,FDC:2707444
+Coconut yogurt,108,2.37,5.61,12.9,dairy,breakfast;snack,true,true,200,100,400,50,Plant-based alternatives,,FDC:2707569
+Almond yogurt,128,3.03,7.03,13,dairy,breakfast;snack,true,true,200,100,400,50,Plant-based alternatives,Tree nuts,FDC:2707570
+"Coconut milk, canned",197,2.02,21.3,2.81,fat,lunch;dinner,true,true,50,20,100,10,Plant-based alternatives,,FDC:170173
+"White rice, cooked",130,2.69,0.28,28.2,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168878
+"Brown rice, cooked",123,2.74,0.97,25.6,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:169704
+"Parboiled rice, cooked",123,2.91,0.37,26,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:169708
+"Wild rice, cooked",101,3.99,0.34,21.3,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168897
+"Pasta, cooked",158,5.8,0.93,30.9,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:169737
+"Whole wheat pasta, cooked",149,5.99,1.71,30.1,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:168910
+"Egg noodles, cooked",138,4.54,2.07,25.2,carb,lunch;dinner,true,false,200,50,400,10,Grains and cereals,Gluten;Eggs,FDC:169732
+"Rice noodles, cooked",108,1.79,0.2,24,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168914
+"Soba noodles, cooked",99,5.06,0.1,21.4,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:168907
+"Buckwheat groats, cooked",92,3.38,0.62,19.9,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:170686
+"Pearl barley, cooked",123,2.26,0.44,28.2,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:170285
+"Millet, cooked",119,3.51,1,23.7,carb,breakfast;lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168871
+"Quinoa, cooked",120,4.4,1.92,21.3,carb,breakfast;lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168917
+"Bulgur, cooked",83,3.08,0.24,18.6,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:170287
+"Couscous, cooked",112,3.79,0.16,23.2,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:169700
+"Corn grits (polenta), cooked",71,1.71,0.46,14.8,carb,breakfast;lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:171655
+Semolina porridge,55,1.82,0.34,10.9,carb,breakfast,true,true,250,100,400,50,Grains and cereals,Gluten,FDC:171659
+"Oatmeal, cooked with water",71,2.54,1.52,12,carb,breakfast,true,true,250,100,400,50,Grains and cereals,Gluten,FDC:173905
+Rolled oats,379,13.2,6.52,67.7,carb,breakfast,true,true,60,30,120,10,Grains and cereals,Gluten,FDC:173904
+Muesli,352,11.2,3.3,75.7,carb,breakfast,true,false,40,20,80,10,Grains and cereals,Gluten;Tree nuts;Milk;Lactose,FDC:169075
+Granola,420,9.82,13,67.4,carb,breakfast,true,true,40,20,80,10,Grains and cereals,Gluten,FDC:2708461
+Corn flakes,365,6.4,1.6,79.5,carb,breakfast,true,true,40,20,80,10,Grains and cereals,Gluten,FDC:2708453
+Bran flakes,361,9.65,2.42,75,carb,breakfast,true,true,40,20,80,10,Grains and cereals,Gluten,FDC:2708456
+"White rice, dry",365,7.13,0.66,80,other,lunch;dinner,true,true,70,30,150,10,Grains and cereals,,FDC:168877
+"Pasta, dry",371,13,1.51,74.7,other,lunch;dinner,true,true,70,30,150,10,Grains and cereals,Gluten,FDC:169736
+"Buckwheat groats, dry",346,11.7,2.71,75,other,lunch;dinner,true,true,70,30,150,10,Grains and cereals,,FDC:170685
+"Wheat flour, white",364,10.3,0.98,76.3,other,breakfast;lunch;dinner;snack,true,true,50,10,200,10,Grains and cereals,Gluten,FDC:168894
+"Wheat flour, whole grain",340,13.2,2.5,72,other,breakfast;lunch;dinner;snack,true,true,50,10,200,10,Grains and cereals,Gluten,FDC:168893
+Rye flour,325,15.9,2.22,68.6,other,breakfast;lunch;dinner;snack,true,true,50,10,200,10,Grains and cereals,Gluten,FDC:168885
+Breadcrumbs,395,13.4,5.3,72,other,lunch;dinner,true,true,30,10,60,10,Bread and bakery,Gluten,FDC:174928
+White bread,266,8.85,3.33,49.4,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:174924
+Whole wheat bread,252,12.4,3.5,42.7,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:172688
+Multigrain bread,265,13.4,4.23,43.3,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:168013
+Rye bread,259,8.5,3.3,48.3,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:172684
+Pumpernickel,250,8.7,3.1,47.5,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:174918
+Baguette,272,10.8,2.42,51.9,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:172675
+Gluten-free bread,248,4.31,5.24,45.8,carb,breakfast;lunch;dinner,true,false,80,30,150,10,Bread and bakery,,FDC:174100
+Egg bread (challah),287,9.5,6,47.8,carb,breakfast,true,false,80,30,150,10,Bread and bakery,Gluten;Eggs,FDC:172673
+Kaiser roll,293,9.9,4.3,52.7,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:175031
+Whole wheat roll,266,8.7,4.7,51.1,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:172794
+"Bagel, plain",264,10.6,1.32,52.4,carb,breakfast;lunch,true,true,90,50,150,10,Bread and bakery,Gluten;Sesame,FDC:174899
+English muffin,227,8.87,1.69,44.2,carb,breakfast,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:174994
+"Pita, white",275,9.1,1.2,55.7,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:174915
+"Pita, whole wheat",262,9.8,1.71,55.9,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:174916
+Wheat tortilla,306,8.2,7.99,49.4,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:2707824
+Corn tortilla,218,5.7,2.85,44.6,carb,breakfast;lunch;dinner,true,true,60,30,120,10,Bread and bakery,,FDC:2707823
+Naan,291,9.62,5.65,50.4,carb,lunch;dinner,true,false,90,50,150,10,Bread and bakery,Gluten;Milk;Lactose,FDC:171845
+Rye crispbread,334,9.6,0.9,80.4,carb,breakfast,true,true,20,10,40,10,Bread and bakery,Gluten,FDC:172744
+Rice cakes,387,8.2,2.8,81.5,carb,breakfast;snack,true,true,20,10,40,10,Bread and bakery,,FDC:170250
+Croissant,406,8.2,21,45.8,other,breakfast;snack,true,false,60,30,120,10,Bread and bakery,Gluten;Milk;Lactose;Eggs,FDC:174987
+Saltine crackers,418,9.46,8.64,74,other,snack,true,true,30,10,60,10,Bread and bakery,Gluten,FDC:172746
+"Broccoli, raw",34,2.82,0.37,6.64,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170379
+"Broccoli, boiled",35,2.38,0.41,7.18,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169967
+"Cauliflower, boiled",23,1.84,0.45,4.11,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170397
+"Brussels sprouts, boiled",36,2.55,0.5,7.1,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169971
+"Carrots, raw",41,0.93,0.24,9.58,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170393
+"Carrots, boiled",35,0.76,0.18,8.22,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170394
+"Spinach, raw",23,2.86,0.39,3.63,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:168462
+"Spinach, boiled",23,2.97,0.26,3.75,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168463
+"Kale, raw",35,2.92,1.49,4.42,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:168421
+Arugula,25,2.58,0.66,3.65,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169387
+Romaine lettuce,17,1.23,0.3,3.29,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169247
+Iceberg lettuce,14,0.9,0.14,2.97,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169248
+"Tomatoes, raw",18,0.88,0.2,3.89,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170457
+"Tomatoes, canned",16,0.79,0.25,3.47,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170051
+"Cucumber, raw",15,0.65,0.11,3.63,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168409
+Pickled cucumber,12,0.5,0.3,2.41,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:168558
+"Red bell pepper, raw",26,0.99,0.3,6.03,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170108
+"Green bell pepper, raw",20,0.86,0.17,4.64,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170427
+"Yellow bell pepper, raw",27,1,0.21,6.32,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169383
+"Green beans, boiled",35,1.89,0.28,7.88,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169141
+"Green peas, boiled",78,5.15,0.27,14.3,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170017
+"Sweet corn, canned",67,2.29,1.22,14.3,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169214
+"Zucchini, raw",17,1.21,0.32,3.11,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169291
+"Zucchini, boiled",15,1.14,0.36,2.69,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169292
+"Eggplant, boiled",35,0.83,0.23,8.73,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169229
+"Pumpkin, boiled",20,0.72,0.07,4.9,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168449
+"Butternut squash, baked",40,0.9,0.09,10.5,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169296
+"White cabbage, raw",25,1.28,0.1,5.8,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169975
+"White cabbage, boiled",23,1.27,0.06,5.51,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169976
+"Red cabbage, raw",31,1.43,0.16,7.37,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169977
+Chinese cabbage,16,1.2,0.2,3.23,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169979
+"Bok choy, boiled",12,1.56,0.16,1.78,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170391
+Sauerkraut,19,0.91,0.14,4.28,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169279
+"Kohlrabi, raw",27,1.7,0.1,6.2,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168424
+"Beetroot, boiled",44,1.68,0.18,9.96,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169146
+Radishes,16,0.68,0.1,3.4,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169276
+Celery stalks,14,0.69,0.17,2.97,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,Celery,FDC:169988
+"Celeriac, raw",42,1.5,0.3,9.2,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,Celery,FDC:170400
+"Leek, raw",61,1.5,0.3,14.2,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169246
+"Onion, raw",40,1.1,0.1,9.34,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:170000
+"Fennel, raw",31,1.24,0.2,7.3,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169385
+"Asparagus, boiled",22,2.4,0.22,4.11,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168390
+"Parsnip, boiled",71,1.32,0.3,17,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170009
+"Mushrooms, raw",22,3.09,0.34,3.26,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169251
+"Mushrooms, cooked",28,2.17,0.47,5.29,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169252
+Bean sprouts,30,3.04,0.18,5.94,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169957
+"Mixed vegetables, frozen, boiled",65,2.86,0.15,13.1,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170472
+Garlic,149,6.36,0.5,33.1,other,breakfast;lunch;dinner;snack,true,true,10,5,30,5,Vegetables,,FDC:169230
+"Potatoes, boiled",86,1.71,0.1,20,carb,lunch;dinner,true,true,250,100,500,50,Vegetables,,FDC:170440
+"Potatoes, baked",93,2.5,0.13,21.2,carb,lunch;dinner,true,true,250,100,500,50,Vegetables,,FDC:170093
+Mashed potatoes,113,1.86,4.22,16.8,carb,lunch;dinner,true,false,250,100,500,50,Vegetables,Milk;Lactose,FDC:168555
+"Sweet potato, baked",90,2.01,0.15,20.7,carb,lunch;dinner,true,true,250,100,500,50,Vegetables,,FDC:168483
+"French fries, oven-baked",158,2.75,5.48,25.6,other,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:169264
+Apple,52,0.26,0.17,13.8,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:171688
+Pear,57,0.36,0.14,15.2,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169118
+Banana,89,1.09,0.33,22.8,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173944
+Orange,47,0.94,0.12,11.8,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169097
+Mandarin,53,0.81,0.31,13.3,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169105
+Grapefruit,42,0.77,0.14,10.7,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:174673
+Strawberries,32,0.67,0.3,7.68,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:167762
+Blueberries,57,0.74,0.33,14.5,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:171711
+Raspberries,52,1.2,0.65,11.9,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:167755
+Blackberries,43,1.39,0.49,9.61,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173946
+Blackcurrants,63,1.4,0.41,15.4,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173963
+Redcurrants,56,1.4,0.2,13.8,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173964
+Gooseberries,44,0.88,0.58,10.2,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173030
+Grapes,69,0.72,0.16,18.1,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:174683
+Sweet cherries,63,1.06,0.2,16,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:171719
+Sour cherries,50,1,0.3,12.2,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173954
+Plums,46,0.7,0.28,11.4,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169949
+Apricots,48,1.4,0.39,11.1,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:171697
+Peach,39,0.91,0.25,9.54,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169928
+Nectarine,44,1.06,0.32,10.6,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169914
+Kiwi,61,1.14,0.52,14.7,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:168153
+Mango,60,0.82,0.38,15,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169910
+Pineapple,50,0.54,0.12,13.1,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169124
+Papaya,43,0.47,0.26,10.8,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169926
+Pomegranate,83,1.67,1.17,18.7,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169134
+"Figs, fresh",74,0.75,0.3,19.2,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173021
+Watermelon,30,0.61,0.15,7.55,fruit,breakfast;snack,true,true,300,100,500,50,Fruits,,FDC:167765
+Cantaloupe melon,34,0.84,0.19,8.16,fruit,breakfast;snack,true,true,300,100,500,50,Fruits,,FDC:169092
+"Applesauce, unsweetened",42,0.17,0.1,11.3,fruit,breakfast;snack,true,true,150,50,300,50,Fruits,,FDC:167772
+"Peaches, canned in juice",44,0.63,0.03,11.6,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169930
+Medjool dates,277,1.81,0.15,75,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:168191
+Dried apricots,241,3.39,0.51,62.6,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,Sulphites,FDC:173941
+Raisins,299,3.3,0.25,79.3,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:168165
+Prunes,240,2.18,0.38,63.9,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:168162
+Dried figs,249,3.3,0.93,63.9,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:174665
+Dried cranberries,308,0.17,1.09,82.8,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:171723
+Almonds,579,21.2,49.9,21.6,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170567
+Walnuts,654,15.2,65.2,13.7,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170187
+Cashews,553,18.2,43.8,30.2,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170162
+Hazelnuts,628,15,60.8,16.7,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170581
+Pistachios,560,20.2,45.3,27.2,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170184
+Brazil nuts,659,14.3,67.1,11.7,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170569
+Pecans,691,9.17,72,13.9,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170182
+Macadamia nuts,718,7.91,75.8,13.8,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Tree nuts,FDC:170178
+Pine nuts,673,13.7,68.4,13.1,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,,FDC:170591
+"Mixed nuts, roasted",607,19.5,53.5,22.4,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Peanuts;Tree nuts,FDC:170585
+"Peanuts, roasted",587,24.4,49.7,21.3,fat,breakfast;snack,true,true,30,10,50,5,Nuts and seeds,Peanuts,FDC:173806
+Peanut butter,598,22.2,51.4,22.3,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,Peanuts,FDC:172470
+Almond butter,614,21,55.5,18.8,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,Tree nuts,FDC:168588
+Cashew butter,609,12.1,53,30.3,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,Tree nuts,FDC:2707536
+Tahini,595,17,53.8,21.2,fat,breakfast;lunch;dinner,true,true,20,10,40,5,Nuts and seeds,Sesame,FDC:170189
+Sunflower seeds,584,20.8,51.5,20,fat,breakfast;lunch;dinner;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:170562
+Pumpkin seeds,559,30.2,49,10.7,fat,breakfast;lunch;dinner;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:170556
+Sesame seeds,573,17.7,49.7,23.4,fat,breakfast;lunch;dinner;snack,true,true,20,10,40,5,Nuts and seeds,Sesame,FDC:170150
+Chia seeds,486,16.5,30.7,42.1,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:170554
+Flaxseed,534,18.3,42.2,28.9,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:169414
+Hemp seeds,553,31.6,48.8,8.67,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:170148
+Desiccated coconut,660,6.88,64.5,23.6,fat,breakfast;snack,true,true,20,10,40,5,Nuts and seeds,,FDC:170170
+Trail mix,462,13.8,29.4,44.9,other,snack,true,true,40,20,80,10,Nuts and seeds,Peanuts;Tree nuts,FDC:167561
+Olive oil,884,0,100,0,fat,lunch;dinner,true,true,10,5,30,5,Fats and oils,,FDC:171413
+Rapeseed oil,884,0,100,0,fat,lunch;dinner,true,true,10,5,30,5,Fats and oils,,FDC:172336
+Sunflower oil,884,0,100,0,fat,lunch;dinner,true,true,10,5,30,5,Fats and oils,,FDC:171025
+Coconut oil,892,0,99.1,0,fat,lunch;dinner,true,true,10,5,30,5,Fats and oils,,FDC:171412
+Flaxseed oil,884,0.11,100,0,fat,lunch;dinner,true,true,10,5,30,5,Fats and oils,,FDC:167702
+Butter,717,0.85,81.1,0.06,fat,breakfast,true,false,10,5,30,5,Fats and oils,Milk;Lactose,FDC:173410
+"Butter, unsalted",717,0.85,81.1,0.06,fat,breakfast,true,false,10,5,30,5,Fats and oils,Milk;Lactose,FDC:173430
+Ghee,876,0.28,99.5,0,fat,lunch;dinner,true,false,10,5,30,5,Fats and oils,Milk,FDC:173412
+Margarine,579,0.17,65,0.82,fat,breakfast,true,false,10,5,30,5,Fats and oils,,FDC:2710158
+Lard,902,0,100,0,other,breakfast;lunch;dinner;snack,false,false,10,5,30,5,Fats and oils,,FDC:171401
+Avocado,160,2,14.7,8.53,fat,breakfast;lunch;dinner,true,true,80,30,150,10,Fats and oils,,FDC:171705
+Black olives,116,0.84,10.9,6.04,fat,lunch;dinner,true,true,40,10,80,10,Fats and oils,,FDC:169094
+Green olives,145,1.03,15.3,3.84,fat,lunch;dinner,true,true,40,10,80,10,Fats and oils,,FDC:169096
+Milk chocolate,535,7.65,29.7,59.4,other,snack,true,false,40,10,100,10,Sweets and snacks,Milk;Lactose,FDC:167587
+Dark chocolate 70-85%,598,7.79,42.6,45.9,other,snack,true,false,40,10,100,10,Sweets and snacks,,FDC:170273
+White chocolate,539,5.87,32.1,59.2,other,snack,true,false,40,10,100,10,Sweets and snacks,Milk;Lactose,FDC:167571
+Chocolate hazelnut spread,539,5.41,29.7,62.4,other,breakfast;snack,true,false,15,5,30,5,Sweets and snacks,Tree nuts;Milk;Lactose,FDC:168000
+Halva,469,12.5,21.5,60.5,other,snack,true,true,40,10,100,10,Sweets and snacks,Sesame,FDC:167996
+Gummy candies,396,0,0,98.9,other,snack,true,true,40,10,100,10,Sweets and snacks,,FDC:167989
+Hard candies,394,0,0.2,98,other,snack,true,true,40,10,100,10,Sweets and snacks,,FDC:167990
+Honey,304,0.3,0,82.4,other,breakfast;snack,true,false,15,5,30,5,Sweets and snacks,,FDC:169640
+Jam,278,0.37,0.07,68.9,other,breakfast;snack,true,true,15,5,30,5,Sweets and snacks,,FDC:169641
+Maple syrup,260,0.04,0.06,67,other,breakfast;snack,true,true,15,5,30,5,Sweets and snacks,,FDC:169661
+Sugar,387,0,0,100,other,breakfast;lunch;dinner;snack,true,true,5,5,30,5,Sweets and snacks,,FDC:169655
+"Ice cream, vanilla",207,3.5,11,23.6,other,snack,true,false,100,50,200,10,Sweets and snacks,Milk;Lactose,FDC:167575
+Frozen yogurt,159,4,5.6,24.2,other,snack,true,false,100,50,200,10,Sweets and snacks,Milk;Lactose,FDC:168815
+Chocolate pudding,142,2.09,4.6,23,other,snack,true,false,120,50,200,10,Sweets and snacks,Milk;Lactose,FDC:168778
+Fruit jelly dessert,60,1.22,0,14.2,other,snack,false,false,120,50,200,10,Sweets and snacks,,FDC:169596
+Glazed doughnut,421,6.14,22.7,47.9,other,snack,true,false,60,30,120,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172758
+Blueberry muffin,375,4.49,16.1,53,other,breakfast;snack,true,false,100,50,150,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172765
+Chocolate chip cookies,492,5.1,24.7,65.4,other,snack,true,false,40,10,100,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172716
+Butter cookies,467,6.1,18.8,68.9,other,snack,true,false,40,10,100,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:174950
+Brownie,405,4.8,16.3,63.9,other,snack,true,false,60,30,120,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172713
+Cheesecake,321,5.5,22.5,25.5,other,snack,true,false,100,50,200,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172711
+Apple pie,237,1.9,11,34,other,snack,true,true,100,50,200,10,Sweets and snacks,Gluten,FDC:175011
+Chocolate cake,389,3.48,20,52.8,other,snack,true,false,100,50,200,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:174934
+Sponge cake,290,5.4,2.7,61,other,snack,true,false,100,50,200,10,Sweets and snacks,Gluten;Eggs,FDC:172706
+Carrot cake,374,2.49,17.5,51.8,other,snack,true,false,100,50,200,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:2707859
+Tiramisu,353,5.65,23.9,29.4,other,snack,true,false,100,50,200,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:2705702
+Baklava,440,6.58,29.3,37.6,other,snack,true,false,60,30,120,10,Sweets and snacks,Gluten;Tree nuts;Milk;Lactose,FDC:2708044
+Potato chips,532,6.39,34,53.8,other,snack,true,true,30,10,100,10,Sweets and snacks,,FDC:169677
+Tortilla chips,472,7.1,20.7,67.8,other,snack,true,true,30,10,100,10,Sweets and snacks,,FDC:167558
+Pretzels,384,10,2.93,80.4,other,snack,true,true,30,10,100,10,Sweets and snacks,Gluten,FDC:167555
+"Popcorn, air-popped",387,12.9,4.54,77.8,other,snack,true,true,30,10,100,10,Sweets and snacks,,FDC:167959
+Granola bar,471,10.1,19.8,64.4,other,snack,true,true,30,10,100,10,Sweets and snacks,Gluten,FDC:167542
+Protein bar,386,22.4,9.94,55.2,other,snack,true,false,60,30,90,10,Sweets and snacks,,FDC:2708127
+Banana chips,519,2.3,33.6,58.4,other,snack,true,true,30,10,100,10,Sweets and snacks,,FDC:168849
+Whey protein powder,352,78.1,1.56,6.25,dairy,breakfast;snack,true,false,30,10,60,10,Dairy,Milk;Lactose,FDC:2710742
+Soy protein powder,388,55.6,5.56,28.9,dairy,breakfast;snack,true,true,30,10,60,10,Plant-based alternatives,Soybeans,FDC:2710743
+"Coffee, black",1,0.12,0.02,0,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:171890
+Espresso,9,0.12,0.18,1.67,other,breakfast;lunch;dinner;snack,true,true,30,30,120,10,Beverages,,FDC:171891
+"Caffe latte, nonfat milk",30,2.87,0.1,4.37,other,breakfast;lunch;dinner;snack,true,false,250,100,500,50,Beverages,Milk;Lactose,FDC:2710387
+Cappuccino,27,1.71,0.99,2.75,other,breakfast;lunch;dinner;snack,true,false,250,100,500,50,Beverages,Milk;Lactose,FDC:2710472
+Black tea,1,0,0,0.3,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:173227
+Green tea,1,0.22,0,0,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:171917
+Hot chocolate,91,2.73,1.54,16.5,other,breakfast;lunch;dinner;snack,true,false,250,100,500,50,Beverages,Milk;Lactose,FDC:2705473
+Orange juice,45,0.7,0.2,10.4,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:169098
+Apple juice,46,0.1,0.13,11.3,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:173933
+Tomato juice,17,0.85,0.29,3.53,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:170545
+Coconut water,19,0.72,0.2,3.71,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:170174
+Cola,42,0,0.25,10.4,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:174852
+"Cola, diet",1,0.12,0,0.12,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:174850
+Lemonade,40,0.07,0.04,10.4,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:173217
+Energy drink,43,0.46,0,10.2,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:2710756
+Sports drink,26,0,0,6.43,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:2710771
+Fruit smoothie,66,2.32,1.1,12,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:2705513
+Ketchup,101,1.04,0.1,27.4,other,breakfast;lunch;dinner;snack,true,true,20,5,60,5,Sauces and condiments,,FDC:168556
+Mustard,60,3.74,3.34,5.83,other,breakfast;lunch;dinner;snack,true,true,15,5,30,5,Sauces and condiments,Mustard,FDC:172234
+Mayonnaise,680,0.96,74.8,0.57,other,breakfast;lunch;dinner;snack,true,false,15,5,30,5,Sauces and condiments,Eggs,FDC:171009
+"Mayonnaise, light",238,0.37,22.2,9.23,other,breakfast;lunch;dinner;snack,true,false,15,5,30,5,Sauces and condiments,Eggs,FDC:173594
+Soy sauce,53,8.14,0.57,4.93,other,breakfast;lunch;dinner;snack,true,true,15,5,30,5,Sauces and condiments,Soybeans;Gluten,FDC:174277
+Teriyaki sauce,89,5.93,0.02,15.6,other,breakfast;lunch;dinner;snack,true,true,15,5,30,5,Sauces and condiments,Soybeans;Gluten,FDC:171167
+Hoisin sauce,220,3.31,3.39,44.1,other,breakfast;lunch;dinner;snack,true,true,15,5,30,5,Sauces and condiments,Soybeans;Gluten,FDC:172886
+Tomato pasta sauce,50,1.39,1.61,7.43,other,lunch;dinner,true,true,125,50,250,25,Sauces and condiments,,FDC:171192
+Pesto,418,9.83,37.6,10.1,other,lunch;dinner,true,false,15,5,30,5,Sauces and condiments,Milk,FDC:171579
+Barbecue sauce,172,0.82,0.63,40.8,other,breakfast;lunch;dinner;snack,true,true,20,5,60,5,Sauces and condiments,,FDC:174523
+Salsa,29,1.52,0.17,6.64,other,breakfast;lunch;dinner;snack,true,true,50,10,100,10,Sauces and condiments,,FDC:174524
+Hot sauce,11,0.51,0.37,1.75,other,breakfast;lunch;dinner;snack,true,true,5,5,20,5,Sauces and condiments,,FDC:174527
+Horseradish,48,1.18,0.69,11.3,other,breakfast;lunch;dinner;snack,true,true,15,5,30,5,Sauces and condiments,,FDC:173472
+Guacamole,155,1.95,14.2,8.45,other,breakfast;lunch;dinner;snack,true,true,50,10,100,10,Sauces and condiments,,FDC:2709307
+Tzatziki,91,5.22,6,4.1,other,breakfast;lunch;dinner;snack,true,false,50,10,100,10,Sauces and condiments,Milk;Lactose,FDC:2705448
+Italian dressing,240,0.41,21.1,12.1,other,lunch;dinner,true,true,15,5,30,5,Sauces and condiments,,FDC:171019
+Ranch dressing,430,1.32,44.5,5.9,other,lunch;dinner,true,false,15,5,30,5,Sauces and condiments,Eggs;Milk;Lactose,FDC:173592
+Caesar dressing,542,2.17,57.8,3.3,other,lunch;dinner,false,false,15,5,30,5,Sauces and condiments,Eggs;Fish;Milk,FDC:169055
+Pasta with meat sauce (bolognese),178,5.43,9.25,17.7,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Gluten,FDC:2708837
+Lasagna with meat,139,7.45,4.97,16.2,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Gluten;Milk;Lactose,FDC:2708750
+Cheese ravioli in tomato sauce,98,3.98,2.3,15.2,dish,lunch;dinner,true,false,350,200,500,50,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708768
+Pasta with vegetables,144,4.46,3.54,23.1,dish,lunch;dinner,true,true,350,200,500,50,Prepared dishes,Gluten,FDC:2708827
+Risotto with vegetables,146,4.7,5.66,18.6,dish,lunch;dinner,true,false,350,200,500,50,Prepared dishes,Milk;Lactose,FDC:2709112
+Chicken curry with rice,116,4.96,4,15.1,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2706438
+Vegetable curry,86,1.6,5.27,8.81,dish,lunch;dinner,true,true,350,200,500,50,Prepared dishes,,FDC:2710067
+Chili con carne,118,9.8,4.33,10.2,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2706375
+Beef stew,107,8.76,5.07,6.29,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2706592
+Beef and vegetable stir-fry,102,10.7,4.81,4.44,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Soybeans;Gluten,FDC:2706751
+Stir-fried vegetables,71,2.01,2.84,9.65,vegetable,lunch;dinner,true,true,150,50,300,50,Prepared dishes,,FDC:2710036
+Fried rice,174,3.84,3.19,32.5,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Eggs,FDC:2708952
+Pad thai,154,8.13,7.5,14.4,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Eggs;Peanuts;Fish,FDC:2708806
+Paella,143,8.03,4.76,16.4,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Fish;Crustaceans;Molluscs,FDC:2706711
+Sushi,94,2.92,0.67,18.4,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Fish,FDC:2708959
+Stuffed cabbage rolls,114,8.3,5.06,8.83,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2706620
+Stuffed peppers,178,7.83,11.7,9.93,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2709073
+Pierogi,195,5.26,6.14,29.6,dish,lunch;dinner,true,false,350,200,500,50,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708720
+Bean burrito,188,7.41,3.95,30.8,dish,lunch;dinner,true,true,350,200,500,50,Prepared dishes,Gluten,FDC:2708547
+"Chicken Caesar salad, no dressing",63,8.52,1.94,2.99,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Milk,FDC:2706818
+Beef and rice,146,7.27,5,17.2,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,FDC:2706489
+Chicken with rice and vegetables in soy sauce,109,6.56,0.91,18.1,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Soybeans,FDC:2707115
+Rice and beans,164,6.5,4.21,25.2,dish,lunch;dinner,true,true,350,200,500,50,Prepared dishes,,FDC:2708990
+Lentil curry (dal),145,8.6,4.31,19.2,dish,lunch;dinner,true,true,350,200,500,50,Prepared dishes,,FDC:2707427
+Shepherd's pie,123,7.64,6.3,8.72,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,Milk;Lactose,FDC:2706594
+Goulash,75,8.3,2.8,3.6,dish,lunch;dinner,false,false,350,200,500,50,Prepared dishes,,SLV:1068
+Vegetarian chili (chili sin carne),74,3.6,1.7,9.2,dish,lunch;dinner,true,false,350,200,500,50,Prepared dishes,,SLV:6404
+Cabbage soup,33,0.8,1.7,3,other,lunch;dinner,true,false,300,150,500,50,Prepared dishes,Soybeans;Gluten,SLV:464
+"Fried chicken, battered",310,22.5,21.9,5.8,other,lunch;dinner,false,false,150,50,300,10,Prepared dishes,Gluten;Eggs,SLV:1193
+Breaded pork cutlet,267,19.2,18.1,6.7,other,lunch;dinner,false,false,150,50,300,10,Prepared dishes,Gluten;Eggs,SLV:1065
+Chicken noodle soup,53,3.84,1.4,6.21,other,lunch;dinner,false,false,300,150,500,50,Prepared dishes,Gluten;Eggs,FDC:2709149
+Tomato soup,19,0.65,0.41,3.64,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,,FDC:2709757
+Beet soup (borscht),20,0.52,0.37,3.9,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,,FDC:2710105
+Split pea soup,61,3.55,0.7,10.6,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,,FDC:2707459
+Lentil soup,60,3.82,0.69,10.2,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,,FDC:2707462
+Vegetable soup,27,0.84,0.45,5.08,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,,FDC:2710113
+Cream of mushroom soup,74,2.1,4.76,5.7,other,lunch;dinner,true,false,300,150,500,50,Prepared dishes,Milk;Lactose,FDC:2710107
+Clam chowder,93,3.12,4.8,9.25,other,lunch;dinner,false,false,300,150,500,50,Prepared dishes,Molluscs;Milk;Lactose,FDC:2707139
+French onion soup,108,5.45,4.47,11.8,other,lunch;dinner,true,false,300,150,500,50,Prepared dishes,Gluten;Milk,FDC:2710108
+Miso soup,24,2.21,0.85,2.3,other,lunch;dinner,true,true,300,150,500,50,Prepared dishes,Soybeans,FDC:2707455
+Ramen noodle soup,66,1.53,2.64,9.04,other,lunch;dinner,false,false,300,150,500,50,Prepared dishes,Gluten,FDC:2709152
+Pho with beef,77,5.81,3.33,5.6,other,lunch;dinner,false,false,300,150,500,50,Prepared dishes,,FDC:2707124
+"Pizza, cheese",266,11.4,9.69,33.3,other,lunch;dinner,true,false,250,100,500,50,Prepared dishes,Gluten;Milk;Lactose,FDC:2708616
+"Pizza, pepperoni",282,11.7,11.9,32,other,lunch;dinner,false,false,250,100,500,50,Prepared dishes,Gluten;Milk;Lactose,FDC:2708640
+Hamburger,287,17.1,13.8,22.2,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten,FDC:2706927
+Cheeseburger,298,17.6,16,19.6,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten;Milk,FDC:2706895
+Hot dog,296,10.8,17.4,23.7,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten,FDC:2707056
+Club sandwich,222,15.1,7.48,23.1,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten;Eggs,FDC:2706993
+Grilled cheese sandwich,343,11,20.8,28.1,other,lunch;dinner,true,false,200,100,400,50,Prepared dishes,Gluten;Milk,FDC:2705801
+Ham sandwich,187,12.9,3.66,25.6,other,breakfast;lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten,FDC:2706964
+Gyro (kebab) in pita,184,11.2,6.76,18.8,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten;Milk,FDC:2706962
+Tacos with beef,257,16.7,12.3,18.9,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten;Milk,FDC:2708522
+Chicken quesadilla,287,14.4,13,27.3,other,lunch;dinner,false,false,200,100,400,50,Prepared dishes,Gluten;Milk,FDC:2708593
+Nachos with cheese,266,4.46,15.7,27.8,other,lunch;dinner,true,false,200,100,400,50,Prepared dishes,Milk,FDC:2708577
+Fried cod,217,13.5,12.5,11.7,other,lunch;dinner,false,false,150,50,300,10,Prepared dishes,Fish;Gluten,FDC:2706244
+Meatballs in sauce,186,18,12,0.15,other,lunch;dinner,false,false,150,50,300,10,Prepared dishes,Gluten;Eggs,FDC:2706467
+Macaroni and cheese,223,8.68,10.5,23.1,other,lunch;dinner,true,false,250,100,400,50,Prepared dishes,Gluten;Milk;Lactose,FDC:2708811
+Potato pancakes,196,4.47,10.8,20.6,other,lunch;dinner,true,false,150,50,300,10,Prepared dishes,Gluten;Eggs,FDC:2709552
+Potato gnocchi,135,2.44,6.33,17.2,other,lunch;dinner,true,false,200,100,400,50,Prepared dishes,Gluten;Eggs,FDC:2708722
+Steamed dumplings,113,6.9,4.6,11.1,other,lunch;dinner,false,false,150,50,300,10,Prepared dishes,Gluten,FDC:2708708
+Vegetable spring rolls,270,5.62,14.1,30,other,lunch;dinner,true,false,150,50,300,10,Prepared dishes,Gluten;Eggs,FDC:2708700
+Samosa,310,5.14,17.5,33.2,other,lunch;dinner,true,true,100,50,200,10,Prepared dishes,Gluten,FDC:2708730
+Falafel,514,8.28,41.2,29,other,lunch;dinner,true,true,100,50,200,10,Prepared dishes,,FDC:2707408
+"Greek salad, no dressing",48,2.75,2.26,4.35,other,lunch;dinner,true,false,250,100,400,50,Prepared dishes,Milk;Lactose,FDC:2709830
+Coleslaw,117,0.94,7.98,10.4,other,lunch;dinner,true,false,100,50,200,50,Prepared dishes,Eggs,FDC:2709815
+Potato salad,157,1.96,9.4,16.2,other,lunch;dinner,true,false,150,50,300,50,Prepared dishes,Eggs,FDC:2709532
+Tuna salad,190,10.3,15.4,2.74,other,lunch;dinner,false,false,100,50,200,50,Prepared dishes,Fish;Eggs,FDC:2706840
+Deviled eggs,198,11.5,15.9,1.07,other,lunch;dinner,true,false,60,30,120,10,Prepared dishes,Eggs,FDC:2707181
+Pancakes,282,7.41,12.1,35.3,other,breakfast,true,false,150,50,300,10,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708304
+Waffles,373,8.7,18.8,41.5,other,breakfast,true,false,100,50,200,10,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708325
+French toast,273,10.4,11.4,32.3,other,breakfast,true,false,150,50,300,10,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708335
+Crepes,224,8.85,11.3,22,other,breakfast,true,false,150,50,300,10,Prepared dishes,Gluten;Eggs;Milk;Lactose,FDC:2708342
+Eggs Benedict,288,13.8,22.1,8.48,other,breakfast,false,false,250,100,400,50,Prepared dishes,Gluten;Eggs;Milk,FDC:2707180
+Oatmeal with milk,116,5.56,3.25,16.2,carb,breakfast,true,false,250,100,400,50,Prepared dishes,Gluten;Milk;Lactose,FDC:2708383
+"Extra lean ground beef, cooked",193,29.2,7.58,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:174028
+"Ground lamb, cooked",283,24.8,19.6,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:172544
+"Ground veal, cooked",172,24.4,7.56,0,protein,lunch;dinner,false,false,150,50,300,10,Meat,,FDC:175291
+"Chicken breast with skin, roasted",197,29.8,7.78,0,protein,lunch;dinner,false,false,150,50,300,10,Poultry,,FDC:171075
+"Salmon, canned",129,19.7,4.97,0,protein,breakfast;lunch;dinner,false,false,100,50,200,10,Fish and seafood,Fish,FDC:173690
+"Halibut, baked",111,22.5,1.61,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:174201
+"Sea bass, baked",124,23.6,2.56,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:173694
+"Perch, baked",117,24.9,1.18,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:173679
+"Pike, baked",113,24.7,0.88,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:175127
+"Catfish, baked",144,18.4,7.19,0,protein,lunch;dinner,false,false,150,50,300,10,Fish and seafood,Fish,FDC:175166
+Smoked herring (kipper),217,24.6,12.4,0,protein,breakfast;lunch;dinner,false,false,80,20,150,10,Fish and seafood,Fish,FDC:173668
+Goat milk,69,3.56,4.14,4.45,dairy,breakfast;snack,true,false,250,100,400,50,Dairy,Milk;Lactose,FDC:171278
+Provolone,351,25.6,26.6,2.14,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:170850
+Monterey Jack,373,24.5,30.3,0.68,dairy,breakfast;lunch;dinner;snack,true,false,30,10,60,10,Dairy,Milk,FDC:170844
+"Ricotta, whole milk",150,7.54,10.2,7.27,dairy,breakfast;snack,true,false,100,50,200,10,Dairy,Milk;Lactose,FDC:170851
+"Short-grain rice, cooked",130,2.36,0.19,28.7,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:168882
+"Sticky rice, cooked",97,2.02,0.19,21.1,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:169711
+"Amaranth, cooked",102,3.8,1.58,18.7,carb,breakfast;lunch;dinner,true,true,200,50,400,10,Grains and cereals,,FDC:170683
+"Spelt, cooked",127,5.5,0.85,26.4,carb,lunch;dinner,true,true,200,50,400,10,Grains and cereals,Gluten,FDC:169746
+"Instant oatmeal, with water",68,2.37,1.36,11.7,carb,breakfast,true,true,250,100,400,50,Grains and cereals,Gluten,FDC:171662
+Oatmeal bread,269,8.4,4.4,48.5,carb,breakfast;lunch;dinner,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:172678
+Raisin bread,274,7.9,4.4,52.3,carb,breakfast,true,true,80,30,150,10,Bread and bakery,Gluten,FDC:172680
+Burger bun,279,9.77,3.91,50.1,carb,lunch;dinner,true,true,60,30,120,10,Bread and bakery,Gluten,FDC:172796
+Whole wheat crackers,427,10.6,14.1,69.6,other,snack,true,true,30,10,60,10,Bread and bakery,Gluten,FDC:172749
+Green leaf lettuce,15,1.36,0.15,2.87,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169249
+"Swiss chard, raw",19,1.8,0.2,3.74,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:169991
+"Artichoke, boiled",53,2.89,0.34,12,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:168386
+"Turnip, boiled",22,0.71,0.08,5.06,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170058
+Snow peas,42,2.8,0.2,7.55,vegetable,lunch;dinner,true,true,150,50,300,50,Vegetables,,FDC:170010
+"Onion, boiled",44,1.36,0.19,10.2,vegetable,lunch;dinner,true,true,100,50,200,50,Vegetables,,FDC:170001
+Clementine,47,0.85,0.15,12,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:168195
+Lychee,66,0.83,0.44,16.5,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169086
+Persimmon,70,0.58,0.19,18.6,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:169941
+"Cranberries, fresh",46,0.46,0.13,12,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:171722
+"Blueberries, frozen",51,0.42,0.64,12.2,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:173950
+"Raspberries, frozen",56,1.15,0.81,12.6,fruit,breakfast;snack,true,true,150,50,300,10,Fruits,,FDC:168209
+Dried apples,243,0.93,0.32,65.9,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,Sulphites,FDC:171691
+Dried mango,319,2.45,1.18,78.6,fruit,breakfast;snack,true,true,40,20,80,10,Fruits,,FDC:169091
+Marshmallows,318,1.8,0.2,81.3,other,snack,false,false,40,10,100,10,Sweets and snacks,,FDC:167995
+Oatmeal cookies,450,6.2,18.1,68.7,other,snack,true,false,40,10,100,10,Sweets and snacks,Gluten;Eggs;Milk;Lactose,FDC:172725
+"Ice cream, chocolate",216,3.8,11,28.2,other,snack,true,false,100,50,200,10,Sweets and snacks,Milk;Lactose,FDC:168809
+Grape juice,60,0.37,0.13,14.8,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:173042
+Cranberry juice drink,54,0,0.1,13.5,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:171903
+Lemon-lime soda,41,0.09,0,10.4,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:173205
+Ginger ale,34,0,0,8.76,other,breakfast;lunch;dinner;snack,true,true,250,100,500,50,Beverages,,FDC:174846
+Lemon juice,22,0.35,0.24,6.9,other,breakfast;lunch;dinner;snack,true,true,15,5,60,5,Fruits,,FDC:167747
+Tomato puree (passata),38,1.65,0.21,8.98,other,lunch;dinner,true,true,100,25,250,25,Sauces and condiments,,FDC:170460
+Sweet and sour sauce,154,0.27,0.02,38.2,other,lunch;dinner,true,true,30,10,60,10,Sauces and condiments,,FDC:174066
