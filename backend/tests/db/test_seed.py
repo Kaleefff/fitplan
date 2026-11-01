@@ -2,8 +2,7 @@
 file changes nothing at all.
 
 Uses its own throwaway database (fitplan_seed_test) on the PostgreSQL from docker
-compose; skipped when PostgreSQL is not reachable. Delete the temporary-seed test
-together with database/dev/temporary_training_seed.sql (DB-03).
+compose; skipped when PostgreSQL is not reachable.
 """
 
 import shutil
@@ -19,7 +18,6 @@ from app.db.session import database_url
 from tests.db.test_migrations import run_alembic
 
 TEST_DB = "fitplan_seed_test"
-TEMPORARY_SEED = SEED_DIR.parent / "dev" / "temporary_training_seed.sql"
 
 
 @pytest.fixture(scope="module")
@@ -139,36 +137,6 @@ def test_changed_row_is_updated_in_place(db, seed_copy):
         ).one()
     assert row.id == chest_id
     assert row.description.startswith("Pectoralis Major")
-
-
-def test_replaces_temporary_seed_and_keeps_its_ids(db):
-    raw = db.raw_connection()
-    try:
-        raw.autocommit = True
-        raw.cursor().execute(TEMPORARY_SEED.read_text(encoding="utf-8"))
-    finally:
-        raw.close()
-    query = "SELECT name, id FROM exercise UNION ALL SELECT group_name, id FROM muscle_group"
-    with db.connect() as connection:
-        before = {row[0]: row[1] for row in connection.execute(text(query))}
-
-    run(db)
-
-    with db.connect() as connection:
-        after = {row[0]: row[1] for row in connection.execute(text(query))}
-        placeholders = (
-            connection.execute(
-                text(
-                    "SELECT name FROM exercise WHERE description = 'Temporary seed'"
-                    " UNION ALL SELECT group_name FROM muscle_group"
-                    " WHERE description = 'Temporary seed'"
-                )
-            )
-            .scalars()
-            .all()
-        )
-    assert placeholders == ["Plank"]
-    assert {name: after[name] for name in before} == before
 
 
 def test_broken_file_changes_nothing(db, seed_copy):
