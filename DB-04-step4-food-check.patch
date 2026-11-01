@@ -1,0 +1,397 @@
+diff --git a/backend/app/db/food_check.py b/backend/app/db/food_check.py
+new file mode 100644
+index 0000000..80d2cf0
+--- /dev/null
++++ b/backend/app/db/food_check.py
+@@ -0,0 +1,214 @@
++"""Food seed validation and coverage report (DB-04).
++
++Checks database/seed/food_item.csv against the seed kcal rule of algorithms.md 0 and the
++portion rule (minimum, maximum and default are multiples of the step), and writes
++database/seed/food_coverage.md: totals, the foods closest to the kcal limit, and the
++eligible foods per meal slot of algorithms.md 5.3 and diet type (5.2, no allergies).
++A test also runs the diet generator over the seed for every goal, diet type and meals
++per day; that is too slow for the report.
++
++Run from backend/ after changing food_item.csv:
++    uv run python -m app.db.food_check
++Exits 1 when a food breaks a rule or a required meal slot is empty for a diet type.
++"""
++
++import csv
++import sys
++from collections import Counter
++from decimal import Decimal
++from pathlib import Path
++
++from app.db.seed import SEED_DIR, split_names
++from app.domain.constants import MEAL_ROLES, SNACK_OPTIONAL_ROLE, DietRole, DietType, MealType
++from app.domain.diet import FoodInfo
++
++REPORT_NAME = "food_coverage.md"
++KCAL_SHARE = Decimal("0.12")
++KCAL_MIN = Decimal(15)
++NEAR_LIMIT = 10
++PORTIONS = ("min_portion_g", "max_portion_g", "default_portion_g")
++SOURCES = {"FDC": "USDA FoodData Central", "SLV": "Swedish Food Agency (Livsmedelsverket)"}
++
++
++def read_foods(seed_dir: Path = SEED_DIR) -> list[dict[str, str]]:
++    with (seed_dir / "food_item.csv").open(encoding="utf-8", newline="") as file:
++        return list(csv.DictReader(file))
++
++
++def kcal_gap(row: dict[str, str]) -> tuple[Decimal, Decimal, Decimal]:
++    """(4P + 4C + 9F, |kcal - that|, allowed difference) per algorithms.md 0."""
++    kcal = Decimal(row["cals_per_100g"])
++    protein, fat, carbs = (Decimal(row[f"{m}_per_100g"]) for m in ("protein", "fat", "carbs"))
++    calc = 4 * protein + 4 * carbs + 9 * fat
++    return calc, abs(kcal - calc), max(kcal * KCAL_SHARE, KCAL_MIN)
++
++
++def kcal_errors(rows: list[dict[str, str]]) -> list[str]:
++    errors = []
++    for row in rows:
++        calc, diff, allowed = kcal_gap(row)
++        if diff > allowed:
++            errors.append(
++                f"{row['name']}: {row['cals_per_100g']} kcal but 4P + 4C + 9F = {calc}"
++                f" (allowed difference {allowed:.1f})"
++            )
++    return errors
++
++
++def portion_errors(rows: list[dict[str, str]]) -> list[str]:
++    errors = []
++    for row in rows:
++        step = Decimal(row["portion_step_g"])
++        off = [col for col in PORTIONS if Decimal(row[col]) % step]
++        if off:
++            errors.append(f"{row['name']}: {off} not a multiple of the step {step} g")
++    return errors
++
++
++def diet_types(row: dict[str, str]) -> set[DietType]:
++    found = {DietType.OMNIVORE}
++    if row["is_vegetarian"] == "true":
++        found.add(DietType.VEGETARIAN)
++    if row["is_vegan"] == "true":
++        found.add(DietType.VEGAN)
++    return found
++
++
++def slots() -> list[tuple[MealType, tuple[DietRole, ...], bool]]:
++    """(meal type, roles that fill the slot, required) per algorithms.md 5.3."""
++    found = [(meal, roles, True) for meal, slot_roles in MEAL_ROLES.items() for roles in slot_roles]
++    found += [(meal, (DietRole.DISH,), False) for meal in (MealType.LUNCH, MealType.DINNER)]
++    found.append((MealType.SNACK, (SNACK_OPTIONAL_ROLE,), False))
++    return found
++
++
++def eligible(rows, meal: MealType, roles: tuple[DietRole, ...], diet: DietType) -> int:
++    return sum(
++        1
++        for row in rows
++        if row["diet_role"] in roles
++        and meal in split_names(row["suitable_meal_types"])
++        and diet in diet_types(row)
++    )
++
++
++def coverage_gaps(rows: list[dict[str, str]]) -> list[str]:
++    return [
++        f"{meal.value} {' or '.join(roles)} ({diet.value})"
++        for meal, roles, required in slots()
++        if required
++        for diet in DietType
++        if not eligible(rows, meal, roles, diet)
++    ]
++
++
++def food_infos(rows: list[dict[str, str]]) -> list[FoodInfo]:
++    """The seed as the diet generator sees it; ids follow the file order, as on a fresh load."""
++    return [
++        FoodInfo(
++            id=i,
++            diet_role=DietRole(row["diet_role"]),
++            suitable_meal_types=frozenset(
++                MealType(m) for m in split_names(row["suitable_meal_types"])
++            ),
++            per_100g=tuple(
++                float(row[f"{m}_per_100g"]) for m in ("cals", "protein", "fat", "carbs")
++            ),
++            min_portion_g=int(Decimal(row["min_portion_g"])),
++            max_portion_g=int(Decimal(row["max_portion_g"])),
++            portion_step_g=int(Decimal(row["portion_step_g"])),
++            is_vegetarian=row["is_vegetarian"] == "true",
++            is_vegan=row["is_vegan"] == "true",
++        )
++        for i, row in enumerate(rows, start=1)
++    ]
++
++
++def counts(rows, column: str) -> list[str]:
++    found = Counter(split_names(row[column])[0] for row in rows)
++    return [f"| {key} | {n} |" for key, n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
++
++
++def report(seed_dir: Path = SEED_DIR) -> str:
++    rows = read_foods(seed_dir)
++    sources = Counter(row["source"].split(":")[0] for row in rows)
++    near = sorted(rows, key=lambda r: kcal_gap(r)[1] / kcal_gap(r)[2], reverse=True)[:NEAR_LIMIT]
++    errors = kcal_errors(rows) + portion_errors(rows)
++    gaps = coverage_gaps(rows)
++
++    lines = [
++        "# Food coverage",
++        "",
++        "Generated by `uv run python -m app.db.food_check` (run from `backend/`) from",
++        "`food_item.csv`; do not edit by hand.",
++        f"{len(rows)} foods: "
++        + ", ".join(f"{n} from {SOURCES[s]}" for s, n in sorted(sources.items()))
++        + ".",
++        "",
++        "## Checks",
++        "",
++        f"- Seed kcal rule (algorithms.md 0): {len(rows) - len(kcal_errors(rows))} of"
++        f" {len(rows)} foods pass.",
++        f"- Portions (minimum, maximum and default are multiples of the step):"
++        f" {len(rows) - len(portion_errors(rows))} of {len(rows)} foods pass.",
++        f"- Required meal slots with no food for a diet type: {', '.join(gaps) or 'none'}.",
++        *[f"- Error: {e}" for e in errors],
++        "",
++        "Closest to the kcal limit (difference / allowed difference), mostly dried fruit: FDC",
++        "carbohydrate by difference includes fibre, which 4 kcal/g overcounts.",
++        "",
++        "| Food | kcal | 4P + 4C + 9F | Share of the allowed difference |",
++        "| --- | ---: | ---: | ---: |",
++        *[
++            f"| {r['name']} | {r['cals_per_100g']} | {kcal_gap(r)[0]:.1f} |"
++            f" {kcal_gap(r)[1] / kcal_gap(r)[2]:.0%} |"
++            for r in near
++        ],
++        "",
++        "## Eligible foods per meal slot (algorithms.md 5.2, 5.3)",
++        "",
++        "Active foods of the slot's roles whose meal types include the meal, for a user without"
++        " allergies or excluded foods. Optional slots: a dish may replace protein and carb at"
++        " lunch and dinner; fat is optional at a snack.",
++        "",
++        "| Meal | Slot | " + " | ".join(d.value for d in DietType) + " |",
++        "| --- | --- |" + " ---: |" * len(DietType),
++    ]
++    for meal, roles, required in slots():
++        slot = " or ".join(roles) + ("" if required else " (optional)")
++        cells = " | ".join(str(eligible(rows, meal, roles, d)) for d in DietType)
++        lines.append(f"| {meal.value} | {slot} | {cells} |")
++
++    lines += [
++        "",
++        "## Foods per role",
++        "",
++        "`other` foods (sweets, drinks, sauces, soups, fast food, dry weights) are in the"
++        " library and logs but never planned.",
++        "",
++        "| Role | Foods |",
++        "| --- | ---: |",
++        *counts(rows, "diet_role"),
++        "",
++        "## Foods per category",
++        "",
++        "| Category | Foods |",
++        "| --- | ---: |",
++        *counts(rows, "categories"),
++    ]
++    return "\n".join(lines) + "\n"
++
++
++def main() -> int:
++    path = SEED_DIR / REPORT_NAME
++    path.write_text(report(), encoding="utf-8", newline="\n")
++    print(f"wrote {path}")
++    rows = read_foods()
++    problems = kcal_errors(rows) + portion_errors(rows) + coverage_gaps(rows)
++    for problem in problems:
++        print(problem, file=sys.stderr)
++    return 1 if problems else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/backend/tests/db/test_food_check.py b/backend/tests/db/test_food_check.py
+new file mode 100644
+index 0000000..b1cc49d
+--- /dev/null
++++ b/backend/tests/db/test_food_check.py
+@@ -0,0 +1,64 @@
++"""DB-04: the food seed passes the kcal rule of algorithms.md 0 and the portion rule, every
++required meal slot has food for every diet type, the committed coverage report is current,
++and the diet generator (algorithms.md 5) plans every goal, diet type and meals per day
++from the seed. Needs no database."""
++
++from functools import cache
++
++import pytest
++
++from app.db.food_check import (
++    REPORT_NAME,
++    coverage_gaps,
++    food_infos,
++    kcal_errors,
++    portion_errors,
++    read_foods,
++    report,
++)
++from app.db.seed import SEED_DIR
++from app.domain.constants import DietType, Goal
++from app.domain.diet import generate_diet_plan
++from tests.domain.test_diet import PROFILES, targets
++
++
++@cache
++def seed():
++    return read_foods()
++
++
++def test_committed_report_is_current():
++    committed = (SEED_DIR / REPORT_NAME).read_text(encoding="utf-8")
++
++    assert committed == report(), "run: uv run python -m app.db.food_check"
++
++
++def test_every_food_passes_the_kcal_rule():
++    assert kcal_errors(seed()) == []
++
++
++def test_portions_are_multiples_of_the_step():
++    assert portion_errors(seed()) == []
++
++
++def test_every_required_slot_has_food_for_every_diet_type():
++    assert coverage_gaps(seed()) == []
++
++
++def test_the_checks_catch_a_wrong_row():
++    row = dict(seed()[0], cals_per_100g="500", min_portion_g="55", portion_step_g="10")
++
++    assert len(kcal_errors([row])) == 1
++    assert "min_portion_g" in portion_errors([row])[0]
++
++
++@pytest.mark.parametrize("profile", PROFILES, ids=["male-80kg", "female-60kg"])
++@pytest.mark.parametrize("meals", [3, 4, 5])
++@pytest.mark.parametrize("diet", list(DietType))
++@pytest.mark.parametrize("goal", list(Goal))
++def test_the_generator_plans_from_the_seed(goal, diet, meals, profile):
++    plan = generate_diet_plan(
++        goal, targets(profile, goal), meals, diet, frozenset(), frozenset(), food_infos(seed())
++    )
++
++    assert {m.day_index for m in plan.meals} == set(range(1, 8))
+diff --git a/database/seed/food_coverage.md b/database/seed/food_coverage.md
+new file mode 100644
+index 0000000..c973fd2
+--- /dev/null
++++ b/database/seed/food_coverage.md
+@@ -0,0 +1,88 @@
++# Food coverage
++
++Generated by `uv run python -m app.db.food_check` (run from `backend/`) from
++`food_item.csv`; do not edit by hand.
++504 foods: 499 from USDA FoodData Central, 5 from Swedish Food Agency (Livsmedelsverket).
++
++## Checks
++
++- Seed kcal rule (algorithms.md 0): 504 of 504 foods pass.
++- Portions (minimum, maximum and default are multiples of the step): 504 of 504 foods pass.
++- Required meal slots with no food for a diet type: none.
++
++Closest to the kcal limit (difference / allowed difference), mostly dried fruit: FDC
++carbohydrate by difference includes fibre, which 4 kcal/g overcounts.
++
++| Food | kcal | 4P + 4C + 9F | Share of the allowed difference |
++| --- | ---: | ---: | ---: |
++| Prunes | 240 | 267.7 | 96% |
++| Dried apricots | 241 | 268.6 | 95% |
++| Medjool dates | 277 | 308.6 | 95% |
++| Dried figs | 249 | 277.2 | 94% |
++| Raisins | 299 | 332.6 | 94% |
++| Dried apples | 243 | 270.2 | 93% |
++| Dried cranberries | 308 | 341.7 | 91% |
++| Ketchup | 101 | 114.7 | 91% |
++| Tofu, firm | 144 | 158.8 | 86% |
++| Rye crispbread | 334 | 368.1 | 85% |
++
++## Eligible foods per meal slot (algorithms.md 5.2, 5.3)
++
++Active foods of the slot's roles whose meal types include the meal, for a user without allergies or excluded foods. Optional slots: a dish may replace protein and carb at lunch and dinner; fat is optional at a snack.
++
++| Meal | Slot | omnivore | vegetarian | vegan |
++| --- | --- | ---: | ---: | ---: |
++| breakfast | protein or dairy | 71 | 60 | 17 |
++| breakfast | carb | 33 | 33 | 29 |
++| breakfast | fruit | 44 | 44 | 44 |
++| breakfast | fat | 29 | 29 | 24 |
++| lunch | protein | 86 | 23 | 17 |
++| lunch | carb | 41 | 41 | 37 |
++| lunch | vegetable | 54 | 54 | 54 |
++| lunch | fat | 17 | 17 | 14 |
++| dinner | protein | 85 | 23 | 17 |
++| dinner | carb | 40 | 40 | 36 |
++| dinner | vegetable | 54 | 54 | 54 |
++| dinner | fat | 17 | 17 | 14 |
++| snack | fruit or dairy | 91 | 91 | 54 |
++| lunch | dish (optional) | 26 | 9 | 5 |
++| dinner | dish (optional) | 26 | 9 | 5 |
++| snack | fat (optional) | 22 | 22 | 22 |
++
++## Foods per role
++
++`other` foods (sweets, drinks, sauces, soups, fast food, dry weights) are in the library and logs but never planned.
++
++| Role | Foods |
++| --- | ---: |
++| other | 153 |
++| protein | 86 |
++| carb | 55 |
++| vegetable | 54 |
++| dairy | 47 |
++| fruit | 44 |
++| fat | 39 |
++| dish | 26 |
++
++## Foods per category
++
++| Category | Foods |
++| --- | ---: |
++| Prepared dishes | 74 |
++| Vegetables | 59 |
++| Fruits | 45 |
++| Dairy | 42 |
++| Sweets and snacks | 37 |
++| Grains and cereals | 34 |
++| Fish and seafood | 32 |
++| Meat | 29 |
++| Bread and bakery | 26 |
++| Nuts and seeds | 23 |
++| Beverages | 21 |
++| Sauces and condiments | 20 |
++| Poultry | 14 |
++| Fats and oils | 13 |
++| Legumes | 12 |
++| Plant-based alternatives | 11 |
++| Eggs | 6 |
++| Plant proteins | 6 |
+diff --git a/docs/instructions/setup.md b/docs/instructions/setup.md
+index a1c50bf..3a042ef 100644
+--- a/docs/instructions/setup.md
++++ b/docs/instructions/setup.md
+@@ -49,7 +49,7 @@ cd ..
+ The loader can be run any time; a second run reports every row as `unchanged`.
+ To change the exercise seed (DATA): edit `database/seed/exercise.csv` or `injury_type_excluded_exercise.csv`, load it, then regenerate the coverage report with `uv run python -m app.db.exercise_coverage` (from `backend/`) and commit `database/seed/exercise_coverage.md`; a test fails when the report is out of date or a goal's main group has no eligible exercise.
+ 
+-To change the food seed (DATA): edit `database/seed/food_item.csv`. Every row cites its values per 100 g in `source`: `FDC:<id>` for USDA FoodData Central, `SLV:<number>` for the Swedish Food Agency (Livsmedelsverket, CC BY 4.0, credit it as the source). `is_active` is not in the file, so deactivating a food in the database survives a reload.
++To change the food seed (DATA): edit `database/seed/food_item.csv`. Every row cites its values per 100 g in `source`: `FDC:<id>` for USDA FoodData Central, `SLV:<number>` for the Swedish Food Agency (Livsmedelsverket, CC BY 4.0, credit it as the source). `is_active` is not in the file, so deactivating a food in the database survives a reload. Then regenerate the report with `uv run python -m app.db.food_check` (from `backend/`) and commit `database/seed/food_coverage.md`; it exits 1 and a test fails when a food breaks the kcal rule of `algorithms.md` 0 or the portion rule, or a meal slot has no food for a diet type. A test also runs the diet generator over the seed for every goal, diet type and meals per day.
+ 
+ One-time switch (DB-03): a database that still has rows from the removed `database/dev/temporary_training_seed.sql` keeps its exercise ids, but `Plank` stays behind as a "Temporary seed" row. Reset it, which deletes local data: `docker compose down -v && docker compose up -d`, then apply the migrations and load the seed again.
+ 
