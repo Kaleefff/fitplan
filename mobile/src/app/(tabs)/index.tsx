@@ -10,6 +10,7 @@ import { MODULES } from '@/constants/modules';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useNutritionTargets } from '@/hooks/use-nutrition-targets';
 import { GOAL_OPTIONS, labelOf, LEVEL_OPTIONS } from '@/profile/options';
+import { PalHelp } from '@/profile/pal-help';
 
 // Home (Rys. 7.5): greeting, profile tiles, daily target, Quick Actions
 export default function HomeScreen() {
@@ -44,6 +45,7 @@ export default function HomeScreen() {
             color="analytics"
             label="Activity level"
             value={`PAL ${profile.activity_level_pal}`}
+            help={<PalHelp />}
           />
         </View>
       ) : null}

@@ -53,9 +53,23 @@ describe('HomeScreen', () => {
     expect(screen.getByLabelText('Current weight: 80 kg')).toBeOnTheScreen();
     expect(screen.getByLabelText('Goal: Muscle gain')).toBeOnTheScreen();
     expect(screen.getByLabelText('Training level: Beginner')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Activity level: PAL 1.55')).toBeOnTheScreen();
+    expect(screen.getByText('Activity level')).toBeOnTheScreen();
+    expect(screen.getByText('PAL 1.55')).toBeOnTheScreen();
     expect(await screen.findByText('3078')).toBeOnTheScreen();
     expect(screen.getByLabelText('Protein 144 grams')).toBeOnTheScreen();
+  });
+
+  it('explains PAL from the button next to the activity level', async () => {
+    await renderWithTheme(<HomeScreen />);
+    expect(screen.queryByText('How is it measured?')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'What is PAL?' }));
+    expect(screen.getByText('How is it measured?')).toBeOnTheScreen();
+    expect(screen.getByText('Moderate (PAL 1.55)')).toBeOnTheScreen();
+    expect(screen.getByText('Moderate exercise 3–5 days a week')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Got it' }));
+    expect(screen.queryByText('How is it measured?')).not.toBeOnTheScreen();
   });
 
   it('opens every module from its Quick Actions tile (M-07 Done)', async () => {
