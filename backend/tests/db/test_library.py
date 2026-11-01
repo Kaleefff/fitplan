@@ -53,6 +53,7 @@ async def library(seeded) -> AsyncIterator[SqlLibraryRepository]:
     yield SqlLibraryRepository(async_sessionmaker(engine, expire_on_commit=False))
     await engine.dispose()
 
+
 @pytest.fixture
 def users(seeded) -> Iterator["Users"]:
     """Users with injuries, allergies and excluded foods; removed after the test."""
@@ -143,9 +144,11 @@ class Users:
             for food_id, is_active, meal_types, vegetarian, vegan, allergens in rows
         ]
 
+
 def _by_name(name: str, id_: int) -> tuple:
     """The repository's order: case-insensitive name, then the exact name, then id."""
     return name.lower(), name, id_
+
 
 async def _all(list_page, **filters):
     page = await list_page(limit=100, **filters)
@@ -186,6 +189,7 @@ async def test_exercises_are_ordered_by_name_then_id_and_paginated(library):
     assert len(first.items) == 10
     assert [e.id for e in first.items + second.items] == [e.id for e in everything[:20]]
     assert everything == sorted(everything, key=lambda e: _by_name(e.name, e.id))
+
 
 async def test_offset_past_the_end_is_an_empty_page_with_the_total(library):
     page = await library.list_exercises(offset=10_000)
@@ -240,6 +244,7 @@ async def test_exercise_detail_lists_the_primary_group_first(library):
     assert exercise == some
     assert exercise.muscle_groups[0].is_primary
     assert sum(g.is_primary for g in exercise.muscle_groups) == 1
+
 
 async def test_unknown_exercise_is_none(library):
     assert await library.get_exercise(999_999) is None
@@ -316,6 +321,7 @@ def _food_id(name: str) -> int:
         ).scalar_one()
     engine.dispose()
     return food_id
+
 
 # ---------------------------------------------------------------- exercise eligibility
 

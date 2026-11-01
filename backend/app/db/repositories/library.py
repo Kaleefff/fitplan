@@ -79,6 +79,7 @@ class ExerciseRow:
     instruction: str
     muscle_groups: tuple[ExerciseGroupRow, ...]  # primary first, then by name
 
+
 @dataclass(frozen=True)
 class FoodCategoryRow:
     id: int
@@ -104,6 +105,7 @@ class FoodRow:
     portion_step_g: Decimal
     category_ids: tuple[int, ...]  # ascending
     allergen_ids: tuple[int, ...]  # ascending
+
 
 class SqlLibraryRepository:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
@@ -147,8 +149,10 @@ class SqlLibraryRepository:
             total = await _count(session, query)
             exercises = list(
                 await session.scalars(
-                    query.order_by(*_by_name(Exercise.name, Exercise.id)).limit(limit)
-                    .offset(offset))
+                    query.order_by(*_by_name(Exercise.name, Exercise.id))
+                    .limit(limit)
+                    .offset(offset)
+                )
             )
             groups = await _exercise_groups(session, [e.id for e in exercises])
         return Page(
@@ -298,7 +302,9 @@ class SqlLibraryRepository:
             foods = list(await session.scalars(query.order_by(FoodItem.id)))
             return await _food_rows(session, foods)
 
+
 # ---------------------------------------------------------------- helpers
+
 
 def _excluded_by_injury(user_id: int) -> ColumnElement[bool]:
     """4.3: an active injury of the user excludes the exercise when (1) the injury type
@@ -331,9 +337,11 @@ def _excluded_by_injury(user_id: int) -> ColumnElement[bool]:
         .correlate(Exercise)
     )
 
+
 def _by_name(name: ColumnElement[str], id_: ColumnElement[int]) -> tuple[ColumnElement, ...]:
     """Case-insensitive name, then the exact name (capitals first), then id."""
     return func.lower(name).collate("C"), name.collate("C"), id_
+
 
 async def _count(session: AsyncSession, query: Select) -> int:
     return await session.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
@@ -378,6 +386,7 @@ def _exercise_row(exercise: Exercise, groups: tuple[ExerciseGroupRow, ...]) -> E
         instruction=exercise.instruction,
         muscle_groups=groups,
     )
+
 
 async def _food_rows(session: AsyncSession, foods: list[FoodItem]) -> list[FoodRow]:
     ids = [f.id for f in foods]
