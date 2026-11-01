@@ -15,6 +15,7 @@ TEST_JWT_SECRET = "test-secret-with-at-least-32-bytes!"
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+
 def make_settings(**overrides: object) -> Settings:
     """Settings without the repository .env, with a test JWT secret and fast bcrypt."""
     values = {"jwt_secret": TEST_JWT_SECRET, "bcrypt_rounds": 4, **overrides}

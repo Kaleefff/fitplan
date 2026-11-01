@@ -36,7 +36,7 @@ docker compose ps
 
 After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up.
 
-The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories) by the seed loader:
+The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories, exercises with their muscle groups and injury exclusions) by the seed loader:
 
 ```bash
 cd backend
@@ -47,6 +47,9 @@ cd ..
 ```
 
 The loader can be run any time; a second run reports every row as `unchanged`.
+To change the exercise seed (DATA): edit `database/seed/exercise.csv` or `injury_type_excluded_exercise.csv`, load it, then regenerate the coverage report with `uv run python -m app.db.exercise_coverage` (from `backend/`) and commit `database/seed/exercise_coverage.md`; a test fails when the report is out of date or a goal's main group has no eligible exercise.
+
+One-time switch (DB-03): a database that still has rows from the removed `database/dev/temporary_training_seed.sql` keeps its exercise ids, but `Plank` stays behind as a "Temporary seed" row. Reset it, which deletes local data: `docker compose down -v && docker compose up -d`, then apply the migrations and load the seed again.
 
 ## 4. Check that it works
 
