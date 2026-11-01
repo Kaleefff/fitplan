@@ -54,14 +54,19 @@ type GroupFrameProps = {
   label: string;
   error?: string;
   multiple: boolean;
+  /** Shown next to the label, for example a HelpButton */
+  help?: ReactNode;
   children: ReactNode;
 };
 
-function GroupFrame({ label, error, multiple, children }: GroupFrameProps) {
+function GroupFrame({ label, error, multiple, help, children }: GroupFrameProps) {
   const { spacing } = useAppTheme();
   return (
     <View style={{ gap: spacing.xs }}>
-      <AppText variant="bodyStrong">{label}</AppText>
+      <View style={[styles.labelRow, { gap: spacing.sm }]}>
+        <AppText variant="bodyStrong">{label}</AppText>
+        {help}
+      </View>
       <View
         accessibilityRole={multiple ? undefined : 'radiogroup'}
         accessibilityLabel={label}
@@ -83,12 +88,20 @@ type OptionGroupProps<T> = {
   value: T | null;
   onChange: (value: T) => void;
   error?: string;
+  help?: ReactNode;
 };
 
 /** Pick exactly one option */
-export function OptionGroup<T extends string | number>({ label, options, value, onChange, error }: OptionGroupProps<T>) {
+export function OptionGroup<T extends string | number>({
+  label,
+  options,
+  value,
+  onChange,
+  error,
+  help,
+}: OptionGroupProps<T>) {
   return (
-    <GroupFrame label={label} error={error} multiple={false}>
+    <GroupFrame label={label} error={error} multiple={false} help={help}>
       {options.map((option) => (
         <Chip
           key={String(option.value)}
@@ -139,6 +152,7 @@ export function MultiOptionGroup<T extends string | number>({
 }
 
 const styles = StyleSheet.create({
+  labelRow: { flexDirection: 'row', alignItems: 'center' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap' },
   chip: {
     minHeight: minTouchSize,

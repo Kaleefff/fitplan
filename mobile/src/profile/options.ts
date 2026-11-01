@@ -49,6 +49,50 @@ export const SEVERITY_OPTIONS: Option<Schemas['InjurySeverity']>[] = [
   { value: 'severe', label: 'Severe' },
 ];
 
+// The muscle group the plan generator spares (algorithms.md 4.3) for injury types that name one
+// part of the body. Keys are type_name of database/seed/injury_type.csv, the seed's key. Types
+// missing here, such as a fracture, can be anywhere or have no group of their own: the user is asked.
+const INJURY_MUSCLE_GROUPS: Record<string, string> = {
+  'Shoulder strain': 'shoulders',
+  'Rotator cuff tendinopathy': 'shoulders',
+  'Lower back strain': 'back',
+  'Hamstring strain': 'hamstrings',
+  'Knee pain': 'quadriceps',
+  'Patellar tendinopathy': 'quadriceps',
+  'Shin splints': 'calves',
+  'Calf strain': 'calves',
+  'Achilles tendinopathy': 'calves',
+  'Ankle sprain': 'calves',
+};
+
+export function muscleGroupOfInjury(typeName: string): string | null {
+  return INJURY_MUSCLE_GROUPS[typeName] ?? null;
+}
+
+// How long the user has had an injury; the value is in months
+export const INJURY_DURATION_OPTIONS: Option<number>[] = [
+  { value: 0, label: 'Less than a month' },
+  { value: 1, label: '1–12 months' },
+  { value: 12, label: '1–3 years' },
+  { value: 36, label: 'More than 3 years' },
+];
+
+/** YYYY-MM-DD the given number of months before now, in the phone's time zone */
+export function monthsAgo(months: number, now: Date = new Date()): string {
+  const date = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * The API stores an exact start_date, the user gives a range: the date sent is monthsAgo(value),
+ * the newest day of the range. This reads the range back from that date.
+ */
+export function injuryDurationLabel(startDate: string, now: Date = new Date()): string {
+  const longestFirst = [...INJURY_DURATION_OPTIONS].reverse();
+  return longestFirst.find((option) => startDate <= monthsAgo(option.value, now))?.label ?? '–';
+}
+
 /** "quadriceps" -> "Quadriceps" for names stored in lower case */
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);

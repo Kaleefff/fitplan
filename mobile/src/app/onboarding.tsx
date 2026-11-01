@@ -13,6 +13,7 @@ import { TextField } from '@/components/text-field';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { HealthStep } from '@/profile/health-step';
 import { EQUIPMENT_OPTIONS, GOAL_OPTIONS, LEVEL_OPTIONS, PAL_OPTIONS, SEX_OPTIONS } from '@/profile/options';
+import { PalHelp } from '@/profile/pal-help';
 import { addInjury, loadReferenceLists, saveAllergies, saveProfile, type ReferenceLists } from '@/profile/profile-api';
 import { EMPTY_PROFILE_FORM, toProfileInput, validateProfile, type ProfileForm } from '@/profile/validation';
 
@@ -172,6 +173,7 @@ export default function OnboardingScreen() {
             value={form.activity_level_pal}
             onChange={(v) => set('activity_level_pal', v)}
             error={errors.activity_level_pal}
+            help={<PalHelp />}
           />
           <OptionGroup
             label="Goal"

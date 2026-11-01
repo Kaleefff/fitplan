@@ -1,4 +1,4 @@
-import { checkStartDate, localToday } from '@/profile/health-step';
+import { INJURY_DURATION_OPTIONS, injuryDurationLabel, monthsAgo, muscleGroupOfInjury } from '@/profile/options';
 import { EMPTY_PROFILE_FORM, parseNumber, toProfileInput, validateProfile, type ProfileForm } from '@/profile/validation';
 
 const VALID: ProfileForm = {
@@ -69,12 +69,37 @@ describe('toProfileInput', () => {
   });
 });
 
-describe('injury start date', () => {
-  it('accepts today and past dates, rejects future and invalid ones', () => {
-    expect(checkStartDate(localToday())).toBeUndefined();
-    expect(checkStartDate('2026-01-31')).toBeUndefined();
-    expect(checkStartDate('2999-01-01')).toBe('The start date cannot be in the future.');
-    expect(checkStartDate('2026-02-30')).toBe('Use the format YYYY-MM-DD, for example 2026-10-01.');
-    expect(checkStartDate('01.10.2026')).toBe('Use the format YYYY-MM-DD, for example 2026-10-01.');
+describe('injury duration', () => {
+  const now = new Date(2026, 10, 1);
+
+  it('turns each range into its newest day, never in the future', () => {
+    expect(monthsAgo(0, now)).toBe('2026-11-01');
+    expect(monthsAgo(1, now)).toBe('2026-10-01');
+    expect(monthsAgo(12, now)).toBe('2025-11-01');
+    expect(monthsAgo(36, now)).toBe('2023-11-01');
+  });
+
+  it('reads back the range the user chose', () => {
+    for (const option of INJURY_DURATION_OPTIONS) {
+      expect(injuryDurationLabel(monthsAgo(option.value, now), now)).toBe(option.label);
+    }
+  });
+
+  it('survives a month shorter than today’s day', () => {
+    const endOfMarch = new Date(2026, 2, 31);
+    expect(monthsAgo(1, endOfMarch) <= monthsAgo(0, endOfMarch)).toBe(true);
+    expect(injuryDurationLabel(monthsAgo(1, endOfMarch), endOfMarch)).toBe('1–12 months');
+  });
+});
+
+describe('muscle group of an injury', () => {
+  it('follows from a type that names a part of the body', () => {
+    expect(muscleGroupOfInjury('Knee pain')).toBe('quadriceps');
+    expect(muscleGroupOfInjury('Ankle sprain')).toBe('calves');
+  });
+
+  it('is left to the user for a type that does not', () => {
+    expect(muscleGroupOfInjury('Fracture')).toBeNull();
+    expect(muscleGroupOfInjury('Wrist sprain')).toBeNull();
   });
 });
