@@ -1,0 +1,2 @@
+name,cals_per_100g,protein_per_100g,fat_per_100g,carbs_per_100g,diet_role,suitable_meal_types,is_vegetarian,is_vegan,default_portion_g,min_portion_g,max_portion_g,portion_step_g,recognition_label,categories,allergens,source
+Chicken breast,roasted,165,31.0,3.6,0.0,protein,lunch;dinner,false,false,150,50,300,10,,Poultry,,FDC:171477

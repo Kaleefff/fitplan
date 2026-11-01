@@ -106,7 +106,7 @@ Beginners: one set fewer (min 2). `estimated_duration` = `600 s + Σ sets × (45
 
 **5.2 Eligible food.** `is_active`; meal type in `suitable_meal_types`; diet type (vegetarian needs `is_vegetarian`, vegan needs `is_vegan`); no allergen of the user; not in `user_excluded_food`. The goal comes from the profile; `diet_type` from the request (default omnivore); `dietary_restrictions` is a free-text note that does not filter.
 
-**5.3 Composition** (one item per role, by `food_item.diet_role`): breakfast = protein or dairy, carb, fruit, fat; lunch and dinner = protein, carb, vegetable, fat (a `dish` may replace protein + carb); snack = fruit or dairy, fat optional. For day `d` and slot `i`, take index `(d − 1 + 2i) mod n` of the role's items sorted by id; if it equals the same slot of the previous day and `n ≥ 2`, take the next.
+**5.3 Composition** (one item per role, by `food_item.diet_role`): breakfast = protein or dairy, carb, fruit, fat; lunch and dinner = protein, carb, vegetable, fat (a `dish` may replace protein + carb); snack = fruit or dairy, fat optional. `other` (sweets, drinks, sauces) is never planned by the generator. For day `d` and slot `i`, take index `(d − 1 + 2i) mod n` of the role's items sorted by id; if it equals the same slot of the previous day and `n ≥ 2`, take the next.
 
 **5.4 Grams.** Per meal, bounded least squares (`scipy.optimize.lsq_linear`) over grams/100 of each item, bounds `[min_portion_g, max_portion_g]`, minimising `Σ w_j ((Ax − t)_j / t_j)²` for kcal, protein, fat, carbs with weights 3, 2, 1, 1.5. Round to `portion_step_g` (bounds are multiples of it), clamp.
 

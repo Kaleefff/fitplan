@@ -71,7 +71,7 @@ Do: extend `01_schema.sql` with what the specs need, then SQLAlchemy 2.0 models 
 | 4 | `exercise`: `equipment` enum instead of `required_equipment`; `is_compound`, `is_bodyweight`; exactly one primary group (partial unique index) |
 | 5 | `injury.affected_muscle_group_id` FK instead of the VARCHAR; new `injury_type_excluded_exercise` |
 | 6 | New `allergen`, `user_allergen`, `food_item_allergen`, `user_excluded_food` |
-| 7 | `food_item`: unique name, `is_active`, `is_vegetarian`, `is_vegan`, `diet_role` (protein/carb/vegetable/fruit/dairy/fat/dish), `suitable_meal_types`, `default_portion_g`, `min_portion_g`, `max_portion_g`, `portion_step_g`, nullable unique `recognition_label` |
+| 7 | `food_item`: unique name, `is_active`, `is_vegetarian`, `is_vegan`, `diet_role` (protein/carb/vegetable/fruit/dairy/fat/dish/other), `suitable_meal_types`, `default_portion_g`, `min_portion_g`, `max_portion_g`, `portion_step_g`, nullable unique `recognition_label` |
 | 8 | `meal.day_index` 1–7; `diet_plan.diet_type`, `meals_per_day` |
 | 9 | `training_plan`: `experience_level`, `equipment` (snapshot), `skipped_muscle_group_ids`; `training_session.session_name`, unique weekday per plan |
 | 10 | `session_exercise.planned_weight` nullable without default; `original_exercise_id` |
