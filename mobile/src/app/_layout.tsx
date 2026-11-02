@@ -36,6 +36,9 @@ function RootNavigator() {
     return null;
   }
 
+  // First screen of the current state; a group that closes sends the user here
+  const startScreen = status === 'signedOut' ? '/sign-in' : status === 'needsProfile' ? '/onboarding' : '/';
+
   return (
     <ThemeProvider value={navigationTheme(scheme, colors)}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -46,10 +49,13 @@ function RootNavigator() {
         // screen of the new state; without it the router falls back to "/", which a signed-out
         // user has no screen for ("Unmatched Route" after signing out)
         <Stack>
-          <Stack.Protected guard={status === 'signedOut'} redirectTo="/">
+          <Stack.Protected guard={status === 'signedOut'} redirectTo={startScreen}>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           </Stack.Protected>
-          <Stack.Protected guard={status === 'signedIn'} redirectTo="/sign-in">
+          <Stack.Protected guard={status === 'needsProfile'} redirectTo={startScreen}>
+            <Stack.Screen name="onboarding" options={{ title: 'Set Up Your Profile' }} />
+          </Stack.Protected>
+          <Stack.Protected guard={status === 'signedIn'} redirectTo={startScreen}>
             {/* The tabs draw their own header */}
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ title: 'Settings' }} />
