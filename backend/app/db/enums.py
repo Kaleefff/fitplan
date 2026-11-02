@@ -77,6 +77,7 @@ class DietRole(StrEnum):
     DAIRY = "dairy"
     FAT = "fat"
     DISH = "dish"
+    OTHER = "other"  # sweets, drinks, sauces: in the library and logs, never generated
 
 
 class DietType(StrEnum):

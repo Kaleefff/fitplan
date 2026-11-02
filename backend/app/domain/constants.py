@@ -59,6 +59,7 @@ class DietRole(StrEnum):
     DAIRY = "dairy"
     FAT = "fat"
     DISH = "dish"
+    OTHER = "other"  # never in MEAL_ROLES: the generator does not plan these foods
 
 
 class DietType(StrEnum):

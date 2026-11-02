@@ -1,14 +1,13 @@
-"""Training plans on PostgreSQL with the temporary seed (B-11).
+"""Training plans on PostgreSQL with the reference seed (B-11).
 
-Loads database/dev/temporary_training_seed.sql into the throwaway database; skipped
-without PostgreSQL. Delete the seed-coverage test with the seed when DB-02/DB-03 land.
+Loads database/seed/ (DB-02, DB-03) into the throwaway database; skipped without
+PostgreSQL.
 """
 
 import functools
 import itertools
 from collections.abc import Iterator
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,6 +25,7 @@ from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanStore, SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
+from app.db.seed import load
 from app.db.session import database_url
 from app.domain.constants import DifficultyLevel, Equipment, Goal
 from app.domain.training import generate_training_plan
@@ -34,7 +34,6 @@ from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-SEED = Path(__file__).resolve().parents[3] / "database" / "dev" / "temporary_training_seed.sql"
 TODAY = date.today()
 
 
@@ -51,13 +50,9 @@ def _close_sync_engine():
         _sync_engine.cache_clear()
 
 
-def _load_seed() -> None:
-    connection = _sync_engine().raw_connection()
-    try:
-        connection.autocommit = True
-        connection.cursor().execute(SEED.read_text(encoding="utf-8"))
-    finally:
-        connection.close()
+def _load_seed():
+    with _sync_engine().begin() as db:
+        return load(db)
 
 
 def _scalar(sql: str, **params):
@@ -124,12 +119,12 @@ def _generate(api, headers, goal="strength", days=3, level="beginner", equipment
     )
 
 
-# ---------------------------------------------------------------- the temporary seed
+# ---------------------------------------------------------------- the reference seed
 
 
 def test_seed_is_idempotent_and_covers_every_combination(api, sessions):
-    _load_seed()  # a second load changes nothing
-    assert _scalar("SELECT count(*) FROM exercise") == 44
+    second = _load_seed()  # the fixture loaded it once; a second load changes nothing
+    assert all(r.inserted + r.updated + r.deleted == 0 for r in second)
     assert _scalar("SELECT count(*) FROM muscle_group") == 10
 
     _, factory = sessions
@@ -195,7 +190,9 @@ def test_injured_group_is_skipped(api):
 
     plan = _generate(api, headers).json()
 
-    assert plan["skipped_muscle_groups"] == ["shoulders"]
+    # moderate: rule 3 of section 4.3 also excludes exercises with shoulders as a secondary
+    # group, and every chest exercise in the seed has it, so chest is skipped too
+    assert plan["skipped_muscle_groups"] == ["chest", "shoulders"]
     names = {e["exercise_name"] for s in plan["sessions"] for e in s["exercises"]}
     assert not names & {"Pike push-up", "Dumbbell shoulder press", "Barbell overhead press"}
 
@@ -206,8 +203,8 @@ def test_not_enough_exercises_is_422_with_suggestions_and_keeps_the_draft(api):
     with _sync_engine().begin() as db:  # calves only in the gym
         db.execute(
             text(
-                "DELETE FROM exercise WHERE name IN"
-                " ('Standing calf raise', 'Single-leg dumbbell calf raise')"
+                "DELETE FROM exercise WHERE name IN ('Standing calf raise',"
+                " 'Single-leg calf raise', 'Single-leg dumbbell calf raise')"
             )
         )
 

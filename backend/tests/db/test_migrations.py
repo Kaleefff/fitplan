@@ -156,6 +156,52 @@ def test_baseline_upgrades_and_downgrades(empty_db: Engine) -> None:
     run_alembic(empty_db, "upgrade", "head")
 
 
+def diet_roles(engine: Engine) -> list[str]:
+    with engine.connect() as connection:
+        return list(
+            connection.execute(text("SELECT unnest(enum_range(NULL::diet_role))::text")).scalars()
+        )
+
+
+def add_food_with_role(engine: Engine, role: str) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO food_item (name, cals_per_100g, protein_per_100g, fat_per_100g,"
+                " carbs_per_100g, diet_role, suitable_meal_types, default_portion_g,"
+                " min_portion_g, max_portion_g, portion_step_g)"
+                " VALUES (:name, 42, 0, 0, 10.6, CAST(:role AS diet_role), '{snack}',"
+                " 330, 100, 500, 10)"
+            ),
+            {"name": f"{role} food", "role": role},
+        )
+
+
+def test_0002_adds_the_other_role_and_its_downgrade_keeps_the_rest(empty_db: Engine) -> None:
+    roles = [role.value for role in DietRole]
+    run_alembic(empty_db, "upgrade", "0001")
+    assert diet_roles(empty_db) == roles[:-1]
+    add_food_with_role(empty_db, "dish")
+
+    run_alembic(empty_db, "upgrade", "head")
+    assert diet_roles(empty_db) == roles
+    assert roles[-1] == "other"
+
+    run_alembic(empty_db, "downgrade", "0001")
+    assert diet_roles(empty_db) == roles[:-1]
+    with empty_db.connect() as connection:
+        kept = connection.execute(text("SELECT diet_role::text FROM food_item")).scalar_one()
+    assert kept == "dish"
+
+
+def test_0002_downgrade_refuses_while_a_food_uses_other(empty_db: Engine) -> None:
+    run_alembic(empty_db, "upgrade", "head")
+    add_food_with_role(empty_db, "other")
+    with pytest.raises(Exception, match="diet_role 'other'"):
+        run_alembic(empty_db, "downgrade", "0001")
+    assert diet_roles(empty_db)[-1] == "other"
+
+
 def add_user_with_a_row_everywhere(s: Session) -> int:
     """One user with at least one row in every user-owned table, plus the library rows it needs."""
     today = date.today()

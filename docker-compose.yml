@@ -18,7 +18,7 @@ services:
       retries: 10
 
   mongo:
-    image: mongo:8
+    image: mongo:8.2
     container_name: fitplan-mongo
     restart: unless-stopped
     environment:
