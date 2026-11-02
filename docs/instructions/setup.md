@@ -36,7 +36,7 @@ docker compose ps
 
 After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up.
 
-The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories) by the seed loader:
+The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories, exercises with their muscle groups and injury exclusions, foods with their categories and allergens) by the seed loader:
 
 ```bash
 cd backend
@@ -47,6 +47,11 @@ cd ..
 ```
 
 The loader can be run any time; a second run reports every row as `unchanged`.
+To change the exercise seed (DATA): edit `database/seed/exercise.csv` or `injury_type_excluded_exercise.csv`, load it, then regenerate the coverage report with `uv run python -m app.db.exercise_coverage` (from `backend/`) and commit `database/seed/exercise_coverage.md`; a test fails when the report is out of date or a goal's main group has no eligible exercise.
+
+To change the food seed (DATA): edit `database/seed/food_item.csv`. Every row cites its values per 100 g in `source`: `FDC:<id>` for USDA FoodData Central, `SLV:<number>` for the Swedish Food Agency (Livsmedelsverket, CC BY 4.0, credit it as the source). `is_active` is not in the file, so deactivating a food in the database survives a reload. Then regenerate the report with `uv run python -m app.db.food_check` (from `backend/`) and commit `database/seed/food_coverage.md`; it exits 1 and a test fails when a food breaks the kcal rule of `algorithms.md` 0 or the portion rule, or a meal slot has no food for a diet type. A test also runs the diet generator over the seed for every goal, diet type and meals per day.
+
+One-time switch (DB-03): a database that still has rows from the removed `database/dev/temporary_training_seed.sql` keeps its exercise ids, but `Plank` stays behind as a "Temporary seed" row. Reset it, which deletes local data: `docker compose down -v && docker compose up -d`, then apply the migrations and load the seed again.
 
 ## 4. Check that it works
 
