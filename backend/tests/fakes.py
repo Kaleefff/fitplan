@@ -100,6 +100,23 @@ class InMemoryUserRepository:
         return self.rows.get(user_id)
 
 
+class InMemoryPasswordResetRepository:
+    """Tokens only; the password change and session revocation are tested on PostgreSQL."""
+
+    def __init__(self) -> None:
+        self.tokens: dict[str, list] = {}  # hash -> [user_id, expires_at, used]
+
+    async def add(self, user_id: int, token_hash: str, expires_at: datetime) -> None:
+        self.tokens[token_hash] = [user_id, expires_at, False]
+
+    async def reset(self, token_hash: str, now: datetime, password_hash: str) -> int | None:
+        token = self.tokens.get(token_hash)
+        if token is None or token[2] or token[1] <= now:
+            return None
+        token[2] = True
+        return token[0]
+
+
 def _no_workout_store():
     raise AssertionError("this store needs PostgreSQL: see tests/db/")
 
@@ -112,6 +129,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "workouts": _no_workout_store,
         "training_plans": _no_workout_store,
         "profile_data": _no_workout_store,
+        "password_resets": InMemoryPasswordResetRepository(),
         **overrides,
     }
     return Repositories(**values)
