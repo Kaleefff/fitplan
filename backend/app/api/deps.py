@@ -11,6 +11,7 @@ from app.core.security import InvalidTokenError, decode_access_token
 from app.services.auth import AuthService, UserRepository
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
+from app.services.profile import ProfileService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
 
@@ -44,6 +45,10 @@ def get_workout_service(request: Request) -> WorkoutService:
 
 def get_training_plan_service(request: Request) -> TrainingPlanService:
     return request.app.state.training_plan_service
+
+
+def get_profile_service(request: Request) -> ProfileService:
+    return request.app.state.profile_service
 
 
 @dataclass(frozen=True)

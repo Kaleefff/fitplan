@@ -101,7 +101,7 @@ class InMemoryUserRepository:
 
 
 def _no_workout_store():
-    raise AssertionError("workouts and plans need PostgreSQL: see tests/db/")
+    raise AssertionError("this store needs PostgreSQL: see tests/db/")
 
 
 def fake_repositories(**overrides: object) -> Repositories:
@@ -111,6 +111,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "profiles": InMemoryProfileReader(),
         "workouts": _no_workout_store,
         "training_plans": _no_workout_store,
+        "profile_data": _no_workout_store,
         **overrides,
     }
     return Repositories(**values)

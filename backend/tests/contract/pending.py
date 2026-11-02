@@ -14,19 +14,6 @@ PENDING_OPERATIONS = (
     "changeEmail",  # POST /users/me/email
     "changePassword",  # POST /users/me/password
     "deleteAccount",  # POST /users/me/delete
-    "getProfile",  # GET /users/me/profile
-    "putProfile",  # PUT /users/me/profile
-    "listInjuries",  # GET /users/me/injuries
-    "createInjury",  # POST /users/me/injuries
-    "updateInjury",  # PATCH /users/me/injuries/{injury_id}
-    "deleteInjury",  # DELETE /users/me/injuries/{injury_id}
-    "getAllergies",  # GET /users/me/allergies
-    "putAllergies",  # PUT /users/me/allergies
-    "getExcludedFoods",  # GET /users/me/excluded-foods
-    "putExcludedFoods",  # PUT /users/me/excluded-foods
-    "listInjuryTypes",  # GET /injury-types
-    "listAllergens",  # GET /allergens
-    "listMuscleGroups",  # GET /muscle-groups
     "listExercises",  # GET /exercises
     "getExercise",  # GET /exercises/{exercise_id}
     "listExerciseAlternatives",  # GET /exercises/{exercise_id}/alternatives

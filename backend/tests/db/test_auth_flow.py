@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
 from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
@@ -36,6 +37,7 @@ def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
         profiles=SqlProfileReader(sessions),
         workouts=SqlWorkoutUnitOfWork(sessions),
         training_plans=SqlTrainingPlanUnitOfWork(sessions),
+        profile_data=SqlProfileUnitOfWork(sessions),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories
