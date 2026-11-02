@@ -167,6 +167,34 @@ class SqlTrainingPlanStore:
             .values(status=PlanStatus.ACTIVE, start_date=start, end_date=end)
         )
 
+    async def lock_session(self, user_id: int, session_id: int) -> tuple[int, str] | None:
+        row = (
+            await self._session.execute(
+                select(TrainingPlan.id, TrainingPlan.status)
+                .join(TrainingSession, TrainingSession.training_plan_id == TrainingPlan.id)
+                .where(TrainingSession.id == session_id, TrainingPlan.user_id == user_id)
+                .with_for_update(of=TrainingPlan)
+            )
+        ).first()
+        return None if row is None else (row.id, row.status.value)
+
+    async def weekday_taken(self, plan_id: int, session_id: int, day_of_week: int) -> bool:
+        other = await self._session.scalar(
+            select(TrainingSession.id).where(
+                TrainingSession.training_plan_id == plan_id,
+                TrainingSession.day_of_week == day_of_week,
+                TrainingSession.id != session_id,
+            )
+        )
+        return other is not None
+
+    async def set_weekday(self, session_id: int, day_of_week: int) -> None:
+        await self._session.execute(
+            update(TrainingSession)
+            .where(TrainingSession.id == session_id)
+            .values(day_of_week=day_of_week)
+        )
+
     async def workout_days(self, session_ids: list[int], since: date) -> set[tuple[int, date]]:
         rows = await self._session.execute(
             select(WorkoutLog.training_session_id, WorkoutLog.log_date).where(

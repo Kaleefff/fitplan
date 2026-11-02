@@ -90,6 +90,14 @@ class TrainingPlanStore(Protocol):
 
     async def activate(self, user_id: int, plan_id: int, start: date, end: date) -> None: ...
 
+    async def lock_session(self, user_id: int, session_id: int) -> tuple[int, str] | None:
+        """(plan id, plan status) of the user's session, locked; None if not theirs."""
+        ...
+
+    async def weekday_taken(self, plan_id: int, session_id: int, day_of_week: int) -> bool: ...
+
+    async def set_weekday(self, session_id: int, day_of_week: int) -> None: ...
+
     async def workout_days(self, session_ids: list[int], since: date) -> set[tuple[int, date]]:
         """(session id, log date) of the live workouts of these sessions from `since`."""
         ...
@@ -176,3 +184,30 @@ class TrainingPlanService:
             raise AppError(404, ErrorCode.NOT_FOUND, "No session left in the active plan")
         scheduled, day = found
         return plan, next(s for s in plan.sessions if s.id == scheduled.id), day
+
+    async def move_session(self, user_id: int, session_id: int, day_of_week: int) -> SessionView:
+        """api-rules.md "Plans": a weekday already used in the plan is 409; an archived plan
+        cannot change (409, as for its exercises; questions.md, B-14)."""
+        async with self._unit_of_work() as store:
+            found = await store.lock_session(user_id, session_id)
+            if found is None:
+                raise AppError(404, ErrorCode.NOT_FOUND, "Not found")
+            plan_id, status = found
+            if status == "archived":
+                raise AppError(409, ErrorCode.CONFLICT, "The plan is archived")
+            if await store.weekday_taken(plan_id, session_id, day_of_week):
+                raise AppError(
+                    409,
+                    ErrorCode.CONFLICT,
+                    "Another session of the plan is on that weekday",
+                    [
+                        {
+                            "field": "body.day_of_week",
+                            "code": "conflict",
+                            "message": "Another session of the plan is on that weekday",
+                        }
+                    ],
+                )
+            await store.set_weekday(session_id, day_of_week)
+            plan = await store.get_plan(user_id, plan_id)
+        return next(s for s in plan.sessions if s.id == session_id)
