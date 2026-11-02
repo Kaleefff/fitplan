@@ -863,6 +863,7 @@ paths:
               schema: { $ref: "#/components/schemas/DietPlan" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /diet-plans/{plan_id}/accept:
     parameters:
@@ -2124,8 +2125,6 @@ components:
         carbs_g: { type: number }
     GenerateDietPlanRequest:
       type: object
-      x-todo:
-        - "diet_type needs vegetarian/vegan flags on food_item (algorithms.md 5.2)"
       required: [meals_per_day]
       properties:
         meals_per_day: { type: integer, minimum: 3, maximum: 5 }
@@ -2143,11 +2142,14 @@ components:
         grams: { type: number }
     Meal:
       type: object
-      x-todo:
-        - "meal has no day index; the plan covers 7 days (algorithms.md 5.1)"
-      required: [id, meal_type, meal_order, planned_time, planned_cals, planned_protein, planned_fat, planned_carbs, items]
+      required: [id, day_index, meal_type, meal_order, planned_time, planned_cals, planned_protein, planned_fat, planned_carbs, items]
       properties:
         id: { type: integer }
+        day_index:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: "Day of the 7-day plan; today's = ((date - start_date) mod 7) + 1 (algorithms.md 5.1)"
         meal_type: { $ref: "#/components/schemas/MealType" }
         meal_order: { type: integer, minimum: 1 }
         planned_time: { type: string, format: time }
@@ -2160,11 +2162,13 @@ components:
           items: { $ref: "#/components/schemas/MealFoodItem" }
     DietPlan:
       type: object
-      required: [id, name, goal, generated_at, daily_cal_goal, protein_goal, fat_goal, carbs_goal, status, meals]
+      required: [id, name, goal, diet_type, meals_per_day, generated_at, daily_cal_goal, protein_goal, fat_goal, carbs_goal, status, meals]
       properties:
         id: { type: integer }
         name: { type: string, maxLength: 45 }
         goal: { $ref: "#/components/schemas/Goal" }
+        diet_type: { type: string, enum: [omnivore, vegetarian, vegan] }
+        meals_per_day: { type: integer, minimum: 3, maximum: 5 }
         generated_at: { type: string, format: date-time }
         start_date: { type: [string, "null"], format: date }
         end_date: { type: [string, "null"], format: date }

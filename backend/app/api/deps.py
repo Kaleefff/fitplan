@@ -11,6 +11,7 @@ from app.core.security import InvalidTokenError, decode_access_token
 from app.services.account import AccountService
 from app.services.auth import AuthService, UserRepository
 from app.services.body_metrics import BodyMetricsService
+from app.services.diet_plans import DietPlanService
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
 from app.services.password_reset import PasswordResetService
@@ -69,6 +70,10 @@ def get_body_metrics_service(request: Request) -> BodyMetricsService:
 
 def get_schedule_service(request: Request) -> ScheduleService:
     return request.app.state.schedule_service
+
+
+def get_diet_plan_service(request: Request) -> DietPlanService:
+    return request.app.state.diet_plan_service
 
 
 @dataclass(frozen=True)

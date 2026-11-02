@@ -4,6 +4,7 @@ from app.api.v1 import (
     account,
     auth,
     body_metrics,
+    diet_plans,
     health,
     nutrition,
     profile,
@@ -25,3 +26,4 @@ api_router.include_router(account.router)
 api_router.include_router(training_plans.sessions_router)
 api_router.include_router(body_metrics.router)
 api_router.include_router(schedule.router)
+api_router.include_router(diet_plans.router)

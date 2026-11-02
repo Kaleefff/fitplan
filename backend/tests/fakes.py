@@ -149,6 +149,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "password_resets": InMemoryPasswordResetRepository(),
         "body_metrics": _no_workout_store,
         "schedule": _no_workout_store,
+        "diet_plans": _no_workout_store,
         **overrides,
     }
     return Repositories(**values)
