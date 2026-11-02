@@ -21,7 +21,7 @@ CREATE TYPE body_region       AS ENUM ('upper', 'lower', 'core');
 
 CREATE TYPE meal_type         AS ENUM ('breakfast', 'lunch', 'dinner', 'snack');
 
-CREATE TYPE diet_role         AS ENUM ('protein', 'carb', 'vegetable', 'fruit', 'dairy', 'fat', 'dish');
+CREATE TYPE diet_role         AS ENUM ('protein', 'carb', 'vegetable', 'fruit', 'dairy', 'fat', 'dish', 'other');
 
 CREATE TYPE diet_type         AS ENUM ('omnivore', 'vegetarian', 'vegan');
 

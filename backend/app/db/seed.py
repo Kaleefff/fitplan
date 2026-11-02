@@ -1,4 +1,4 @@
-"""Reference seed loader (DB-02, DB-03).
+"""Reference seed loader (DB-02, DB-03, DB-04).
 
 Loads the CSV files of database/seed/ into PostgreSQL. Each file is named after its
 table and its header row uses the table's column names. The natural key (the name
@@ -12,12 +12,20 @@ Exercises (DB-03) carry their muscle groups in two extra columns: `primary_group
 exercises in exercise.csv both files are authoritative: links that are no longer
 listed are deleted (no user data references a link row).
 
+Foods (DB-04): `suitable_meal_types` lists meal types separated by `;`; `categories`
+(at least one) and `allergens` (may be empty) list names the same way, and the food's
+category and allergen links are synced like the exercise links. `source` cites where
+the values per 100 g come from (`FDC:<id>` for USDA FoodData Central, `SLV:<number>` for
+the Swedish Food Agency); it is checked but not stored. `is_active` and
+`recognition_label` are not in the file, so a load never changes them.
+
 Run from backend/:  uv run python -m app.db.seed  [--dir PATH]
 """
 
 import argparse
 import csv
 import enum
+import re
 import sys
 from collections.abc import Collection
 from dataclasses import dataclass
@@ -26,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import (
+    ARRAY,
     Column,
     Connection,
     Table,
@@ -44,6 +53,9 @@ from app.db.models import (
     Exercise,
     ExerciseMuscleGroup,
     FoodCategory,
+    FoodItem,
+    FoodItemAllergen,
+    FoodItemCategory,
     InjuryType,
     InjuryTypeExcludedExercise,
     MuscleGroup,
@@ -65,11 +77,21 @@ EXCLUSION: Table = InjuryTypeExcludedExercise.__table__
 GROUP_COLUMNS = ("primary_group", "secondary_groups")
 EXCLUSION_HEADER = ["injury_type", "exercise"]
 
+FOOD: Table = FoodItem.__table__
+FOOD_CATEGORY: Table = FoodItemCategory.__table__
+FOOD_ALLERGEN: Table = FoodItemAllergen.__table__
+FOOD_EXTRA = ("categories", "allergens", "source")
+FOOD_NOT_IN_FILE = ("id", "is_active", "recognition_label")
+FOOD_SOURCE = re.compile(r"(FDC|SLV):[1-9][0-9]*")
+
 # every table the loader writes, parents first
 TABLES: list[str] = [table.name for table, _ in SEEDS] + [
     EXERCISE.name,
     EXERCISE_GROUP.name,
     EXCLUSION.name,
+    FOOD.name,
+    FOOD_CATEGORY.name,
+    FOOD_ALLERGEN.name,
 ]
 
 TRUE_VALUES = {"true", "t", "yes", "1"}
@@ -93,7 +115,16 @@ def convert(table: Table, column: str, raw: str) -> Any:
     """CSV text to the column's Python type; an empty field is NULL."""
     if raw == "":
         return None
-    python_type = table.c[column].type.python_type
+    column_type = table.c[column].type
+    if isinstance(column_type, ARRAY):
+        values = split_names(raw)
+        if len(set(values)) != len(values):
+            raise ValueError(f"{column}: a value is listed twice in {raw!r}")
+        return [convert_value(column_type.item_type.python_type, v) for v in values]
+    return convert_value(column_type.python_type, raw)
+
+
+def convert_value(python_type: type, raw: str) -> Any:
     if python_type is bool:
         value = raw.strip().lower()
         if value in TRUE_VALUES:
@@ -316,6 +347,63 @@ def load_exclusions(conn: Connection, seed_dir: Path, exercise_ids: dict[str, in
     )
 
 
+def link_ids(where: str, raw: str, ids: dict[str, int], what: str, required: bool) -> list[int]:
+    names = split_names(raw)
+    if required and not names:
+        raise SeedError(f"{where}: no {what}")
+    unknown = [n for n in names if n not in ids]
+    if unknown:
+        raise SeedError(f"{where}: unknown {what} {unknown}")
+    if len(set(names)) != len(names):
+        raise SeedError(f"{where}: one of the {what} is listed twice")
+    return [ids[n] for n in names]
+
+
+def load_foods(conn: Connection, seed_dir: Path) -> list[TableResult]:
+    """food_item.csv with its categories and allergens."""
+    path = seed_file(seed_dir, FOOD.name)
+    required = [col.name for col in FOOD.c if col.name not in FOOD_NOT_IN_FILE]
+    rows = read_rows(path, FOOD, "name", extra=FOOD_EXTRA, required=[*required, *FOOD_EXTRA])
+
+    category_ids = name_ids(conn, FoodCategory.__table__.c.category_name)
+    allergen_ids = name_ids(conn, Allergen.__table__.c.name)
+    categories: dict[str, list[int]] = {}
+    allergens: dict[str, list[int]] = {}
+    for row in rows:
+        name = row["name"]
+        where = f"{path.name}: {name!r}"
+        empty = [col for col, value in row.items() if value in (None, "")]
+        empty = [col for col in empty if col != "allergens"]
+        if empty:
+            raise SeedError(f"{where}: empty {empty}")
+        source = row.pop("source").strip()
+        if not FOOD_SOURCE.fullmatch(source):
+            raise SeedError(f"{where}: source {source!r} is not FDC:<id> or SLV:<number>")
+        categories[name] = link_ids(where, row.pop("categories"), category_ids, "categories", True)
+        allergens[name] = link_ids(where, row.pop("allergens"), allergen_ids, "allergens", False)
+
+    foods = upsert(conn, FOOD, "name", rows)
+    food_ids = {n: i for n, i in name_ids(conn, FOOD.c.name).items() if n in categories}
+    seeded = ("food_item_id", set(food_ids.values()))
+    return [
+        foods,
+        sync_links(
+            conn,
+            FOOD_CATEGORY,
+            ("food_item_id", "food_category_id"),
+            seeded,
+            {(food_ids[n], c): True for n, ids in categories.items() for c in ids},
+        ),
+        sync_links(
+            conn,
+            FOOD_ALLERGEN,
+            ("food_item_id", "allergen_id"),
+            seeded,
+            {(food_ids[n], a): True for n, ids in allergens.items() for a in ids},
+        ),
+    ]
+
+
 def load(conn: Connection, seed_dir: Path = SEED_DIR) -> list[TableResult]:
     """Load every seed file inside the caller's transaction."""
     results = []
@@ -323,6 +411,7 @@ def load(conn: Connection, seed_dir: Path = SEED_DIR) -> list[TableResult]:
         path = seed_file(seed_dir, table.name)
         results.append(upsert(conn, table, key, read_rows(path, table, key)))
     results.extend(load_exercises(conn, seed_dir))
+    results.extend(load_foods(conn, seed_dir))
     return results
 
 
