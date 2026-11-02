@@ -1344,8 +1344,8 @@ export interface components {
             password?: string | null;
         };
         /**
-         * @description Table `user_profile`. API ranges follow FR-U7 and algorithms.md section 0;
-         *     they are stricter than the database CHECKs (age 13-100, height 100-250).
+         * @description Table `user_profile`. Ranges of FR-U7 and algorithms.md section 0; weights are
+         *     rounded half up to 2 decimals.
          */
         ProfileInput: {
             age: number;
@@ -1357,6 +1357,8 @@ export interface components {
             /** @enum {number} */
             activity_level_pal: 1.2 | 1.375 | 1.55 | 1.725 | 1.9;
             goal: components["schemas"]["Goal"];
+            experience_level: components["schemas"]["DifficultyLevel"];
+            equipment: components["schemas"]["Equipment"];
             /** @description Target body weight in kg (used by FR-R4) */
             target_value?: number | null;
         };
@@ -1374,16 +1376,20 @@ export interface components {
         };
         InjuryInput: {
             injury_type_id: number;
-            affected_muscle_group: string;
+            /** @description From GET /muscle-groups */
+            affected_muscle_group_id: number;
             severity: components["schemas"]["InjurySeverity"];
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Not in the future in the user's time zone
+             */
             start_date: string;
             /** @default true */
             is_active: boolean;
         };
         InjuryPatch: {
             injury_type_id?: number;
-            affected_muscle_group?: string;
+            affected_muscle_group_id?: number;
             severity?: components["schemas"]["InjurySeverity"];
             /** Format: date */
             start_date?: string;
@@ -1395,8 +1401,10 @@ export interface components {
         Allergen: {
             id: number;
             name: string;
+            description: string;
         };
         AllergyInput: {
+            /** @description Duplicates are dropped (api-rules.md Profile) */
             allergen_ids: number[];
         };
         ExcludedFoodsInput: {
@@ -2509,6 +2517,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     updateInjury: {

@@ -5,10 +5,7 @@ export default function StatsScreen() {
     <PlaceholderScreen
       module="stats"
       upcoming={[
-        'Week, month and 3-month summaries',
-        'Weight, workouts and calorie charts',
-        'Goal date prediction',
-        'Weekly and monthly reports',
+        "676767676767"
       ]}
     />
   );
