@@ -182,3 +182,31 @@ async def accept(
     start = body.start_date if body else None
     plan = await service.accept(user.id, plan_id, start, account.timezone, datetime.now(UTC))
     return TrainingPlanOut.of(plan)
+
+
+sessions_router = APIRouter(tags=["workouts"])
+
+
+class NextSessionOut(BaseModel):
+    training_plan_id: int
+    date: date
+    session: TrainingSessionOut
+
+
+@sessions_router.get(
+    "/sessions/next",
+    operation_id="getNextSession",
+    summary="Next training session of the active plan",
+    responses={401: UNAUTHORIZED, 404: _error("No active plan or no session left")},
+)
+async def get_next_session(
+    user: User,
+    service: Service,
+    users: Annotated[UserRepository, Depends(get_user_repository)],
+) -> NextSessionOut:
+    account = await users.get_by_id(user.id)
+    if account is None:
+        raise AppError(401, ErrorCode.UNAUTHORIZED, "Unknown user")
+    plan, session, day = await service.next_session(user.id, account.timezone, datetime.now(UTC))
+    session_out = TrainingPlanOut.of(plan).sessions[plan.sessions.index(session)]
+    return NextSessionOut(training_plan_id=plan.id, date=day, session=session_out)

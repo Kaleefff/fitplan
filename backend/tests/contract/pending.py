@@ -25,7 +25,6 @@ PENDING_OPERATIONS = (
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
     "listNotifications",  # GET /notifications
-    "getNextSession",  # GET /sessions/next
     "createRecognition",  # POST /meals/recognitions
     "getRecognition",  # GET /meals/recognitions/{recognition_id}
     "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}
