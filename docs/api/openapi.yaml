@@ -272,6 +272,7 @@ paths:
         "401": { $ref: "#/components/responses/InvalidCredentials" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /users/me/password:
     post:
@@ -287,6 +288,7 @@ paths:
         "204": { description: Password changed }
         "401": { $ref: "#/components/responses/InvalidCredentials" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /users/me/delete:
     post:
@@ -303,6 +305,7 @@ paths:
         "204": { description: Account deleted }
         "401": { $ref: "#/components/responses/InvalidCredentials" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /users/me/profile:
     get:

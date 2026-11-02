@@ -7,11 +7,6 @@ serve. Remove an operation here in the PR that implements it.
 PENDING_OPERATIONS = (
     "signInWithGoogle",  # POST /auth/google
     "signInWithApple",  # POST /auth/apple
-    "getMe",  # GET /users/me
-    "updateMe",  # PATCH /users/me
-    "changeEmail",  # POST /users/me/email
-    "changePassword",  # POST /users/me/password
-    "deleteAccount",  # POST /users/me/delete
     "listExercises",  # GET /exercises
     "getExercise",  # GET /exercises/{exercise_id}
     "listExerciseAlternatives",  # GET /exercises/{exercise_id}/alternatives

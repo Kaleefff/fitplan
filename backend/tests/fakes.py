@@ -99,6 +99,23 @@ class InMemoryUserRepository:
     async def get_by_id(self, user_id: int) -> UserRecord | None:
         return self.rows.get(user_id)
 
+    async def update(self, user_id: int, **fields: str) -> UserRecord | None:
+        if user_id not in self.rows:
+            return None
+        self.rows[user_id] = dataclasses.replace(self.rows[user_id], **fields)
+        return self.rows[user_id]
+
+    async def set_email(self, user_id: int, email: str) -> None:
+        if any(row.email == email and row.id != user_id for row in self.rows.values()):
+            raise EmailTakenError
+        self.rows[user_id] = dataclasses.replace(self.rows[user_id], email=email)
+
+    async def set_password(self, user_id: int, password_hash: str) -> None:
+        self.rows[user_id] = dataclasses.replace(self.rows[user_id], password_hash=password_hash)
+
+    async def delete(self, user_id: int) -> None:
+        self.rows.pop(user_id, None)
+
 
 class InMemoryPasswordResetRepository:
     """Tokens only; the password change and session revocation are tested on PostgreSQL."""

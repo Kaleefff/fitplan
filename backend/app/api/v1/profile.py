@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Response
 from pydantic import BaseModel, Field, model_validator
-from pydantic.json_schema import SkipJsonSchema
 
 from app.api.deps import (
     CurrentUser,
@@ -117,18 +116,17 @@ class InjuryBody(BaseModel):
 class InjuryPatchBody(BaseModel):
     """At least one field; a field that is sent may not be null."""
 
-    injury_type_id: Id | SkipJsonSchema[None] = None
-    affected_muscle_group_id: Id | SkipJsonSchema[None] = None
-    severity: InjurySeverity | SkipJsonSchema[None] = None
-    start_date: date | SkipJsonSchema[None] = None
-    is_active: bool | SkipJsonSchema[None] = None
+    # not Optional: an absent field stays None, a null is a type error on that field
+    injury_type_id: Id = Field(default=None)
+    affected_muscle_group_id: Id = Field(default=None)
+    severity: InjurySeverity = Field(default=None)
+    start_date: date = Field(default=None)
+    is_active: bool = Field(default=None)
 
     @model_validator(mode="after")
     def _some_field(self) -> "InjuryPatchBody":
         if not self.model_fields_set:
             raise ValueError("Send at least one field")
-        if nulls := sorted(f for f in self.model_fields_set if getattr(self, f) is None):
-            raise ValueError(f"Fields may not be null: {', '.join(nulls)}")
         return self
 
 
