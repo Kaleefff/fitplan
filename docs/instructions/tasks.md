@@ -71,7 +71,7 @@ Do: extend `01_schema.sql` with what the specs need, then SQLAlchemy 2.0 models 
 | 4 | `exercise`: `equipment` enum instead of `required_equipment`; `is_compound`, `is_bodyweight`; exactly one primary group (partial unique index) |
 | 5 | `injury.affected_muscle_group_id` FK instead of the VARCHAR; new `injury_type_excluded_exercise` |
 | 6 | New `allergen`, `user_allergen`, `food_item_allergen`, `user_excluded_food` |
-| 7 | `food_item`: unique name, `is_active`, `is_vegetarian`, `is_vegan`, `diet_role` (protein/carb/vegetable/fruit/dairy/fat/dish), `suitable_meal_types`, `default_portion_g`, `min_portion_g`, `max_portion_g`, `portion_step_g`, nullable unique `recognition_label` |
+| 7 | `food_item`: unique name, `is_active`, `is_vegetarian`, `is_vegan`, `diet_role` (protein/carb/vegetable/fruit/dairy/fat/dish/other), `suitable_meal_types`, `default_portion_g`, `min_portion_g`, `max_portion_g`, `portion_step_g`, nullable unique `recognition_label` |
 | 8 | `meal.day_index` 1–7; `diet_plan.diet_type`, `meals_per_day` |
 | 9 | `training_plan`: `experience_level`, `equipment` (snapshot), `skipped_muscle_group_ids`; `training_session.session_name`, unique weekday per plan |
 | 10 | `session_exercise.planned_weight` nullable without default; `original_exercise_id` |
@@ -92,7 +92,7 @@ Do: exercises with every field, secondary groups and `injury_type_excluded_exerc
 Done: no empty field; coverage report committed; Kyryl spot-checked the exclusions.
 
 **DB-04 · Food seed** · Reqs: FR-N2, N3, P6, P8 · Depends: DB-02
-Do: per 100 g values from USDA FoodData Central or Polish tables, categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` for Food-101 labels; unmapped labels listed in `database/seed/food101_unmapped.txt`. Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
+Do: per 100 g values from USDA FoodData Central (SR Legacy, FNDDS; dishes FNDDS lacks from the Swedish Food Agency, CC BY 4.0), categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` for Food-101 labels; unmapped labels listed in `database/seed/food101_unmapped.txt`. Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
 Done: validation passes; a sample (dish allergens included) spot-checked against the source.
 
 **DB-05 · CI and compose** · Depends: DB-01
