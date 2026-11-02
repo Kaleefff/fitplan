@@ -7,12 +7,15 @@ import { createAuthManager } from '@/auth/auth-manager';
 import { tokenStore } from '@/auth/token-store';
 
 type User = components['schemas']['User'];
+type Profile = components['schemas']['Profile'];
 export type RegisterInput = components['schemas']['RegisterRequest'];
 
 export type SessionStatus =
   /** Reading the stored session at launch (the splash screen stays visible) */
   | 'restoring'
   | 'signedOut'
+  /** Signed in without a biometric profile: the profile wizard is shown (M-06) */
+  | 'needsProfile'
   | 'signedIn'
   /** A stored session exists but the server could not be reached */
   | 'unreachable';
@@ -21,6 +24,8 @@ type Session = {
   status: SessionStatus;
   /** Null until loaded, or when the backend does not offer GET /users/me yet */
   user: User | null;
+  /** The biometric profile; null while the status is 'needsProfile' */
+  profile: Profile | null;
   /** Message for the 'unreachable' state */
   problem: string | null;
   /** Both throw ApiError, so forms can show field errors */
@@ -28,6 +33,8 @@ type Session = {
   register: (input: RegisterInput) => Promise<void>;
   signOut: () => Promise<void>;
   retry: () => void;
+  /** Called by the wizard after PUT /users/me/profile succeeded; opens Home */
+  completeProfile: (profile: Profile) => void;
 };
 
 export const authManager = createAuthManager({
@@ -54,9 +61,26 @@ async function fetchUser(): Promise<User | null> {
   }
 }
 
-type SessionState = { status: SessionStatus; user: User | null; problem: string | null };
+/** The profile, or null when the user has none yet (404) */
+async function fetchProfile(): Promise<Profile | null> {
+  try {
+    return await unwrap(api.GET('/users/me/profile'));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
 
-const SIGNED_OUT: SessionState = { status: 'signedOut', user: null, problem: null };
+type SessionState = { status: SessionStatus; user: User | null; profile: Profile | null; problem: string | null };
+
+const SIGNED_OUT: SessionState = { status: 'signedOut', user: null, profile: null, problem: null };
+
+async function loadAccountState(): Promise<SessionState> {
+  const [user, profile] = await Promise.all([fetchUser(), fetchProfile()]);
+  return { status: profile ? 'signedIn' : 'needsProfile', user, profile, problem: null };
+}
 
 /** Checks the stored session at launch; never throws */
 async function restoreSession(): Promise<SessionState> {
@@ -68,18 +92,17 @@ async function restoreSession(): Promise<SessionState> {
     if (!(await authManager.refresh())) {
       return SIGNED_OUT;
     }
-    return { status: 'signedIn', user: await fetchUser(), problem: null };
+    return await loadAccountState();
   } catch (error) {
-    return { status: 'unreachable', user: null, problem: userMessage(toApiError(error)) };
+    return { status: 'unreachable', user: null, profile: null, problem: userMessage(toApiError(error)) };
   }
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ status: 'restoring', user: null, problem: null });
+  const [state, setState] = useState<SessionState>({ ...SIGNED_OUT, status: 'restoring' });
 
   const loadAccount = useCallback(async () => {
-    const user = await fetchUser();
-    setState({ status: 'signedIn', user, problem: null });
+    setState(await loadAccountState());
   }, []);
 
   useEffect(() => {
@@ -126,11 +149,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const retry = useCallback(() => {
-    setState({ status: 'restoring', user: null, problem: null });
+    setState({ ...SIGNED_OUT, status: 'restoring' });
     restoreSession().then(setState);
   }, []);
 
-  const value: Session = { ...state, signIn, register, signOut, retry };
+  const completeProfile = useCallback((profile: Profile) => {
+    setState((current) => ({ ...current, status: 'signedIn', profile }));
+  }, []);
+
+  const value: Session = { ...state, signIn, register, signOut, retry, completeProfile };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
