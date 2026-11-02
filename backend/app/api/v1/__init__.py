@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     account,
     auth,
+    body_metrics,
     health,
     nutrition,
     profile,
@@ -21,3 +22,4 @@ api_router.include_router(profile.router)
 api_router.include_router(reference.router)
 api_router.include_router(account.router)
 api_router.include_router(training_plans.sessions_router)
+api_router.include_router(body_metrics.router)

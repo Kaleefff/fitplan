@@ -10,6 +10,7 @@ from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
 from app.services.account import AccountService
 from app.services.auth import AuthService, UserRepository
+from app.services.body_metrics import BodyMetricsService
 from app.services.health import HealthChecker
 from app.services.nutrition import ProfileReader
 from app.services.password_reset import PasswordResetService
@@ -59,6 +60,10 @@ def get_password_reset_service(request: Request) -> PasswordResetService:
 
 def get_account_service(request: Request) -> AccountService:
     return request.app.state.account_service
+
+
+def get_body_metrics_service(request: Request) -> BodyMetricsService:
+    return request.app.state.body_metrics_service
 
 
 @dataclass(frozen=True)
