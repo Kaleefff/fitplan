@@ -15,6 +15,7 @@ from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
 from app.db.session import get_async_engine
 from app.services.account import AccountService
+from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService
 from app.services.body_metrics import BodyMetricsService
 from app.services.diet_plans import DietPlanService
@@ -77,6 +78,7 @@ def create_app(
     app.state.body_metrics_service = BodyMetricsService(repositories.body_metrics)
     app.state.schedule_service = ScheduleService(repositories.schedule)
     app.state.diet_plan_service = DietPlanService(repositories.diet_plans)
+    app.state.analytics_service = AnalyticsService(repositories.analytics)
     app.state.account_service = AccountService(
         settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
     )

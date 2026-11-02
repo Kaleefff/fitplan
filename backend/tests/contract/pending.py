@@ -30,9 +30,6 @@ PENDING_OPERATIONS = (
     "deleteNutritionLog",  # DELETE /nutrition-logs/{nutrition_log_id}
     "getDailySummary",  # GET /nutrition/daily-summary
     "getMealSuggestions",  # GET /nutrition/suggestions
-    "getAnalyticsSummary",  # GET /analytics/summary
-    "getAnalyticsChart",  # GET /analytics/charts/{metric}
-    "getGoalPrediction",  # GET /analytics/goal-prediction
     "listReports",  # GET /reports
     "generateReport",  # POST /reports
     "getReport",  # GET /reports/{report_id}
