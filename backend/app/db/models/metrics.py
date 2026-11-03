@@ -37,6 +37,7 @@ class BodyMetrics(Base):
         CheckConstraint("hip > 0"),
         CheckConstraint("calf > 0"),
         CheckConstraint("fat_percentage BETWEEN 0 AND 100"),
+        UniqueConstraint("user_id", "client_uuid", name="body_metrics_user_id_client_uuid_key"),
         Index(
             "ux_body_metrics_user_day_live",
             "user_id",
@@ -59,7 +60,7 @@ class BodyMetrics(Base):
     fat_percentage: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
     recorded_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=NOW)
     client_uuid: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()")
+        UUID(as_uuid=True), server_default=text("gen_random_uuid()")
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, server_default=NOW, server_onupdate=FetchedValue()
