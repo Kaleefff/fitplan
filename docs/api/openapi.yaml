@@ -524,8 +524,9 @@ paths:
       tags: [library]
       operationId: listExercises
       summary: Exercise library with filters (FR-P8)
-      x-todo:
-        - "Filter by equipment needs an equipment enum on exercise (D-01 #9); today required_equipment is free text"
+      description: |
+        `muscle_group_id` matches an exercise that trains the group, as its primary or a
+        secondary group.
       parameters:
         - name: q
           in: query
@@ -563,6 +564,7 @@ paths:
               schema: { $ref: "#/components/schemas/Exercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /exercises/{exercise_id}/alternatives:
     parameters:
@@ -571,6 +573,11 @@ paths:
       tags: [library]
       operationId: listExerciseAlternatives
       summary: Alternatives with the same main muscle group (FR-A1, algorithms.md 4.9)
+      description: |
+        Eligible exercises (4.2, 4.3) with the same primary group, not the current one
+        and not already in the session, compound first, then by name. 404 for an
+        unknown exercise, another user's session exercise, or a session exercise that
+        does not hold `exercise_id`.
       parameters:
         - name: session_exercise_id
           in: query
@@ -588,6 +595,7 @@ paths:
                 items: { $ref: "#/components/schemas/Exercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /foods:
     get:
@@ -1974,14 +1982,15 @@ components:
         is_primary: { type: boolean }
     Exercise:
       type: object
-      x-todo:
-        - "equipment enum, is_compound, is_bodyweight are needed by algorithms.md 4.2, 4.6, 6.3 (D-01 #9)"
-      required: [id, name, difficulty_level, description, instruction, muscle_groups]
+      required:
+        [id, name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction, muscle_groups]
       properties:
         id: { type: integer }
         name: { type: string }
         difficulty_level: { $ref: "#/components/schemas/DifficultyLevel" }
-        required_equipment: { type: [string, "null"] }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_compound: { type: boolean }
+        is_bodyweight: { type: boolean }
         description: { type: string }
         instruction: { type: string }
         muscle_groups:

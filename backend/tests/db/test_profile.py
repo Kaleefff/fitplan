@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
+from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
@@ -86,6 +87,7 @@ def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
         schedule=SqlScheduleUnitOfWork(factory),
         diet_plans=SqlDietPlanUnitOfWork(factory),
         analytics=SqlAnalyticsUnitOfWork(factory),
+        library=SqlLibraryRepository(factory),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories
