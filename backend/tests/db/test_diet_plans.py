@@ -1,8 +1,7 @@
-"""Diet plans on PostgreSQL with the DB-02 seed and the temporary foods (B-12).
+"""Diet plans on PostgreSQL with the reference seed (B-12).
 
-Loads the reference seed and database/dev/temporary_food_seed.sql; skipped without
-PostgreSQL. When DB-04 lands, load its foods instead: the coverage test then checks
-DB-04's coverage.
+Loads the seed of app.db.seed (DB-02, DB-03, DB-04), so the coverage test runs the
+generator over DB-04's foods; skipped without PostgreSQL.
 """
 
 import functools
@@ -10,7 +9,6 @@ import time
 from collections import defaultdict
 from collections.abc import Iterator
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -36,7 +34,6 @@ from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-SEED = Path(__file__).resolve().parents[3] / "database" / "dev" / "temporary_food_seed.sql"
 TODAY = date.today()
 PROFILES = {
     "male": {
@@ -85,12 +82,6 @@ def seeded(migrated_db):  # noqa: F811
             )
         )
         load(db)
-    connection = _sync_engine().raw_connection()
-    try:
-        connection.autocommit = True
-        connection.cursor().execute(SEED.read_text(encoding="utf-8"))
-    finally:
-        connection.close()
 
 
 @pytest.fixture
@@ -211,7 +202,7 @@ def test_allergens_and_excluded_foods_are_never_selected(api):
         _rows("SELECT id FROM allergen WHERE name = :n", n=name)[0][0]
         for name in ("Milk", "Peanuts")
     )
-    rice = _rows("SELECT id FROM food_item WHERE name = 'Rice, cooked'")[0][0]
+    rice = _rows("SELECT id FROM food_item WHERE name = 'White rice, cooked'")[0][0]
     api.put("/api/v1/users/me/allergies", json={"allergen_ids": [milk, peanuts]}, headers=headers)
     api.put("/api/v1/users/me/excluded-foods", json={"food_item_ids": [rice]}, headers=headers)
 
@@ -227,19 +218,20 @@ def test_allergens_and_excluded_foods_are_never_selected(api):
     assert not chosen & {row[0] for row in with_allergen}
 
 
-def test_gluten_allergy_finds_no_breakfast_carb_in_the_temporary_foods(api):
-    """All breakfast carbs of the temporary seed contain gluten: the role is reported, never
-    filled with an allergen (DB-04 needs gluten-free breakfast carbs)."""
+def test_gluten_allergy_is_planned_from_gluten_free_foods(api):
+    """DB-04 has gluten-free breakfast carbs, so a gluten allergy still gets a plan."""
     headers = _login(api)
     gluten = _rows("SELECT id FROM allergen WHERE name = 'Gluten'")[0][0]
     api.put("/api/v1/users/me/allergies", json={"allergen_ids": [gluten]}, headers=headers)
 
     response = _generate(api, headers)
 
-    assert response.status_code == 422
-    assert response.json()["details"] == [
-        {"field": "food", "code": "no_eligible_food", "meal_type": "breakfast", "role": "carb"}
-    ]
+    assert response.status_code == 201, response.json()
+    chosen = {item["food_item_id"] for meal in response.json()["meals"] for item in meal["items"]}
+    with_gluten = _rows(
+        "SELECT food_item_id FROM food_item_allergen WHERE allergen_id = :a", a=gluten
+    )
+    assert not chosen & {row[0] for row in with_gluten}
 
 
 # ---------------------------------------------------------------- errors and lifecycle

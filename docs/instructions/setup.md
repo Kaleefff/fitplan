@@ -53,6 +53,8 @@ To change the food seed (DATA): edit `database/seed/food_item.csv`. Every row ci
 
 One-time switch (DB-03): a database that still has rows from the removed `database/dev/temporary_training_seed.sql` keeps its exercise ids, but `Plank` stays behind as a "Temporary seed" row. Reset it, which deletes local data: `docker compose down -v && docker compose up -d`, then apply the migrations and load the seed again.
 
+One-time switch (MongoDB 8.2 pin): if `fitplan-mongo` keeps restarting and `docker compose logs mongo` shows `Invalid featureCompatibilityVersion … version: "8.3"`, the volume was created by `mongo:8` (8.3), which 8.2 cannot open. The volume only holds the 6-hour recognition buffer, so remove it: `docker compose rm -sf mongo && docker volume rm fitplan_mongo_data && docker compose up -d`.
+
 ## 4. Check that it works
 
 Replace the user and password with the values from your `.env`.
