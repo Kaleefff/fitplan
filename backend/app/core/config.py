@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -63,6 +63,21 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     max_body_bytes: int = 1024 * 1024
     max_upload_body_bytes: int = 9 * 1024 * 1024
+
+    # Meal photos, stored as meals/<user id>/<uuid>.<ext> (api-rules.md "Recognition");
+    # docker compose sets /data/photos. PHOTO_DIR has no default on purpose.
+    photo_dir: Path | None = None
+
+    @field_validator("photo_dir", mode="before")
+    @classmethod
+    def _empty_photo_dir_is_unset(cls, value: object) -> object:
+        # an empty PHOTO_DIR= would otherwise be Path(""), the current directory
+        return None if isinstance(value, str) and not value.strip() else value
+
+    def photo_root(self) -> Path:
+        if self.photo_dir is None:
+            raise RuntimeError("PHOTO_DIR must be set")
+        return self.photo_dir
 
     def mongo_client_kwargs(self) -> dict[str, object]:
         """Keyword arguments for pymongo.AsyncMongoClient (D18)."""

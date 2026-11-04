@@ -47,3 +47,15 @@ Each element of `recognisedItems`:
     db.meal_recognitions.createIndex({ userId: 1, status: 1 })
 
 The TTL monitor runs about once a minute, so every query also filters `expiresAt > now`.
+
+The backend creates the same indexes at startup (`MongoMealRecognitionRepository.ensure_indexes`), so a database not created by the init script (CI, a fresh deployment) has them too. Same keys and options as the script, so the call is a no-op on a compose database.
+
+## Photo cleanup
+
+When the TTL index has removed a document, its `photoUrl` can no longer be read, so the cleanup job (`app/db/photo_cleanup.py`, run by B-26) looks for orphans instead (proposed default, `questions.md` DB-07). A regular file under `PHOTO_DIR/meals/<userId>/` is deleted only when:
+
+- no unexpired document references it,
+- no `nutrition_log.meal_photo_url` references it (soft-deleted logs included; confirmed photos stay until account deletion),
+- its mtime is older than the TTL plus a 30 min grace, so an upload whose document is not written yet is never touched.
+
+MongoDB is read before PostgreSQL; if either cannot be read, nothing is deleted. Symlinks and paths outside `PHOTO_DIR` are skipped. Account deletion removes `meals/<userId>/` as a whole after `purge_user`; if that step fails, the same rule removes the leftovers.

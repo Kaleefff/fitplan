@@ -1,10 +1,12 @@
 """FastAPI application factory. Run: `uv run uvicorn app.main:app --reload`."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from pymongo import AsyncMongoClient
+from pymongo.errors import PyMongoError
 
 from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
@@ -13,8 +15,9 @@ from app.core.logging import configure_logging
 from app.core.mail import MailSender, SmtpMailSender
 from app.core.middleware import add_middleware
 from app.core.rate_limit import RateLimiter
+from app.db.repositories.meal_recognitions import MongoMealRecognitionRepository
 from app.db.session import get_async_engine
-from app.services.account import AccountService
+from app.services.account import AccountService, RecognitionPurger
 from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService
 from app.services.body_metrics import BodyMetricsService
@@ -31,12 +34,28 @@ from app.services.workouts import WorkoutService
 API_PREFIX = "/api/v1"
 DOCS_URL = f"{API_PREFIX}/docs"
 
+logger = logging.getLogger(__name__)
+
+
+class _LifespanRecognitions:
+    """The MongoDB buffer exists once the lifespan has opened its client (DB-07)."""
+
+    def __init__(self, app: FastAPI) -> None:
+        self._app = app
+
+    async def purge_user(self, user_id: int) -> int:
+        buffer: RecognitionPurger | None = getattr(self._app.state, "recognitions", None)
+        if buffer is None:
+            raise RuntimeError("MongoDB recognition buffer is not available")
+        return await buffer.purge_user(user_id)
+
 
 def create_app(
     settings: Settings | None = None,
     health_checker: HealthChecker | None = None,
     repositories: Repositories | None = None,
     mail_sender: MailSender | None = None,
+    recognitions: RecognitionPurger | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     repositories = repositories or sql_repositories()
@@ -46,6 +65,7 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if health_checker is not None:
             app.state.health_checker = health_checker
+            app.state.recognitions = recognitions
             yield
             return
         mongo = AsyncMongoClient(
@@ -55,6 +75,13 @@ def create_app(
         engine = get_async_engine()
         app.state.mongo = mongo
         app.state.health_checker = DependencyHealthChecker(settings, engine, mongo)
+        buffer = MongoMealRecognitionRepository(mongo[settings.mongo_db])
+        try:
+            # the init script creates them only in compose; CI and fresh deployments need this
+            await buffer.ensure_indexes()
+        except PyMongoError as exc:  # start degraded like /health; reads still filter expiresAt
+            logger.warning("MongoDB indexes not ensured: %s", type(exc).__name__)
+        app.state.recognitions = recognitions or buffer
         try:
             yield
         finally:
@@ -80,7 +107,10 @@ def create_app(
     app.state.diet_plan_service = DietPlanService(repositories.diet_plans)
     app.state.analytics_service = AnalyticsService(repositories.analytics)
     app.state.account_service = AccountService(
-        settings, repositories.users, TokenService(settings, repositories.refresh_tokens)
+        settings,
+        repositories.users,
+        TokenService(settings, repositories.refresh_tokens),
+        _LifespanRecognitions(app),
     )
     app.state.password_reset_service = PasswordResetService(
         settings,

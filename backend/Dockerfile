@@ -18,7 +18,9 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
 
-RUN useradd --system --no-create-home fitplan
+# PHOTO_DIR in compose (photo_data volume); an empty volume takes this owner on mount
+RUN useradd --system --no-create-home fitplan \
+    && mkdir -p /data/photos && chown fitplan:fitplan /data/photos
 USER fitplan
 
 EXPOSE 8000
