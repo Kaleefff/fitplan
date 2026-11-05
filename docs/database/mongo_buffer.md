@@ -7,8 +7,8 @@ Holds only unconfirmed meal recognition results (D3, FR-N4). Created by `databas
 1. The user uploads a photo; the backend stores it under `PHOTO_DIR` and calls `ai-service`.
 2. Labels are mapped to `food_item` rows (`algorithms.md` 11) and one document is written with `status: "pending"`.
 3. Each correction in the review step updates the document.
-4. Confirm writes `nutrition_log` and `nutrition_log_food_item` in one PostgreSQL transaction, then deletes the document.
-5. Unconfirmed documents are deleted by the TTL index after `expiresAt` (6 h). The cleanup job deletes their photos.
+4. Confirm writes `nutrition_log` and `nutrition_log_food_item` in one PostgreSQL transaction, then deletes the document. `meal_photo_url` is the document's `photoUrl` unchanged; the API builds any download URL from it at response time.
+5. Unconfirmed documents are deleted by the TTL index after `expiresAt` (6 h). The cleanup job deletes their photos (Photo cleanup).
 
 AI errors are returned directly; no `failed` document is stored.
 
@@ -20,7 +20,7 @@ AI errors are returned directly; no `failed` document is stored.
 | `userId` | int | `app_user.id` |
 | `status` | string | `pending` |
 | `mealType` | string | `breakfast`, `lunch`, `dinner`, `snack` |
-| `photoUrl` | string | Relative to `PHOTO_DIR`: `meals/<userId>/<uuid>.<ext>` |
+| `photoUrl` | string | Relative to `PHOTO_DIR`: `meals/<userId>/<uuid>.<ext>`; confirm copies it unchanged to `nutrition_log.meal_photo_url` |
 | `model` | object | `name`, `version` returned by `ai-service` |
 | `overallConfidence` | double | 0–1, top candidate |
 | `recognisedItems` | array | See below |
@@ -52,10 +52,10 @@ The backend creates the same indexes at startup (`MongoMealRecognitionRepository
 
 ## Photo cleanup
 
-When the TTL index has removed a document, its `photoUrl` can no longer be read, so the cleanup job (`app/db/photo_cleanup.py`, run by B-26) looks for orphans instead (proposed default, `questions.md` DB-07). A regular file under `PHOTO_DIR/meals/<userId>/` is deleted only when:
+When the TTL index has removed a document, its `photoUrl` can no longer be read, so the cleanup job (`app/db/photo_cleanup.py`, run by B-26) looks for orphans instead. A regular file under `PHOTO_DIR/meals/<userId>/` is deleted only when:
 
 - no unexpired document references it,
 - no `nutrition_log.meal_photo_url` references it (soft-deleted logs included; confirmed photos stay until account deletion),
-- its mtime is older than the TTL plus a 30 min grace, so an upload whose document is not written yet is never touched.
+- its mtime is older than the TTL plus a 30 min grace, so an upload whose document is not written yet, or a confirm running at that moment, is never touched.
 
-MongoDB is read before PostgreSQL; if either cannot be read, nothing is deleted. Symlinks and paths outside `PHOTO_DIR` are skipped. Account deletion removes `meals/<userId>/` as a whole after `purge_user`; if that step fails, the same rule removes the leftovers.
+MongoDB is read before PostgreSQL; if either cannot be read, nothing is deleted. Symlinks and paths outside `PHOTO_DIR` are skipped. Empty user folders are left in place. Account deletion removes `meals/<userId>/` as a whole after `purge_user`; if that step fails, the same rule removes the leftovers.

@@ -18,6 +18,7 @@ Behaviour the OpenAPI contract (`docs/api/openapi.yaml`, D-03) must follow and t
 - Logout with the caller's own refresh token (even an already rotated one) revokes its family, 204; an unknown or foreign token is 401 and revokes nothing.
 - Rate limit on register, login, forgot password and the password-checking account routes: 10 requests per 60 s per client IP and route (`AUTH_RATE_LIMIT`, `AUTH_RATE_WINDOW_SECONDS`), per process; the hard limit is at the reverse proxy. No per-account lockout.
 - Registration: `name` and `surname` required, 1–100 characters after trimming. Wrong password and unknown email give the same response.
+- Email addresses are lowercased as a whole (local part and domain) on register, login and email change: one account per mailbox.
 - Password reset: token stored hashed, single use, 1 h expiry, same response whether the email exists or not; a reset revokes all refresh tokens.
 - Change email or password needs the current password (wrong: 401 `invalid_credentials`, not a session error). Password change revokes all refresh tokens; email change keeps sessions, is not verified, same email is a no-op 200. Social-only accounts get 422 `no_password` for both and delete their account without a password.
 - Account deletion: PostgreSQL first (`app_user` cascades), then the Mongo buffer and the photos in `PHOTO_DIR/meals/<user id>/`. If the second step fails it is logged and the cleanup job removes the leftovers.
@@ -26,14 +27,15 @@ Behaviour the OpenAPI contract (`docs/api/openapi.yaml`, D-03) must follow and t
 ## Profile (FR-U6, U7)
 
 - Profile fields and ranges as `algorithms.md` 0; one error per invalid or missing field.
-- Injuries: no count limit, `start_date` not in the future; listed active first, then newest start date.
+- Injuries: no count limit, `start_date` not in the future; listed active first, then newest start date. `expected_end_date` = `start_date` + the injury type's `avg_healing_time_days`, computed and returned in `Injury` (no column). An injury is never ended automatically; only the user sets `is_active: false`.
 - Allergies and excluded foods are replaced as a whole (PUT): duplicate ids dropped; an unknown or inactive id is 422 `not_found` and nothing changes.
 
 ## Plans (FR-P1–P9, FR-A1)
 
 - Generation, acceptance, swap: `algorithms.md` 4 and 5. A missing plan or another user's plan is 404.
 - `PATCH /session-exercises/{id}` edits sets, reps, rest, weight (0–999.99) of a draft or active plan; archived is 409.
-- `PATCH /training-sessions/{id}` moves a session to another weekday; a weekday already used in the plan is 409.
+- `PATCH /training-sessions/{id}` moves a session to another weekday; a weekday already used in the plan is 409, and so is a session of an archived plan.
+- Adding, editing or ending an injury never changes a plan. When it happens and an active training plan exists, the app asks "Your injuries changed. Generate a new plan?"; yes calls generate with the active plan's goal, days, level and equipment (`algorithms.md` 4.8). The active plan stays until the new draft is accepted; logged workouts are not touched.
 - `GET /sessions/next`: each session of the active plan recurs on its weekday from `start_date` to `end_date`; the next date is today or later in the user's time zone, skipping dates on which that session already has a workout; earliest date wins, ties by `session_order`; 404 without one.
 
 ## Logs (FR-A2, A3, R1 data)
@@ -41,21 +43,23 @@ Behaviour the OpenAPI contract (`docs/api/openapi.yaml`, D-03) must follow and t
 - Every create carries a client `client_uuid`, unique per user (`UNIQUE (user_id, client_uuid)` on `workout_log`, `nutrition_log`, `body_metrics`): another user's identical UUID is stored as that user's own row. Repeating it returns the first answer (201, nothing applied twice); the `client_uuid` of the user's own deleted row is 409. Deletes are soft (`deleted_at`) and keep the adjustments and records they produced.
 - `POST /workouts`: sets matched to planned exercises by `session_exercise_id`, else by `exercise_id`; 422 for a repeated `(exercise_id, set_number)`, an unknown exercise or session, or a `session_exercise_id` outside the given session. Editing a workout (`PUT`) keeps its `client_uuid`, does not adapt the plan and does not recompute records.
 - `POST /body-metrics`: one measurement per day; saving again for the day replaces it (fields not sent become null); the same `client_uuid` may move it to another free day. The newest live measurement is copied to `user_profile.current_weight` and `tdee` is recomputed; a backdated one does not change the profile; deleting the newest restores the previous. A later profile update wins until the next measurement. History newest first.
-- Nutrition logs: macros computed from the food database (grams to 0.1, values half up to 2 places), totals = sum of the rounded items. The same food twice in one log is 422 `duplicate`; a log above 9999.99 kcal is 422 `too_large`. `planned_meal_id` may point to any meal of the user's diet plans. `PATCH` replaces all items when `items` is sent.
-- `GET /nutrition/daily-summary`: targets of the active diet plan (null without one), totals, `remaining` (may be negative), average hunger before and after ignoring empty values.
+- Nutrition logs: macros computed from the food database (grams to 0.1, values half up to 2 places), totals = sum of the rounded items. Items are listed by `food_item_id`. The same food twice in one log is 422 `duplicate`; an item whose grams round to 0.0 is 422 `invalid_value`; a log whose kcal, protein, fat or carbs total is above 9999.99 is 422 `too_large`. `planned_meal_id` may point to any meal of the user's diet plans. `PATCH` replaces all items when `items` is sent.
+- `GET /nutrition/daily-summary`: targets of the active diet plan for any date (null without one), totals, `remaining` (may be negative), average hunger before and after ignoring empty values, rounded half up to one decimal in the response (the repository returns them unrounded); `logs` ordered by id.
 
 ## Recognition (FR-N1–N4)
 
 - Upload: type and size checked, EXIF stripped, stored as `PHOTO_DIR/meals/<user id>/<uuid>.<ext>`; `ai-service` called with a timeout; errors are returned directly (no `failed` document).
 - Review: add, remove, replace items, change grams (nutrition recalculated, `corrected = true`). Confirm as `algorithms.md` 11. A failure inside confirm leaves PostgreSQL unchanged and the document intact.
-- Photos of confirmed meals are kept until account deletion; photos of expired recognitions are removed by the cleanup job, which never deletes when MongoDB is unavailable.
+- `nutrition_log.meal_photo_url` holds the relative `meals/<user id>/<uuid>.<ext>`; any download URL is built at response time (`algorithms.md` 11).
+- Photos of confirmed meals are kept until account deletion; orphaned photos (no unexpired recognition and no nutrition log references them) are removed by the cleanup job as in `mongo_buffer.md` "Photo cleanup", which deletes nothing when MongoDB or PostgreSQL cannot be read.
 
 ## Reports and notifications (FR-R1, R6, R7, P9)
 
 - `report_type` is derived from the period; generating the same period again replaces the stored report. Fewer than 7 days of history is 422 `insufficient_data`. Goal prediction fields are taken as of the generation day; `training_sessions_planned` is the compliance denominator rounded.
 - Export (stretch): CSV `section,key,value`, UTF-8 with BOM; PDF with an embedded Unicode font (Polish letters must print). Same figures as the report.
 - Reminders: the app proposes reminders from the accepted plan's weekdays and meal times and saves them with `PUT /reminders` (whole list replaced, at most 50); the server creates none by itself. `time_of_day` is wall-clock time, never converted.
-- Push tokens (stretch): Expo format only, unique per device (re-registering refreshes it; a token used by another user moves to the new user), at most 10 per user (least recently seen dropped), invalid tokens removed.
+- `GET /notifications`: rows with `scheduled_at <= now`, dismissed ones included, ordered by `scheduled_at` then id, both newest first; paginated with `limit`/`offset`. There is no dismiss endpoint.
+- Push tokens (stretch): Expo format only, unique per device (re-registering refreshes it; a token used by another user moves to the new user), at most 10 per user (least recently seen dropped), invalid tokens removed. `DELETE /devices/push-token` is 204; for an unknown token or another user's token nothing changes.
 - Push delivery (stretch): the `notification` row is the queue (`is_sent = false`); retried for 24 h; `PUSH_ENABLED=false` disables delivery. Producers: weekly report (`progress_update`), new personal record (`achievement`).
 
 ## Sync (NFR-OFF, stretch)
