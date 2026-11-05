@@ -93,7 +93,7 @@ Do: exercises with every field, secondary groups and `injury_type_excluded_exerc
 Done: no empty field; coverage report committed; Kyryl spot-checked the exclusions.
 
 **DB-04 · Food seed** · Reqs: FR-N2, N3, P6, P8 · Depends: DB-02
-Do: per 100 g values from USDA FoodData Central (SR Legacy, FNDDS; dishes FNDDS lacks from the Swedish Food Agency, CC BY 4.0), categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` for Food-101 labels; unmapped labels listed in `database/seed/food101_unmapped.txt`. Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
+Do: per 100 g values from USDA FoodData Central (SR Legacy, FNDDS; dishes FNDDS lacks from the Swedish Food Agency, CC BY 4.0), categories, allergens, flags, role, portions (bounds multiples of the step), `recognition_label` left empty (filled by A-01, D25). Enough items per role and meal type for vegetarian and vegan plans (including high-protein vegan options at breakfast). Validation script with the kcal rule of `algorithms.md` 0.
 Done: validation passes; a sample (dish allergens included) spot-checked against the source.
 
 **DB-05 · CI and compose** · Depends: DB-01
@@ -107,9 +107,9 @@ Done: tests prove an injury-excluded exercise and a food with a user's allergen 
 **DB-14 · Account, profile and plan repositories** · Reqs: FR-U1–U4, U6, U7, FR-P1–P9 · Depends: DB-01 · Written by API, reviewed by DATA (D24) · Status: done (PR #31 and later API PRs).
 Do: repositories for `app_user`, `refresh_token`, `password_reset_token`, `user_profile`, `injury`, `user_allergen`, `user_excluded_food`, training and diet plan persistence, `reminder`, `notification`. The others (`oauth_identity`, `device_push_token`, `progress_report`) come with B-07, S-03 and B-25 under the same rule.
 
-**D-05 · AI model feasibility** · Reqs: FR-N1–N4, NFR-PERF · Due: before stage 3
-Do: download `BinhQuocNguyen/food-recognition-model` (its `classification_model.h5` is listed at 121 bytes, possibly a pointer without weights); check the weights load and the label list; run ≥ 50 photos including Polish meals; top-1, top-3, CPU latency. Go if top-3 ≥ 80 % on Food-101 photos and ≥ 60 % on Polish meals with the request under 10 s; otherwise another Food-101 classifier or fine-tuned EfficientNet-B0 (interface unchanged).
-Done: verdict with numbers in `docs/ai_evaluation.md`; D12 updated.
+**D-05 · Gemini feasibility** · Reqs: FR-N1–N4, NFR-PERF · Due: before stage 3
+Do: run ≥ 50 photos including Polish meals through Gemini with the label-restricted response schema (D25); measure the correct food among an item's label and alternatives, all ingredients found, gram error against weighed portions where available, and latency. Go if the label and alternatives hold the correct food ≥ 80 % on common dishes and ≥ 60 % on Polish meals with the request under 10 s; otherwise another Gemini model or a tuned prompt (interface unchanged).
+Done: verdict with numbers in `docs/ai_evaluation.md`; D25 confirmed.
 
 ### API
 
@@ -172,15 +172,15 @@ Done: every tile navigates to its feature (placeholder until built).
 ### DATA
 
 **A-01 · ai-service** · Reqs: FR-N2, NFR-PERF · Depends: D-05
-Do: container with the chosen model loaded at startup from stored weights, `/predict` (type and size check, resize, top-K labels with confidence, model name and version) and `/health`; compose service with resource limits.
-Done: starts offline; median inference time documented.
+Do: `ai-service` container with `/predict` (type and size check, resize, Gemini call with the label-restricted response schema and a timeout, the output of `algorithms.md` 11, model name and version) and `/health`; a data migration sets `recognition_label` = lower(`name`) for every food (names are unique after lower-casing), and foods added later get it the same way; `GEMINI_API_KEY` and `GEMINI_MODEL` read from the environment and never logged; compose service with resource limits.
+Done: a test photo returns the documented shape; the key belongs to a billing-enabled project; a Gemini timeout or error returns an error, never a partial result; median latency documented.
 
 **DB-07 · Mongo buffer repository and photo cleanup** · Reqs: FR-N4, U5 · Depends: DB-01
 Do: repository for `meal_recognitions` per `mongo_buffer.md` (create, get, update items, delete, purge a user), indexes ensured at startup, every read filters `expiresAt > now`; cleanup function for orphaned photos (`mongo_buffer.md` Photo cleanup; never deletes when MongoDB or PostgreSQL cannot be read).
 Done: tests prove an expired, not yet deleted document is never returned.
 
 **DB-08 · Label matching and confirm** · Reqs: FR-N2, N3, N4 · Depends: DB-04, DB-07
-Do: map candidates to foods, default portions, nutrition, `low_confidence`, `allergy_warning` (`algorithms.md` 11); confirm function writing `nutrition_log` and items in one transaction, then deleting the document.
+Do: map detections to foods (label match, model grams with default portion as fallback, merge of the same food), nutrition, `low_confidence`, `allergy_warning` (`algorithms.md` 11); confirm function writing `nutrition_log` and items in one transaction, then deleting the document.
 Done: an unknown label gives `food_item_id: null`; a failure inside confirm leaves PostgreSQL unchanged and the document intact.
 
 **DB-09 · Log repositories** · Reqs: FR-A2, A3, R1, R2 · Depends: DB-01
@@ -342,9 +342,9 @@ Done: a backup restores into a clean instance; the API answers only over HTTPS.
 Do: size the DB pool and workers, then Locust with 500 concurrent sessions against a baseline; plan generation ≤ 3 s; photo analysis ≤ 10 s on a throttled 4G profile.
 Done: results table with pass or fail per NFR.
 
-**T-03 · AI accuracy** · DATA · Do: rerun the D-05 evaluation on the final pipeline (top-1, top-3, latency, effect of default portions); add to `docs/ai_evaluation.md`.
+**T-03 · AI accuracy** · DATA · Do: rerun the D-05 evaluation on the final pipeline (label accuracy, label and alternatives, gram error, latency); add to `docs/ai_evaluation.md`.
 
-**T-08 · GDPR deletion audit** · DATA + API · Done: written audit with the queries showing nothing left in PostgreSQL, MongoDB, photos or logs.
+**T-08 · GDPR deletion audit** · DATA + API · Done: written audit with the queries showing nothing left in PostgreSQL, MongoDB, photos or logs; it states that photos are sent to Gemini at analysis time only and are not stored by the app outside `PHOTO_DIR`, and records the paid Gemini tier (D25) and Google's limited abuse-monitoring logging of photos.
 
 **T-02 · Integration and requirement tests** · API
 Do: replace the mock with the real stack together with APP, fix contract drift, run scenarios S1–S3 (chapter 6.1), the FR-P2 property test and the FR-A4 negative test, complete pytest coverage.

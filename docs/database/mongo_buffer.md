@@ -4,7 +4,7 @@ Holds only unconfirmed meal recognition results (D3, FR-N4). Created by `databas
 
 ## Lifecycle
 
-1. The user uploads a photo; the backend stores it under `PHOTO_DIR` and calls `ai-service`.
+1. The user uploads a photo; the backend stores it under `PHOTO_DIR` and calls `ai-service`, which calls the Gemini API (D25).
 2. Labels are mapped to `food_item` rows (`algorithms.md` 11) and one document is written with `status: "pending"`.
 3. Each correction in the review step updates the document.
 4. Confirm writes `nutrition_log` and `nutrition_log_food_item` in one PostgreSQL transaction, then deletes the document. `meal_photo_url` is the document's `photoUrl` unchanged; the API builds any download URL from it at response time.
@@ -21,8 +21,8 @@ AI errors are returned directly; no `failed` document is stored.
 | `status` | string | `pending` |
 | `mealType` | string | `breakfast`, `lunch`, `dinner`, `snack` |
 | `photoUrl` | string | Relative to `PHOTO_DIR`: `meals/<userId>/<uuid>.<ext>`; confirm copies it unchanged to `nutrition_log.meal_photo_url` |
-| `model` | object | `name`, `version` returned by `ai-service` |
-| `overallConfidence` | double | 0–1, top candidate |
+| `model` | object | `name`, `version` of the Gemini model, returned by `ai-service` |
+| `overallConfidence` | double | 0–1, highest item confidence (0 when nothing is found) |
 | `recognisedItems` | array | See below |
 | `createdAt` | date | Creation time |
 | `expiresAt` | date | `createdAt` + 6 h, used by the TTL index |
@@ -33,10 +33,10 @@ Each element of `recognisedItems`:
 | --- | --- | --- |
 | `name` | string | Model label, or the food name for an item added by hand |
 | `foodItemId` | int / null | Matched `food_item.id`; null until the user picks one |
-| `candidates` | array | Top-K `{label, confidence, foodItemId}` from the model |
+| `candidates` | array | The model's label and up to 2 alternatives, each `{label, confidence, foodItemId}` |
 | `confidence` | double | 0–1 |
 | `lowConfidence` | bool | confidence < 0.30 |
-| `grams` | double | Starts at `default_portion_g`, then as corrected |
+| `grams` | double | Starts at the model's estimate (fallback `default_portion_g`, `algorithms.md` 11), then as corrected |
 | `nutrition` | object | `kcal`, `protein`, `fat`, `carbs` for `grams` |
 | `allergyWarning` | bool | The food shares an allergen with the user |
 | `corrected` | bool | The user changed the item or grams |

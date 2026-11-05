@@ -2,7 +2,7 @@
 
 Condensed from the thesis (chapter 4, scenarios 6.1). Binding for implementation; cite the IDs in PRs. Items marked *stretch* are in scope but built last, in the cut-line order of `tasks.md`.
 
-Actor: the user of the mobile app. External system: the self-hosted `ai-service` (meal photo recognition).
+Actor: the user of the mobile app. External system: the Gemini API (meal photo recognition), reached through the self-hosted `ai-service`.
 
 ## Functional
 

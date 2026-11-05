@@ -6,7 +6,7 @@ Engineering thesis project (Lublin University of Technology): mobile app for per
 
 - Backend: Python, FastAPI, SQLAlchemy 2.0, Alembic, Pydantic. API prefix `/api/v1`.
 - PostgreSQL 17 (all persistent data) + MongoDB 8 (TTL buffer `meal_recognitions`, 6 h). Drivers: psycopg 3, async in the API and sync in Alembic (D17); PyMongo async (D18).
-- `ai-service`: separate container, pretrained Food-101 model behind a `RecognitionProvider` interface (D12, verified by D-05).
+- `ai-service`: separate container, a thin client of the Gemini API behind a `RecognitionProvider` interface (D25, checked by D-05).
 - Mobile: React Native, Expo, TypeScript; Android 10+ primary.
 - Local environment: docker-compose. Never commit `.env`; extend `.env.example`.
 
