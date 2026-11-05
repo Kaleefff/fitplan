@@ -8,10 +8,17 @@ from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import RateLimiter
 from app.core.security import InvalidTokenError, decode_access_token
+from app.services.account import AccountService
+from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService, UserRepository
+from app.services.body_metrics import BodyMetricsService
+from app.services.diet_plans import DietPlanService
 from app.services.health import HealthChecker
+from app.services.library import LibraryService
 from app.services.nutrition import ProfileReader
+from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.schedule import ScheduleService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
 
@@ -49,6 +56,34 @@ def get_training_plan_service(request: Request) -> TrainingPlanService:
 
 def get_profile_service(request: Request) -> ProfileService:
     return request.app.state.profile_service
+
+
+def get_password_reset_service(request: Request) -> PasswordResetService:
+    return request.app.state.password_reset_service
+
+
+def get_account_service(request: Request) -> AccountService:
+    return request.app.state.account_service
+
+
+def get_body_metrics_service(request: Request) -> BodyMetricsService:
+    return request.app.state.body_metrics_service
+
+
+def get_schedule_service(request: Request) -> ScheduleService:
+    return request.app.state.schedule_service
+
+
+def get_diet_plan_service(request: Request) -> DietPlanService:
+    return request.app.state.diet_plan_service
+
+
+def get_analytics_service(request: Request) -> AnalyticsService:
+    return request.app.state.analytics_service
+
+
+def get_library_service(request: Request) -> LibraryService:
+    return request.app.state.library_service
 
 
 @dataclass(frozen=True)

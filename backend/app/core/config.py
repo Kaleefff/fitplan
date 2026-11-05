@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     auth_rate_limit: int = 10
     auth_rate_window_seconds: int = 60
 
+    # Password reset (api-rules.md "Auth and account"); Mailpit in docker compose (DB-05)
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    mail_from: str = "FitPlan Pro <no-reply@fitplan.local>"
+    password_reset_url: str = "fitplan://reset-password"  # the app's deep link (M-05)
+    password_reset_minutes: int = 60
+
     def jwt_signing_key(self) -> str:
         key = self.jwt_secret.get_secret_value()
         if len(key.encode("utf-8")) < MIN_JWT_SECRET_BYTES:

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -67,3 +67,32 @@ class SqlUserRepository:
         async with self._sessions() as session:
             user = await session.get(AppUser, user_id)
             return None if user is None else _record(user)
+
+    async def update(self, user_id: int, **fields: str) -> UserRecord | None:
+        """name, surname, timezone (PATCH /users/me)."""
+        async with self._sessions.begin() as session:
+            await session.execute(update(AppUser).where(AppUser.id == user_id).values(**fields))
+            user = await session.get(AppUser, user_id, populate_existing=True)
+            return None if user is None else _record(user)
+
+    async def set_email(self, user_id: int, email: str) -> None:
+        async with self._sessions.begin() as session:
+            try:
+                await session.execute(
+                    update(AppUser).where(AppUser.id == user_id).values(email=email)
+                )
+            except IntegrityError as exc:
+                if getattr(exc.orig.diag, "constraint_name", None) == EMAIL_UNIQUE_CONSTRAINT:
+                    raise EmailTakenError from None
+                raise
+
+    async def set_password(self, user_id: int, password_hash: str) -> None:
+        async with self._sessions.begin() as session:
+            await session.execute(
+                update(AppUser).where(AppUser.id == user_id).values(password_hash=password_hash)
+            )
+
+    async def delete(self, user_id: int) -> None:
+        """Every row the user owns goes with app_user (ON DELETE CASCADE, DB-01)."""
+        async with self._sessions.begin() as session:
+            await session.execute(delete(AppUser).where(AppUser.id == user_id))

@@ -1,11 +1,17 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    account,
+    analytics,
     auth,
+    body_metrics,
+    diet_plans,
     health,
+    library,
     nutrition,
     profile,
     reference,
+    schedule,
     training_plans,
     workouts,
 )
@@ -18,3 +24,10 @@ api_router.include_router(workouts.router)
 api_router.include_router(training_plans.router)
 api_router.include_router(profile.router)
 api_router.include_router(reference.router)
+api_router.include_router(account.router)
+api_router.include_router(training_plans.sessions_router)
+api_router.include_router(body_metrics.router)
+api_router.include_router(schedule.router)
+api_router.include_router(diet_plans.router)
+api_router.include_router(analytics.router)
+api_router.include_router(library.router)
