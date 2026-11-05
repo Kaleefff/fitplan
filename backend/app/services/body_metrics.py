@@ -53,7 +53,7 @@ class BodyMetricsStore(Protocol):
 
     async def lock_user(self, user_id: int) -> None: ...
 
-    async def by_client_uuid(self, client_uuid: uuid.UUID) -> MetricsView | None: ...
+    async def by_client_uuid(self, user_id: int, client_uuid: uuid.UUID) -> MetricsView | None: ...
 
     async def live_on(self, user_id: int, day: date) -> MetricsView | None: ...
 
@@ -66,10 +66,10 @@ class BodyMetricsStore(Protocol):
     ) -> int: ...
 
     async def replace(
-        self, metrics_id: int, values: MetricsIn, client_uuid: uuid.UUID | None
+        self, user_id: int, metrics_id: int, values: MetricsIn, client_uuid: uuid.UUID | None
     ) -> None: ...
 
-    async def soft_delete(self, metrics_id: int) -> None: ...
+    async def soft_delete(self, user_id: int, metrics_id: int) -> None: ...
 
     async def history(
         self, user_id: int, date_from: date | None, date_to: date | None
@@ -114,7 +114,7 @@ class BodyMetricsService:
             newest_before = await store.newest(user_id)
             target = None
             if client_uuid is not None:
-                target = await store.by_client_uuid(client_uuid)
+                target = await store.by_client_uuid(user_id, client_uuid)
                 if target is not None and (target.user_id != user_id or target.deleted):
                     raise _conflict("client_uuid is already used", "body.client_uuid")
                 if target is not None and target.same_values(values):
@@ -123,10 +123,10 @@ class BodyMetricsService:
             if target is not None:
                 if day is not None and day.id != target.id:
                     raise _conflict("Another measurement exists on that day", "body.measured_on")
-                await store.replace(target.id, values, client_uuid)
+                await store.replace(user_id, target.id, values, client_uuid)
                 saved_id = target.id
             elif day is not None:
-                await store.replace(day.id, values, client_uuid or day.client_uuid)
+                await store.replace(user_id, day.id, values, client_uuid or day.client_uuid)
                 saved_id = day.id
             else:
                 saved_id = await store.insert(user_id, values, client_uuid)
@@ -140,7 +140,7 @@ class BodyMetricsService:
             if row is None or row.deleted:
                 raise AppError(404, ErrorCode.NOT_FOUND, "Not found")
             newest_before = await store.newest(user_id)
-            await store.soft_delete(metrics_id)
+            await store.soft_delete(user_id, metrics_id)
             await self._sync_profile(store, user_id, newest_before, metrics_id)
 
     async def history(

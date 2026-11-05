@@ -392,7 +392,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Exercise library with filters (FR-P8) */
+        /**
+         * Exercise library with filters (FR-P8)
+         * @description `muscle_group_id` matches an exercise that trains the group, as its primary or a
+         *     secondary group.
+         */
         get: operations["listExercises"];
         put?: never;
         post?: never;
@@ -430,7 +434,13 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Alternatives with the same main muscle group (FR-A1, algorithms.md 4.9) */
+        /**
+         * Alternatives with the same main muscle group (FR-A1, algorithms.md 4.9)
+         * @description Eligible exercises (4.2, 4.3) with the same primary group, not the current one
+         *     and not already in the session, compound first, then by name. 404 for an
+         *     unknown exercise, another user's session exercise, or a session exercise that
+         *     does not hold `exercise_id`.
+         */
         get: operations["listExerciseAlternatives"];
         put?: never;
         post?: never;
@@ -1275,7 +1285,11 @@ export interface components {
         InjurySeverity: "mild" | "moderate" | "severe";
         /** @enum {string} */
         ReportType: "weekly" | "monthly" | "custom";
-        /** @description 8-72 bytes in UTF-8, at least one letter and one digit (bcrypt limit) */
+        /**
+         * @description 8-72 bytes in UTF-8 (the bcrypt limit; maxLength counts characters, so a
+         *     password with non-ASCII letters can be rejected below 72), at least one letter
+         *     and one digit (algorithms.md 0)
+         */
         Password: string;
         RegisterRequest: {
             /** Format: email */
@@ -1426,7 +1440,9 @@ export interface components {
             id: number;
             name: string;
             difficulty_level: components["schemas"]["DifficultyLevel"];
-            required_equipment?: string | null;
+            equipment: components["schemas"]["Equipment"];
+            is_compound: boolean;
+            is_bodyweight: boolean;
             description: string;
             instruction: string;
             muscle_groups: components["schemas"]["ExerciseMuscleGroup"][];
@@ -1543,6 +1559,8 @@ export interface components {
         };
         Meal: {
             id: number;
+            /** @description Day of the 7-day plan; today's = ((date - start_date) mod 7) + 1 (algorithms.md 5.1) */
+            day_index: number;
             meal_type: components["schemas"]["MealType"];
             meal_order: number;
             /** Format: time */
@@ -1557,6 +1575,9 @@ export interface components {
             id: number;
             name: string;
             goal: components["schemas"]["Goal"];
+            /** @enum {string} */
+            diet_type: "omnivore" | "vegetarian" | "vegan";
+            meals_per_day: number;
             /** Format: date-time */
             generated_at: string;
             /** Format: date */
@@ -2352,6 +2373,7 @@ export interface operations {
             401: components["responses"]["InvalidCredentials"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+            429: components["responses"]["RateLimited"];
         };
     };
     changePassword: {
@@ -2376,6 +2398,7 @@ export interface operations {
             };
             401: components["responses"]["InvalidCredentials"];
             422: components["responses"]["ValidationError"];
+            429: components["responses"]["RateLimited"];
         };
     };
     deleteAccount: {
@@ -2400,6 +2423,7 @@ export interface operations {
             };
             401: components["responses"]["InvalidCredentials"];
             422: components["responses"]["ValidationError"];
+            429: components["responses"]["RateLimited"];
         };
     };
     getProfile: {
@@ -2757,6 +2781,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     listExerciseAlternatives: {
@@ -2787,6 +2812,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     listFoods: {
@@ -3148,6 +3174,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     acceptDietPlan: {
@@ -3854,6 +3881,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getAnalyticsSummary: {

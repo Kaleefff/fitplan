@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.enums import AdjustmentReason, NotificationType
 from app.db.models import (
+    AppUser,
     Exercise,
     ExerciseMuscleGroup,
     MuscleGroup,
@@ -44,16 +45,18 @@ from app.services.workouts import (
     WorkoutView,
 )
 
-CLIENT_UUID_CONSTRAINT = "workout_log_client_uuid_key"
+CLIENT_UUID_CONSTRAINT = "workout_log_user_id_client_uuid_key"
 
 
 class SqlWorkoutStore:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def find_by_client_uuid(self, client_uuid: uuid.UUID) -> WorkoutView | None:
+    async def find_by_client_uuid(self, user_id: int, client_uuid: uuid.UUID) -> WorkoutView | None:
         log = await self._session.scalar(
-            select(WorkoutLog).where(WorkoutLog.client_uuid == client_uuid)
+            select(WorkoutLog).where(
+                WorkoutLog.user_id == user_id, WorkoutLog.client_uuid == client_uuid
+            )
         )
         return None if log is None else await self._view(log)
 
@@ -203,6 +206,11 @@ class SqlWorkoutStore:
         await self._session.flush()
 
     async def current_record(self, user_id: int, exercise_id: int) -> tuple[Decimal, int] | None:
+        # no record yet means no row to lock: one writer per user, or two first records
+        # of an exercise would both be current (ux_personal_record_one_current)
+        await self._session.execute(
+            select(AppUser.id).where(AppUser.id == user_id).with_for_update()
+        )
         row = await self._session.execute(
             select(PersonalRecord.max_weight, PersonalRecord.max_reps)
             .where(
@@ -219,6 +227,7 @@ class SqlWorkoutStore:
         self,
         user_id: int,
         exercise_id: int,
+        workout_id: int,
         weight: Decimal,
         reps: int,
         estimated_1rm: Decimal,
@@ -236,6 +245,7 @@ class SqlWorkoutStore:
         record = PersonalRecord(
             user_id=user_id,
             exercise_id=exercise_id,
+            workout_log_id=workout_id,
             max_weight=weight,
             max_reps=reps,
             e1rm=estimated_1rm,
@@ -267,15 +277,9 @@ class SqlWorkoutStore:
             .where(PlanAdjustment.workout_log_id == workout_id)
             .order_by(PlanAdjustment.id)
         )
-        # the records a workout created are named by its achievement notifications
-        record_ids = select(Notification.data["personal_record_id"].as_integer()).where(
-            Notification.user_id == user_id,
-            Notification.message_type == NotificationType.ACHIEVEMENT,
-            Notification.data["workout_log_id"].as_integer() == workout_id,
-        )
         records = await self._session.scalars(
             select(PersonalRecord)
-            .where(PersonalRecord.id.in_(record_ids))
+            .where(PersonalRecord.user_id == user_id, PersonalRecord.workout_log_id == workout_id)
             .order_by(PersonalRecord.id)
         )
         return WorkoutResult(

@@ -165,6 +165,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "schedule": _no_workout_store,
         "diet_plans": _no_workout_store,
         "analytics": _no_workout_store,
+        "library": _no_workout_store,
         **overrides,
     }
     return Repositories(**values)

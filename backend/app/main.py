@@ -23,6 +23,7 @@ from app.services.auth import AuthService
 from app.services.body_metrics import BodyMetricsService
 from app.services.diet_plans import DietPlanService
 from app.services.health import DependencyHealthChecker, HealthChecker
+from app.services.library import LibraryService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
 from app.services.repositories import Repositories, sql_repositories
@@ -106,6 +107,7 @@ def create_app(
     app.state.schedule_service = ScheduleService(repositories.schedule)
     app.state.diet_plan_service = DietPlanService(repositories.diet_plans)
     app.state.analytics_service = AnalyticsService(repositories.analytics)
+    app.state.library_service = LibraryService(repositories.library, repositories.training_plans)
     app.state.account_service = AccountService(
         settings,
         repositories.users,

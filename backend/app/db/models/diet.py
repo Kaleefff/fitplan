@@ -214,6 +214,7 @@ class NutritionLog(Base):
             "(ai_confidence IS NULL) = (ai_was_edited IS NULL)",
             name="nutrition_log_check",
         ),
+        UniqueConstraint("user_id", "client_uuid", name="nutrition_log_user_id_client_uuid_key"),
         Index("ix_nutrition_log_user_date", "user_id", "log_date"),
         Index("ix_nutrition_log_planned_meal_id", "planned_meal_id"),
     )
@@ -221,7 +222,7 @@ class NutritionLog(Base):
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
     client_uuid: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()")
+        UUID(as_uuid=True), server_default=text("gen_random_uuid()")
     )
     log_date: Mapped[date] = mapped_column(Date)
     meal_type: Mapped[MealType] = mapped_column(MEAL_TYPE)

@@ -77,7 +77,7 @@ Do: extend `01_schema.sql` with what the specs need, then SQLAlchemy 2.0 models 
 | 10 | `session_exercise.planned_weight` nullable without default; `original_exercise_id` |
 | 11 | `workout_log.rpe_rating` nullable; `workout_set.completed`, `workout_set.rpe`; new `plan_adjustment`; `personal_record.e1rm` |
 | 12 | `nutrition_log.planned_meal_id` (FK to `meal`, SET NULL) |
-| 13 | `client_uuid` (unique), `updated_at`, `deleted_at` on `workout_log`, `nutrition_log`, `body_metrics`; one live measurement per day |
+| 13 | `client_uuid` (unique per user, DB-09), `updated_at`, `deleted_at` on `workout_log`, `nutrition_log`, `body_metrics`; one live measurement per day |
 | 14 | `progress_report`: nullable `weight_difference` and `avg_cals_daily`; compliance %, `key_lifts`, `irregular_data`, `is_auto`; unique period per user and type |
 | 15 | `notification.data`, `sent_at`; new `reminder`, `device_push_token`, `refresh_token`, `password_reset_token`, `oauth_identity` |
 

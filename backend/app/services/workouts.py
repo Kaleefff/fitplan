@@ -135,7 +135,9 @@ class WorkoutResult:
 class WorkoutStore(Protocol):
     """Every call of one `WorkoutUnitOfWork` runs in the same transaction."""
 
-    async def find_by_client_uuid(self, client_uuid: uuid.UUID) -> WorkoutView | None: ...
+    async def find_by_client_uuid(
+        self, user_id: int, client_uuid: uuid.UUID
+    ) -> WorkoutView | None: ...
 
     async def lock_session_plan(
         self, user_id: int, training_session_id: int
@@ -167,6 +169,7 @@ class WorkoutStore(Protocol):
         self,
         user_id: int,
         exercise_id: int,
+        workout_id: int,
         weight: Decimal,
         reps: int,
         estimated_1rm: Decimal,
@@ -271,7 +274,7 @@ class WorkoutService:
                 return await self._replay(store, user_id, workout)
 
     async def _replay(self, store: WorkoutStore, user_id: int, workout: WorkoutIn):
-        existing = await store.find_by_client_uuid(workout.client_uuid)
+        existing = await store.find_by_client_uuid(user_id, workout.client_uuid)
         if existing is None or existing.user_id != user_id or existing.deleted:
             raise AppError(409, ErrorCode.CONFLICT, "client_uuid is already used")
         return await store.result(user_id, existing.id)
@@ -300,7 +303,9 @@ class WorkoutService:
         return names, plan, matched
 
     async def _create(self, store: WorkoutStore, user_id: int, workout: WorkoutIn):
-        if workout.client_uuid is not None and await store.find_by_client_uuid(workout.client_uuid):
+        if workout.client_uuid is not None and await store.find_by_client_uuid(
+            user_id, workout.client_uuid
+        ):
             return await self._replay(store, user_id, workout)
 
         names, plan, matched = await self._resolve(store, user_id, workout)
@@ -330,7 +335,13 @@ class WorkoutService:
                 continue
             estimated = round_half_up(e1rm(record.weight_kg, record.reps), 2)
             record_id = await store.replace_record(
-                user_id, exercise_id, record.weight_kg, record.reps, estimated, workout.log_date
+                user_id,
+                exercise_id,
+                workout_id,
+                record.weight_kg,
+                record.reps,
+                estimated,
+                workout.log_date,
             )
             await store.notify_achievement(
                 user_id,

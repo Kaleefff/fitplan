@@ -20,6 +20,7 @@ from app.db.models import (
     SessionExercise,
     TrainingPlan,
     TrainingSession,
+    UserProfile,
     WorkoutLog,
 )
 from app.domain.constants import DifficultyLevel, Equipment, InjurySeverity
@@ -29,6 +30,7 @@ from app.services.training_plans import (
     PlanView,
     SessionExerciseView,
     SessionView,
+    SwapContext,
 )
 
 
@@ -204,6 +206,48 @@ class SqlTrainingPlanStore:
             )
         )
         return {(session_id, day) for session_id, day in rows}
+
+    async def swap_context(self, user_id: int, session_exercise_id: int) -> SwapContext | None:
+        row = (
+            await self._session.execute(
+                select(
+                    SessionExercise.exercise_id,
+                    SessionExercise.training_session_id,
+                    TrainingPlan.status,
+                    TrainingPlan.experience_level,
+                    TrainingPlan.equipment,
+                )
+                .join(TrainingSession, TrainingSession.id == SessionExercise.training_session_id)
+                .join(TrainingPlan, TrainingPlan.id == TrainingSession.training_plan_id)
+                .where(SessionExercise.id == session_exercise_id, TrainingPlan.user_id == user_id)
+            )
+        ).first()
+        if row is None:
+            return None
+        in_session = await self._session.scalars(
+            select(SessionExercise.exercise_id).where(
+                SessionExercise.training_session_id == row.training_session_id
+            )
+        )
+        return SwapContext(
+            exercise_id=row.exercise_id,
+            plan_status=row.status.value,
+            experience_level=DifficultyLevel(row.experience_level.value),
+            equipment=Equipment(row.equipment.value),
+            session_exercise_ids=frozenset(in_session),
+        )
+
+    async def profile_limits(self, user_id: int) -> tuple[DifficultyLevel, Equipment] | None:
+        row = (
+            await self._session.execute(
+                select(UserProfile.experience_level, UserProfile.equipment).where(
+                    UserProfile.user_id == user_id
+                )
+            )
+        ).first()
+        if row is None:
+            return None
+        return DifficultyLevel(row.experience_level.value), Equipment(row.equipment.value)
 
     async def _view(self, plan: TrainingPlan) -> PlanView:
         await self._session.refresh(plan)  # server defaults and the updates above

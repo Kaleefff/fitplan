@@ -7,12 +7,16 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import AppUser, BodyMetrics, UserProfile
 from app.db.repositories.profile_data import SqlProfileStore
 from app.services.body_metrics import MEASURES, MetricsIn, MetricsView
 from app.services.profile import ProfileView
+from app.services.workouts import ClientUuidTakenError
+
+CLIENT_UUID_CONSTRAINT = "body_metrics_user_id_client_uuid_key"
 
 
 def _view(row: BodyMetrics) -> MetricsView:
@@ -41,8 +45,10 @@ class SqlBodyMetricsStore:
         )
         return None if row is None else _view(row)
 
-    async def by_client_uuid(self, client_uuid: uuid.UUID) -> MetricsView | None:
-        return await self._one(BodyMetrics.client_uuid == client_uuid)
+    async def by_client_uuid(self, user_id: int, client_uuid: uuid.UUID) -> MetricsView | None:
+        return await self._one(
+            BodyMetrics.user_id == user_id, BodyMetrics.client_uuid == client_uuid
+        )
 
     async def live_on(self, user_id: int, day: date) -> MetricsView | None:
         return await self._one(
@@ -69,22 +75,31 @@ class SqlBodyMetricsStore:
         if client_uuid is not None:
             row.client_uuid = client_uuid
         self._session.add(row)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            if getattr(exc.orig.diag, "constraint_name", None) == CLIENT_UUID_CONSTRAINT:
+                raise ClientUuidTakenError from None
+            raise
         return row.id
 
     async def replace(
-        self, metrics_id: int, values: MetricsIn, client_uuid: uuid.UUID | None
+        self, user_id: int, metrics_id: int, values: MetricsIn, client_uuid: uuid.UUID | None
     ) -> None:
         changes = {name: getattr(values, name) for name in MEASURES}
         if client_uuid is not None:
             changes["client_uuid"] = client_uuid
         await self._session.execute(
-            update(BodyMetrics).where(BodyMetrics.id == metrics_id).values(**changes)
+            update(BodyMetrics)
+            .where(BodyMetrics.id == metrics_id, BodyMetrics.user_id == user_id)
+            .values(**changes)
         )
 
-    async def soft_delete(self, metrics_id: int) -> None:
+    async def soft_delete(self, user_id: int, metrics_id: int) -> None:
         await self._session.execute(
-            update(BodyMetrics).where(BodyMetrics.id == metrics_id).values(deleted_at=func.now())
+            update(BodyMetrics)
+            .where(BodyMetrics.id == metrics_id, BodyMetrics.user_id == user_id)
+            .values(deleted_at=func.now())
         )
 
     async def history(

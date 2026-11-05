@@ -15,7 +15,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, delete, inspect, text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
@@ -200,6 +200,96 @@ def test_0002_downgrade_refuses_while_a_food_uses_other(empty_db: Engine) -> Non
     with pytest.raises(Exception, match="diet_role 'other'"):
         run_alembic(empty_db, "downgrade", "0001")
     assert diet_roles(empty_db)[-1] == "other"
+
+
+ADD_MEASUREMENT = text(
+    "INSERT INTO body_metrics (user_id, measured_on, weight, client_uuid)"
+    " VALUES (:u, current_date - :days, 80, :c)"
+)
+
+
+def test_0003_makes_client_uuid_unique_per_user_and_its_downgrade_refuses_shared_ones(
+    empty_db: Engine,
+) -> None:
+    run_alembic(empty_db, "upgrade", "head")
+    shared = uuid.uuid4()
+    with empty_db.begin() as connection:
+        users = (
+            connection.execute(
+                text(
+                    "INSERT INTO app_user (email, password_hash, name, surname) VALUES"
+                    " ('a@example.com', 'x', 'A', 'A'), ('b@example.com', 'x', 'B', 'B')"
+                    " RETURNING id"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for user_id in users:
+            connection.execute(ADD_MEASUREMENT, {"u": user_id, "days": 0, "c": shared})
+    with pytest.raises(IntegrityError), empty_db.begin() as connection:
+        connection.execute(ADD_MEASUREMENT, {"u": users[0], "days": 1, "c": shared})
+
+    with pytest.raises(Exception, match="share a client_uuid"):
+        run_alembic(empty_db, "downgrade", "0002")
+    with empty_db.begin() as connection:
+        connection.execute(text("DELETE FROM body_metrics WHERE user_id = :u"), {"u": users[1]})
+    run_alembic(empty_db, "downgrade", "0002")
+    with pytest.raises(IntegrityError), empty_db.begin() as connection:
+        connection.execute(ADD_MEASUREMENT, {"u": users[1], "days": 0, "c": shared})
+
+
+def test_0003_links_existing_records_to_their_workout_and_downgrades(empty_db: Engine) -> None:
+    run_alembic(empty_db, "upgrade", "0002")
+    with empty_db.begin() as connection:
+
+        def insert(sql: str, **params) -> int:
+            return connection.execute(text(sql + " RETURNING id"), params).scalar_one()
+
+        user_id = insert(
+            "INSERT INTO app_user (email, password_hash, name, surname)"
+            " VALUES ('a@example.com', 'x', 'A', 'A')"
+        )
+        exercise_ids = [
+            insert(
+                "INSERT INTO exercise (name, difficulty_level, equipment, is_bodyweight,"
+                " description, instruction) VALUES (:n, 'beginner', 'gym', false, '', '')",
+                n=name,
+            )
+            for name in ("Bench press", "Back squat")
+        ]
+        workout_id = insert(
+            "INSERT INTO workout_log (user_id, log_date, rpe_rating) VALUES (:u, current_date, 8)",
+            u=user_id,
+        )
+        add_record = (
+            "INSERT INTO personal_record (user_id, exercise_id, max_weight, max_reps, e1rm,"
+            " achieved_date) VALUES (:u, :e, 60, 10, 80, current_date)"
+        )
+        named = insert(add_record, u=user_id, e=exercise_ids[0])
+        unnamed = insert(add_record, u=user_id, e=exercise_ids[1])
+        connection.execute(
+            text(
+                "INSERT INTO notification (user_id, message_type, scheduled_at, message, data)"
+                " VALUES (:u, 'achievement', now(), 'New personal record', CAST(:d AS jsonb))"
+            ),
+            {
+                "u": user_id,
+                "d": f'{{"workout_log_id": {workout_id}, "personal_record_id": {named}}}',
+            },
+        )
+
+    run_alembic(empty_db, "upgrade", "head")
+    with empty_db.connect() as connection:
+        linked = dict(
+            connection.execute(text("SELECT id, workout_log_id FROM personal_record")).all()
+        )
+    assert linked == {named: workout_id, unnamed: None}
+
+    run_alembic(empty_db, "downgrade", "0002")
+    with empty_db.connect() as connection:
+        columns = [c["name"] for c in inspect(connection).get_columns("personal_record")]
+    assert "workout_log_id" not in columns
 
 
 def add_user_with_a_row_everywhere(s: Session) -> int:
