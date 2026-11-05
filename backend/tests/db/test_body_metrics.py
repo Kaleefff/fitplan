@@ -7,6 +7,7 @@ import functools
 import uuid
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,6 +28,7 @@ from app.db.repositories.users import SqlUserRepository
 from app.db.repositories.workouts import SqlWorkoutUnitOfWork
 from app.db.session import database_url
 from app.main import create_app
+from app.services.body_metrics import MetricsIn
 from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
@@ -194,14 +196,36 @@ def test_deleting_the_newest_restores_the_previous_weight(api):
     assert reused.status_code == 409  # the client_uuid of a deleted row
 
 
-def test_another_users_rows_and_uuids(api):
+def test_another_users_rows_are_hidden_and_uuids_are_per_user(api):
     ann = _login(api)
     bob = _login(api, "bob@example.com")
     anns = _save(api, ann, weight=75).json()
 
     assert api.delete(f"/api/v1/body-metrics/{anns['id']}", headers=bob).status_code == 404
-    assert _save(api, bob, weight=90, client_uuid=anns["client_uuid"]).status_code == 409
-    assert api.get("/api/v1/body-metrics", headers=bob).json() == []
+    bobs = _save(api, bob, weight=90, client_uuid=anns["client_uuid"])
+    assert bobs.status_code == 201
+    assert bobs.json()["id"] != anns["id"]
+    assert _save(api, bob, weight=90, client_uuid=anns["client_uuid"]).json() == bobs.json()
+    assert [m["weight"] for m in api.get("/api/v1/body-metrics", headers=bob).json()] == [90.0]
+    assert [m["weight"] for m in api.get("/api/v1/body-metrics", headers=ann).json()] == [75.0]
+
+
+def test_the_store_never_writes_another_users_row(api):
+    ann = _login(api)
+    _login(api, "bob@example.com")  # user id 2
+    anns = _save(api, ann, weight=75).json()
+    engine = create_async_engine(database_url().set(database=TEST_DB))
+    unit_of_work = SqlBodyMetricsUnitOfWork(async_sessionmaker(engine, expire_on_commit=False))
+
+    async def as_bob():
+        async with unit_of_work() as store:
+            await store.replace(2, anns["id"], MetricsIn(TODAY, Decimal("99")), None)
+            await store.soft_delete(2, anns["id"])
+        await engine.dispose()
+
+    api.portal.call(as_bob)
+
+    assert [m["weight"] for m in api.get("/api/v1/body-metrics", headers=ann).json()] == [75.0]
 
 
 def test_without_a_profile_the_measurement_is_still_stored(api):

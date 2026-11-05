@@ -322,6 +322,23 @@ def test_personal_records_and_achievement_notifications(api):
     assert notes[1].data["workout_log_id"] == heavier["workout"]["id"]
 
 
+def test_new_records_are_read_from_the_record_not_from_the_notification(api):
+    headers = _login(api)
+    plan = _plan(1)
+    body = _workout(plan, BENCH, _sets([60, 60, 60]), 8, client_uuid=str(uuid.uuid4()))
+    first = _post(api, headers, body).json()
+    with _sync_engine().begin() as db:
+        db.execute(text("DELETE FROM notification"))
+
+    again = _post(api, headers, body).json()  # the replay answers from result() again
+
+    assert first["new_personal_records"] != []
+    assert again["new_personal_records"] == first["new_personal_records"]
+    with _sync_engine().connect() as db:
+        linked = db.execute(text("SELECT workout_log_id FROM personal_record")).scalars().all()
+    assert linked == [first["workout"]["id"]]
+
+
 # ---------------------------------------------------------------- idempotency
 
 
@@ -341,7 +358,7 @@ def test_repeated_client_uuid_returns_the_first_answer_and_applies_nothing_twice
     assert _planned(plan[BENCH]) == (3, 10, 62.5)
 
 
-def test_client_uuid_of_a_deleted_workout_or_another_user_is_409(api):
+def test_client_uuid_is_per_user_and_a_deleted_ones_is_409(api):
     ann = _login(api)
     bob = _login(api, "bob@example.com")
     plan = _plan(1)
@@ -353,7 +370,11 @@ def test_client_uuid_of_a_deleted_workout_or_another_user_is_409(api):
         "training_session_id": None,
         "exercises": [{"exercise_id": BENCH, "sort_order": 1, "sets": _sets([60])}],
     }
-    assert _post(api, bob, other).status_code == 409
+    bobs = _post(api, bob, other)
+    assert bobs.status_code == 201
+    assert bobs.json()["workout"]["id"] != workout_id
+    assert _post(api, bob, other).json() == bobs.json()  # bob's repeat answers bob's first
+    assert _count("workout_log") == 2
 
     assert api.delete(f"/api/v1/workouts/{workout_id}", headers=ann).status_code == 204
     assert _post(api, ann, body).status_code == 409
@@ -531,3 +552,24 @@ def test_concurrent_replays_of_one_client_uuid_store_one_workout(api, sessions):
     assert first == second
     assert _count("workout_log") == 1
     assert _count("plan_adjustment") == 1
+
+
+def test_concurrent_first_records_of_one_exercise_keep_one_current(api, sessions):
+    _login(api)
+    _, factory = sessions
+    service = WorkoutService(SqlWorkoutUnitOfWork(factory))
+    sets = tuple(SetIn(n, 10, Decimal("60"), True, None) for n in (1, 2, 3))
+    workout = WorkoutIn(None, None, TODAY, 7, (ExerciseIn(BENCH, None, 1, sets),))
+
+    async def both():
+        now = datetime.now(UTC)
+        return await asyncio.gather(
+            service.create(1, "Europe/Warsaw", workout, now),
+            service.create(1, "Europe/Warsaw", workout, now),
+        )
+
+    results = api.portal.call(both)
+
+    # the second waits for the first, sees its 60 x 10 and has no improvement
+    assert sorted(len(r.new_personal_records) for r in results) == [0, 1]
+    assert _count("personal_record") == 1

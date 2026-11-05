@@ -217,6 +217,7 @@ class WorkoutLog(Base):
     __tablename__ = "workout_log"
     __table_args__ = (
         CheckConstraint("rpe_rating BETWEEN 1 AND 10"),
+        UniqueConstraint("user_id", "client_uuid", name="workout_log_user_id_client_uuid_key"),
         Index("ix_workout_log_user_date", "user_id", "log_date"),
         Index("ix_workout_log_training_session_id", "training_session_id"),
     )
@@ -224,7 +225,7 @@ class WorkoutLog(Base):
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
     client_uuid: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, server_default=text("gen_random_uuid()")
+        UUID(as_uuid=True), server_default=text("gen_random_uuid()")
     )
     training_session_id: Mapped[int | None] = mapped_column(
         ForeignKey("training_session.id", ondelete="SET NULL")
@@ -312,6 +313,7 @@ class PersonalRecord(Base):
         CheckConstraint("max_reps > 0"),
         CheckConstraint("e1rm >= 0"),
         Index("ix_personal_record_exercise_id", "exercise_id"),
+        Index("ix_personal_record_workout_log_id", "workout_log_id"),
         Index(
             "ux_personal_record_one_current",
             "user_id",
@@ -329,3 +331,6 @@ class PersonalRecord(Base):
     e1rm: Mapped[Decimal] = mapped_column(Numeric(6, 2))
     achieved_date: Mapped[date] = mapped_column(Date)
     is_current: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    workout_log_id: Mapped[int | None] = mapped_column(
+        ForeignKey("workout_log.id", ondelete="SET NULL")
+    )
