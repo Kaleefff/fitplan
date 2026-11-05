@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from tests.conftest import FakeHealthChecker, make_settings
-from tests.fakes import fake_repositories
+from tests.fakes import InMemoryRecognitionBuffer, fake_repositories
 
 PASSWORD = "secret123"
 
@@ -19,9 +19,17 @@ def repos():
 
 
 @pytest.fixture
-def api(repos):
+def buffer():
+    return InMemoryRecognitionBuffer()
+
+
+@pytest.fixture
+def api(repos, buffer, tmp_path):
     app = create_app(
-        settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repos
+        settings=make_settings(photo_dir=tmp_path),
+        health_checker=FakeHealthChecker(),
+        repositories=repos,
+        recognitions=buffer,
     )
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
@@ -219,6 +227,54 @@ def test_social_only_account_deletes_without_a_password(api, repos):
     asyncio.run(repos.users.set_password(1, None))
 
     assert api.post("/api/v1/users/me/delete", json={}, headers=headers).status_code == 204
+
+
+def _photo(photo_dir, user_id: int):
+    path = photo_dir / "meals" / str(user_id) / "a.jpg"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"x")
+    return path
+
+
+def test_delete_purges_the_buffer_then_the_photos(api, buffer, tmp_path):
+    headers = _auth(_register(api))
+    _register(api, "bob@example.com")
+    _photo(tmp_path, 1)
+    bobs = _photo(tmp_path, 2)
+
+    deleted = api.post("/api/v1/users/me/delete", json={"password": PASSWORD}, headers=headers)
+
+    assert deleted.status_code == 204
+    assert buffer.purged == [1]
+    assert not (tmp_path / "meals" / "1").exists()
+    assert bobs.exists()
+
+
+def test_a_failing_buffer_does_not_fail_the_deletion(api, buffer, repos, tmp_path):
+    headers = _auth(_register(api))
+    _photo(tmp_path, 1)
+    buffer.fail = True
+
+    deleted = api.post("/api/v1/users/me/delete", json={"password": PASSWORD}, headers=headers)
+
+    assert deleted.status_code == 204  # logged; the cleanup job removes the leftovers
+    assert repos.users.rows == {}
+    assert not (tmp_path / "meals" / "1").exists()  # the photo step still ran
+
+
+def test_deletion_without_photo_dir_still_succeeds(repos, buffer):
+    app = create_app(
+        settings=make_settings(),
+        health_checker=FakeHealthChecker(),
+        repositories=repos,
+        recognitions=buffer,
+    )
+    with TestClient(app, raise_server_exceptions=False) as api:
+        headers = _auth(_register(api))
+        deleted = api.post("/api/v1/users/me/delete", json={"password": PASSWORD}, headers=headers)
+
+    assert deleted.status_code == 204
+    assert buffer.purged == [1]
 
 
 def test_null_is_rejected_on_its_own_field(api):

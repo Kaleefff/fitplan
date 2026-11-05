@@ -134,6 +134,20 @@ class InMemoryPasswordResetRepository:
         return token[0]
 
 
+class InMemoryRecognitionBuffer:
+    """`purge_user` of the MongoDB buffer (DB-07); `fail` simulates MongoDB being down."""
+
+    def __init__(self, fail: bool = False) -> None:
+        self.purged: list[int] = []
+        self.fail = fail
+
+    async def purge_user(self, user_id: int) -> int:
+        if self.fail:
+            raise ConnectionError("MongoDB is down")
+        self.purged.append(user_id)
+        return 0
+
+
 def _no_workout_store():
     raise AssertionError("this store needs PostgreSQL: see tests/db/")
 
