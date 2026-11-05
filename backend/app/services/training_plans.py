@@ -71,6 +71,17 @@ class PlanView:
     sessions: tuple[SessionView, ...]
 
 
+@dataclass(frozen=True)
+class SwapContext:
+    """What 4.9 checks a swap of a session exercise against."""
+
+    exercise_id: int  # the exercise now in the slot
+    plan_status: str
+    experience_level: DifficultyLevel  # the plan's snapshot
+    equipment: Equipment  # the plan's snapshot
+    session_exercise_ids: frozenset[int]  # every exercise in the session, current included
+
+
 class TrainingPlanStore(Protocol):
     """Every call of one unit of work runs in the same transaction."""
 
@@ -100,6 +111,14 @@ class TrainingPlanStore(Protocol):
 
     async def workout_days(self, session_ids: list[int], since: date) -> set[tuple[int, date]]:
         """(session id, log date) of the live workouts of these sessions from `since`."""
+        ...
+
+    async def swap_context(self, user_id: int, session_exercise_id: int) -> SwapContext | None:
+        """The plan snapshot and session of the user's session exercise; None if not theirs."""
+        ...
+
+    async def profile_limits(self, user_id: int) -> tuple[DifficultyLevel, Equipment] | None:
+        """The profile's experience level and equipment; None without a profile."""
         ...
 
 

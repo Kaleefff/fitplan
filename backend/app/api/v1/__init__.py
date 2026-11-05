@@ -7,6 +7,7 @@ from app.api.v1 import (
     body_metrics,
     diet_plans,
     health,
+    library,
     nutrition,
     profile,
     reference,
@@ -29,3 +30,4 @@ api_router.include_router(body_metrics.router)
 api_router.include_router(schedule.router)
 api_router.include_router(diet_plans.router)
 api_router.include_router(analytics.router)
+api_router.include_router(library.router)
