@@ -29,6 +29,7 @@ Merged code wins for what already exists (names, types, constraints, file layout
 - DATA (Kyryl): `database/`, `backend/app/db/` (models, repositories, queries), `backend/alembic/`, `ai-service/`, `scripts/`, `docker-compose.yml`, `.env.example`, `.github/`.
 - API (Maksym): `backend/app/` except `db/`, including the pure domain functions in `backend/app/domain/`.
 - APP (Oleksandr): `mobile/`.
+- Exception (D24): API may write repositories in `backend/app/db/` when DATA is the bottleneck. Every change in `backend/app/db/` needs DATA's review.
 - `docs/` changes go in a `docs/` branch, approved by every role they touch.
 
 ## Workflow

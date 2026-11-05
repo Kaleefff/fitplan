@@ -13,10 +13,10 @@ Rules: one task = one branch (`db/`, `api/`, `app/`, `docs/` + id) = one PR, rev
 | Stage | Dates | DATA | API | APP |
 | --- | --- | --- | --- | --- |
 | 1 Foundation | 12–18 Oct | DB-00 | B-01, D-03 | M-01, D-09 |
-| 2 Data, auth, profile | 19 Oct – 1 Nov | DB-01 … DB-06, D-05 | B-02 … B-06, B-10, B-28 | M-02 … M-07 |
-| 3 AI scanner and logs | 2–22 Nov | A-01, DB-07 … DB-09 | B-08 … B-13, B-15, B-17, B-19 … B-21 | M-09 … M-11, M-13 … M-15, M-17, M-18 |
+| 2 Data, auth, profile | 19 Oct – 1 Nov | DB-01 … DB-06, DB-14, D-05 | B-02 … B-06, B-10, B-28 | M-02 … M-07 |
+| 3 AI scanner and logs | 2–22 Nov | A-01, DB-07 … DB-09, DB-15 | B-08 … B-13, B-15, B-17, B-19 … B-21 | M-09 … M-11, M-13 … M-15, M-17, M-18 |
 | 4 Analytics, feedback, reports | 23–29 Nov | DB-10 … DB-12 | B-14, B-16, B-22, B-23, B-25, B-26 | M-08, M-12, M-16, M-19, M-23 |
-| Stretch (D22) | after the owner's core work | DB-13 | B-07, B-27, B-26 push, B-25 export | M-04 social, M-20, M-19 push and export |
+| Stretch (D22) | after the owner's core work | DB-13 | B-07, B-27, B-26 push and recovery reminder, B-25 export | M-04 social, M-20, M-19 push and export, M-08 recovery reminder |
 | 5 Tests and optimisation | 30 Nov – 6 Dec | T-01, T-03, T-04, T-08, Z-01 | T-02, T-05 | T-06, T-07, M-21, M-22, Z-02 |
 
 ---
@@ -84,7 +84,8 @@ Do: extend `01_schema.sql` with what the specs need, then SQLAlchemy 2.0 models 
 Done: `alembic upgrade head` and `downgrade base` work on an empty database; a test deletes a user and finds no owned row in any table; `setup.md` still works.
 
 **DB-02 · Reference seeds** · Depends: DB-01
-Do: `database/seed/` with muscle groups (`algorithms.md` 3), injury types with average healing days, allergens (EU 14 plus lactose), food categories; idempotent loader, the name is the key.
+Do: `database/seed/` with muscle groups (`algorithms.md` 3), injury types with average healing days (including `Fracture` and `Dislocation`, for severe injuries, `algorithms.md` 4.3), allergens (EU 14 plus lactose), food categories; idempotent loader, the name is the key.
+Status: done; `Fracture` and `Dislocation` are seeded.
 Done: running the loader twice gives identical data.
 
 **DB-03 · Exercise seed** · Reqs: FR-P1–P3, P8 · Depends: DB-02
@@ -103,6 +104,9 @@ Done: CI fails on a deliberately broken seed row and on a failing test.
 Do: repositories for exercises and foods (filters, text search, pagination, order of `api-rules.md`) and eligibility queries of `algorithms.md` 4.2, 4.3 and 5.2.
 Done: tests prove an injury-excluded exercise and a food with a user's allergen are never returned.
 
+**DB-14 · Account, profile and plan repositories** · Reqs: FR-U1–U4, U6, U7, FR-P1–P9 · Depends: DB-01 · Written by API, reviewed by DATA (D24) · Status: done (PR #31 and later API PRs).
+Do: repositories for `app_user`, `refresh_token`, `password_reset_token`, `user_profile`, `injury`, `user_allergen`, `user_excluded_food`, training and diet plan persistence, `reminder`, `notification`. The others (`oauth_identity`, `device_push_token`, `progress_report`) come with B-07, S-03 and B-25 under the same rule.
+
 **D-05 · AI model feasibility** · Reqs: FR-N1–N4, NFR-PERF · Due: before stage 3
 Do: download `BinhQuocNguyen/food-recognition-model` (its `classification_model.h5` is listed at 121 bytes, possibly a pointer without weights); check the weights load and the label list; run ≥ 50 photos including Polish meals; top-1, top-3, CPU latency. Go if top-3 ≥ 80 % on Food-101 photos and ≥ 60 % on Polish meals with the request under 10 s; otherwise another Food-101 classifier or fine-tuned EfficientNet-B0 (interface unchanged).
 Done: verdict with numbers in `docs/ai_evaluation.md`; D12 updated.
@@ -114,6 +118,7 @@ Do: bcrypt, JWT access and refresh with rotation, family revocation and reuse de
 Done: tests for expired, tampered, revoked and reused tokens.
 
 **B-03 · Register, login, refresh, logout** · Reqs: FR-U1, U2 · Depends: B-02
+Change request: lowercase the whole email on register, login and email change (B-05) (`api-rules.md` Auth and account), together with DB-15.
 Done: duplicate email gives the contract error; wrong password and unknown email answer the same; passwords never logged or returned.
 
 **B-04 · Password reset** · Reqs: FR-U3 · Depends: B-03, DB-05
@@ -124,6 +129,7 @@ Done: an end-to-end test reads the mail from Mailpit and resets; reusing the tok
 Done: after deletion an audit query finds nothing for the user in PostgreSQL, MongoDB or `PHOTO_DIR`.
 
 **B-06 · Profile, injuries, allergies, excluded foods** · Reqs: FR-U6, U7 · Depends: B-03, B-10, DB-02
+Open: `expected_end_date` in `Injury` (`api-rules.md` Profile); contract PR with this task, reviewed by API and APP.
 Done: boundary tests (29/30/300/301 kg and the other ranges); one error per invalid or missing field; `tdee` recomputed on change.
 
 **B-10 · Energy and macro targets** · Reqs: FR-P4, P5 · Depends: B-01
@@ -152,7 +158,7 @@ Done: server validation errors appear next to the right field. Google and Apple 
 Done: the mailed deep link opens the app and completes a reset against the dev backend.
 
 **M-06 · Profile wizard** · Reqs: FR-U6, U7 · Depends: M-04, B-06
-Do: age, sex, weight, height, PAL, goal, level, equipment, injuries, allergies, with client validation matching the API.
+Do: age, sex, weight, height, PAL, goal, level, equipment, injuries, allergies, with client validation matching the API. A severe injury shows "Consult a doctor before training".
 Done: out-of-range values cannot be submitted; finishing lands on Home.
 
 **M-07 · Home** · Depends: M-02
@@ -170,7 +176,7 @@ Do: container with the chosen model loaded at startup from stored weights, `/pre
 Done: starts offline; median inference time documented.
 
 **DB-07 · Mongo buffer repository and photo cleanup** · Reqs: FR-N4, U5 · Depends: DB-01
-Do: repository for `meal_recognitions` per `mongo_buffer.md` (create, get, update items, delete, purge a user), indexes ensured at startup, every read filters `expiresAt > now`; cleanup function for photos of expired recognitions (never deletes when MongoDB is unreachable).
+Do: repository for `meal_recognitions` per `mongo_buffer.md` (create, get, update items, delete, purge a user), indexes ensured at startup, every read filters `expiresAt > now`; cleanup function for orphaned photos (`mongo_buffer.md` Photo cleanup; never deletes when MongoDB or PostgreSQL cannot be read).
 Done: tests prove an expired, not yet deleted document is never returned.
 
 **DB-08 · Label matching and confirm** · Reqs: FR-N2, N3, N4 · Depends: DB-04, DB-07
@@ -181,6 +187,10 @@ Done: an unknown label gives `food_item_id: null`; a failure inside confirm leav
 Do: workouts (exercises, sets, idempotency by `client_uuid`, soft delete, personal record detection with e1RM), body metrics (one live row per day, current weight sync), nutrition logs (items, rounded totals), daily totals (`api-rules.md` Logs).
 Done: the same `client_uuid` twice stores one row; record and rounding tests pass.
 
+**DB-15 · Case-insensitive unique email** · Reqs: FR-U1 · Depends: DB-01
+Do: a migration that first checks `app_user` for emails equal after `lower()` and stops when any exist, then adds a unique index on `lower(email)` (`api-rules.md` Auth and account).
+Done: on a database with `Ann@example.com` and `ann@example.com` the migration stops and changes nothing; on a clean one a second account differing only in case is rejected.
+
 ### API
 
 **B-08 · Exercise library** · Reqs: FR-P8, A1 · Depends: DB-06
@@ -190,6 +200,7 @@ Done: alternatives never include an injury-excluded exercise; with `session_exer
 Done: search by name and category with pagination; values per 100 g; inactive foods hidden.
 
 **B-11 · Training plan generator** · Reqs: FR-P1–P3, P7 · Depends: B-06, DB-06
+Change request: tie-break `equipment DESC` (`algorithms.md` 4.6) and the severe-injury region rule (4.3).
 Done: property test over goal × level × equipment × injuries: every required group covered, nothing excluded; p95 ≤ 3 s on seeded data.
 
 **B-12 · Diet plan generator** · Reqs: FR-P6, P7 · Depends: B-10, DB-06
@@ -219,7 +230,7 @@ Done: totals equal the sum of the items; hunger validated.
 **M-09 · Libraries** · Reqs: FR-P8 · Depends: M-02. Done: long lists scroll smoothly with pagination.
 
 **M-10 · Training plan screens** · Reqs: FR-P1, P3, P7, A1 · Depends: M-06
-Do: generation form, day tabs, accept, regenerate, insufficient-exercises message with suggestions, swap sheet, edits.
+Do: generation form, day tabs, accept, regenerate, insufficient-exercises message with suggestions, swap sheet, edits. A severe injury shows "Consult a doctor before training". After an injury is added, edited or ended and an active plan exists, ask "Your injuries changed. Generate a new plan?"; yes generates with the active plan's goal, days, level and equipment and opens the draft (`api-rules.md` Plans).
 Done: the 422 suggestions are shown; a swap updates the plan at once.
 
 **M-11 · Diet plan screens** · Reqs: FR-P4–P7 · Depends: M-06
@@ -241,7 +252,7 @@ Done: corrected grams change the totals before confirming; an allergy warning is
 **M-17 · Body metrics** · Reqs: FR-R1 data · Depends: M-02. Done: entries appear in history and in the weight chart.
 
 **M-18 · Analytics screen** · Reqs: FR-R1–R5 · Depends: M-02, D-03
-Do: Week / Month / 3 Months, metric tiles, goal prediction with irregular-data warning, weight, workouts, calories and tonnage charts, compliance %, "not enough data" state. Built against the mock until B-23.
+Do: Week / Month / 3 Months, metric tiles, goal prediction with irregular-data warning, weight, workouts, calories and tonnage charts, workout and diet compliance charts per week, compliance %, "not enough data" state. Built against the mock until B-23.
 Done: loading, no data, normal and warning states reachable.
 
 ---
@@ -251,7 +262,7 @@ Done: loading, no data, normal and warning states reachable.
 ### DATA
 
 **DB-10 · Analytics queries** · Reqs: FR-R1–R3, R5 · Depends: DB-09
-Do: the queries for `algorithms.md` 7 and 8: metrics, series, the counts that `app/domain/compliance.py` needs, minimum-data rule (D21: the math stays in Max's domain module).
+Do: the queries for `algorithms.md` 7 and 8: metrics, series, the counts that `app/domain/compliance.py` needs (per ISO week for the `workout_compliance` and `diet_compliance` series), minimum-data rule (D21: the math stays in Max's domain module).
 Done: hand-computed fixtures match; the 6/7-day boundary is tested.
 
 **DB-11 · Goal prediction data** · Reqs: FR-R4 · Depends: DB-10
@@ -268,7 +279,7 @@ Done: no sequential scan on large tables in those queries; results noted in the 
 Done: vectors A–K of `algorithms.md` 6 pass; no `plan_adjustment` without a signal.
 
 **B-23 · Analytics and goal prediction endpoints** · Reqs: FR-R1–R5 · Depends: DB-10, DB-11 · Status: compliance and prediction domain functions merged with B-01.
-Do: endpoints combining DB-10/DB-11 queries with the domain functions. Done: answers equal the DB-10/DB-11 fixtures.
+Do: endpoints combining DB-10/DB-11 queries with the domain functions. Open: chart metrics `workout_compliance` and `diet_compliance` (`algorithms.md` 8); contract PR with this task, reviewed by API and APP. Done: answers equal the DB-10/DB-11 fixtures.
 
 **B-25 · Reports** · Reqs: FR-R1 · Depends: B-23
 Do: generate, list, detail of `progress_report` (`api-rules.md`). Export is stretch S-04.
@@ -276,6 +287,7 @@ Done: report figures equal the analytics for the same period.
 
 **B-14 · Schedule and reminders** · Reqs: FR-P9 · Depends: B-11, B-12
 Do: `GET/PUT /reminders`, `PATCH /training-sessions/{id}`, `GET /notifications`.
+Open: replace the `x-todo` of `GET /notifications` by the rules of `api-rules.md` Reports and notifications; contract PR with this task, reviewed by API and APP.
 Done: the schedule round-trips; a weekday clash gives 409.
 
 **B-26 · Scheduler process** · Reqs: FR-N4 (cleanup), FR-R7 · Depends: DB-07
@@ -293,7 +305,7 @@ Done: a reminder fires at the set time on a real Android 10+ device; denied perm
 **M-23 · Dark mode pass** · Reqs: NFR-UX · Depends: M-02. Theme switch and saved preference exist (M-01). Done: every screen renders in both themes.
 
 **M-08 · Settings** · Reqs: FR-U4–U6 · Depends: M-06, B-05
-Do: edit profile, change email and password, delete account (double confirmation), theme switch, reminders, logout.
+Do: edit profile, change email and password, delete account (double confirmation), theme switch, reminders, logout. After an injury is added, edited or ended and an active plan exists, the prompt of M-10.
 Done: after deletion local data is cleared and login is shown.
 
 **M-16 · Meal suggestions** · Reqs: FR-N5 · Depends: M-14, B-22. Done: suggestions refresh after a new log; one tap adds one.
@@ -304,16 +316,17 @@ Done: after deletion local data is cleared and login is shown.
 
 ## Stretch (D22)
 
-Started by an owner only after their core tasks of the current stage are merged. Built in this order; cut from the end of the D22 list.
+Started by an owner only after their core tasks of the current stage are merged. Built in this order; cut in the order of D22.
 
 | ID | Feature | DATA | API | APP |
 | --- | --- | --- | --- | --- |
 | S-01 | Google sign-in, then Apple (needs an Apple Developer account) | – | B-07: verify provider token, link by verified email, `oauth_identity` | M-04 buttons |
 | S-02 | Offline sync (NFR-OFF) | DB-13: change queries by cursor with tombstones | B-27: `/sync/push`, `/sync/pull` (`api-rules.md` Sync) | M-20: `expo-sqlite` store, sync queue, offline banner, online-only messages |
-| S-03 | Weekly report and push (FR-R7) | – | B-26: weekly job (`algorithms.md` 12), Expo push, push-token endpoints | M-19: register token, notification opens the report |
+| S-03 | Weekly report and push (FR-R7) | – | B-26: weekly job (`algorithms.md` 12), Expo push, push-token endpoints (contract PR with this task, reviewed by API and APP: replace the `x-todo` of `DELETE /devices/push-token` by `api-rules.md`) | M-19: register token, notification opens the report |
 | S-04 | Export (FR-R6) | – | B-25: PDF and CSV | M-19: export and share |
+| S-05 | Injury recovery reminder (FR-U6) | – | B-26: on an active injury's `expected_end_date` a notification asks the user to end the injury or keep it active | M-08: the notification opens the injury |
 
-Done: S-01 a forged or expired provider token is rejected and an existing email account is linked, not duplicated. S-02 a workout and a nutrition entry made in airplane mode reach the server once after reconnecting; replaying a push changes nothing. S-03 a double run creates one report per user and week. S-04 the file opens in an external app with the on-screen figures.
+Done: S-01 a forged or expired provider token is rejected and an existing email account is linked, not duplicated. S-02 a workout and a nutrition entry made in airplane mode reach the server once after reconnecting; replaying a push changes nothing. S-03 a double run creates one report per user and week. S-04 the file opens in an external app with the on-screen figures. S-05 a double run creates one notification per injury; the injury stays active until the user ends it.
 
 ---
 
@@ -359,18 +372,18 @@ After 6 Dec: **W-01** thesis documentation in Polish (diagrams and chapters matc
 
 | Req | Build | Verify |
 | --- | --- | --- |
-| FR-U1, U2 | B-02, B-03, M-03, M-04 | T-02, T-05 |
-| FR-U3 | B-04, M-05 | T-02, T-05 |
-| FR-U4 | B-05, M-08 | T-02 |
+| FR-U1, U2 | B-02, B-03, DB-14, DB-15, M-03, M-04 | T-02, T-05 |
+| FR-U3 | B-04, DB-14, M-05 | T-02, T-05 |
+| FR-U4 | B-05, DB-14, M-08 | T-02 |
 | FR-U5 | DB-01, DB-07, B-05, M-08 | T-08 |
-| FR-U6, U7 | DB-01, B-06, B-10, M-06, M-08 | T-02 |
+| FR-U6, U7 | DB-01, DB-02, DB-14, B-06, B-10, M-06, M-08 (recovery reminder: S-05) | T-02 |
 | FR-U8 | S-01 | T-02, T-05 |
-| FR-P1–P3 | DB-03, DB-06, B-11, M-10 | T-02 |
+| FR-P1–P3 | DB-03, DB-06, DB-14, B-11, M-10 | T-02 |
 | FR-P4, P5 | B-10, M-11 | T-02 |
-| FR-P6 | DB-04, DB-06, B-12, M-11 | T-02 |
-| FR-P7 | B-11, B-12, M-10, M-11 | T-02 |
+| FR-P6 | DB-04, DB-06, DB-14, B-12, M-11 | T-02 |
+| FR-P7 | DB-14, B-11, B-12, M-10, M-11 | T-02 |
 | FR-P8 | DB-03, DB-04, DB-06, B-08, B-09, M-09 | T-02 |
-| FR-P9 | B-14, M-12 (push: S-03) | T-02 |
+| FR-P9 | DB-14, B-14, M-12 (push: S-03) | T-02 |
 | FR-A1 | DB-06, B-08, B-13, M-10 | T-02 |
 | FR-A2 | DB-09, B-15, M-13 | T-02 |
 | FR-A3 | DB-09, B-21, M-14 | T-02 |
