@@ -32,6 +32,21 @@ export const EMPTY_PROFILE_FORM: ProfileForm = {
   equipment: null,
 };
 
+/** The saved profile as form text, for editing it (M-08) */
+export function profileToForm(profile: ProfileInput): ProfileForm {
+  return {
+    age: String(profile.age),
+    sex: profile.sex,
+    current_weight: String(profile.current_weight),
+    height: String(profile.height),
+    activity_level_pal: profile.activity_level_pal,
+    goal: profile.goal,
+    target_value: profile.target_value === null || profile.target_value === undefined ? '' : String(profile.target_value),
+    experience_level: profile.experience_level,
+    equipment: profile.equipment,
+  };
+}
+
 const REQUIRED = 'This field is required.';
 const CHOOSE = 'Choose an option.';
 
