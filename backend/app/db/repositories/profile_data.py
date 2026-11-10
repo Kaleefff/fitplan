@@ -1,6 +1,5 @@
 """Profile, injuries, allergies, excluded foods, reference lists: `ProfileStore` (B-06)."""
 
-from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -15,7 +14,6 @@ from app.db.enums import InjurySeverity as DbSeverity
 from app.db.models import (
     Allergen,
     FoodItem,
-    FoodItemCategory,
     Injury,
     InjuryType,
     MuscleGroup,
@@ -23,8 +21,9 @@ from app.db.models import (
     UserExcludedFood,
     UserProfile,
 )
+from app.db.repositories.library import FoodRow, food_rows
 from app.domain.constants import DifficultyLevel, Equipment, Goal, InjurySeverity, Sex
-from app.services.profile import FoodView, InjuryIn, InjuryView, NamedView, ProfileIn, ProfileView
+from app.services.profile import InjuryIn, InjuryView, NamedView, ProfileIn, ProfileView
 
 _ID_COLUMNS = {
     "injury_type": (InjuryType.id, None),
@@ -165,7 +164,7 @@ class SqlProfileStore:
         self._session.add_all(UserAllergen(user_id=user_id, allergen_id=i) for i in allergen_ids)
         await self._session.flush()
 
-    async def excluded_foods(self, user_id: int) -> list[FoodView]:
+    async def excluded_foods(self, user_id: int) -> list[FoodRow]:
         foods = (
             await self._session.scalars(
                 select(FoodItem)
@@ -174,25 +173,7 @@ class SqlProfileStore:
                 .order_by(FoodItem.name, FoodItem.id)
             )
         ).all()
-        categories = defaultdict(list)
-        for food_id, category_id in await self._session.execute(
-            select(FoodItemCategory.food_item_id, FoodItemCategory.food_category_id)
-            .where(FoodItemCategory.food_item_id.in_([f.id for f in foods]))
-            .order_by(FoodItemCategory.food_category_id)
-        ):
-            categories[food_id].append(category_id)
-        return [
-            FoodView(
-                f.id,
-                f.name,
-                f.cals_per_100g,
-                f.protein_per_100g,
-                f.fat_per_100g,
-                f.carbs_per_100g,
-                tuple(categories[f.id]),
-            )
-            for f in foods
-        ]
+        return await food_rows(self._session, list(foods))
 
     async def replace_excluded_foods(self, user_id: int, food_ids: list[int]) -> None:
         await self._session.execute(

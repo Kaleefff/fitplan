@@ -476,7 +476,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Food detail */
+        /**
+         * Food detail
+         * @description An inactive food is 404, as an unknown one (api-rules.md Conventions).
+         */
         get: operations["getFood"];
         put?: never;
         post?: never;
@@ -1281,6 +1284,11 @@ export interface components {
         Equipment: "none" | "home" | "gym";
         /** @enum {string} */
         PlanStatus: "draft" | "active" | "archived";
+        /**
+         * @description The slot a food fills in a planned meal (algorithms.md 5.3); `other` is logged but never planned
+         * @enum {string}
+         */
+        DietRole: "protein" | "carb" | "vegetable" | "fruit" | "dairy" | "fat" | "dish" | "other";
         /** @enum {string} */
         MealType: "breakfast" | "lunch" | "dinner" | "snack";
         /** @enum {string} */
@@ -1457,6 +1465,7 @@ export interface components {
             category_name: string;
             description: string;
         };
+        /** @description Nutrition per 100 g; portions in grams (algorithms.md 5.2). Only active foods are returned. */
         FoodItem: {
             id: number;
             name: string;
@@ -1464,7 +1473,18 @@ export interface components {
             protein_per_100g: number;
             fat_per_100g: number;
             carbs_per_100g: number;
+            diet_role: components["schemas"]["DietRole"];
+            suitable_meal_types: components["schemas"]["MealType"][];
+            is_vegetarian: boolean;
+            is_vegan: boolean;
+            default_portion_g: number;
+            min_portion_g: number;
+            max_portion_g: number;
+            portion_step_g: number;
+            /** @description Ascending */
             category_ids: number[];
+            /** @description Ascending; ids of `GET /allergens` */
+            allergen_ids: number[];
         };
         FoodPage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["FoodItem"][];
@@ -2869,6 +2889,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     listFoodCategories: {
