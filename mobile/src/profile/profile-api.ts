@@ -33,3 +33,24 @@ export function addInjury(input: Schemas['InjuryInput']): Promise<Schemas['Injur
 export function saveAllergies(allergenIds: number[]): Promise<Schemas['Allergen'][]> {
   return unwrap(api.PUT('/users/me/allergies', { body: { allergen_ids: allergenIds } }));
 }
+
+/** Active injuries first, then the newest (api-rules.md) */
+export function getInjuries(): Promise<Schemas['Injury'][]> {
+  return unwrap(api.GET('/users/me/injuries'));
+}
+
+export function updateInjury(injuryId: number, patch: Schemas['InjuryPatch']): Promise<Schemas['Injury']> {
+  return unwrap(api.PATCH('/users/me/injuries/{injury_id}', { params: { path: { injury_id: injuryId } }, body: patch }));
+}
+
+export function deleteInjury(injuryId: number): Promise<undefined> {
+  return unwrap(api.DELETE('/users/me/injuries/{injury_id}', { params: { path: { injury_id: injuryId } } }));
+}
+
+export function getAllergies(): Promise<Schemas['Allergen'][]> {
+  return unwrap(api.GET('/users/me/allergies'));
+}
+
+export function updateUser(patch: Schemas['UserPatch']): Promise<Schemas['User']> {
+  return unwrap(api.PATCH('/users/me', { body: patch }));
+}

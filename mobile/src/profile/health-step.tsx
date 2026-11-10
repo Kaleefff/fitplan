@@ -102,16 +102,54 @@ function InjuryDraftFields({ title, draft, impliedGroup, muscleGroups, errors, o
 // Optional step of the wizard: allergies (FR-P6, FR-N3) and injuries (FR-U6, FR-P2)
 export function HealthStep({ lists, allergenIds, onAllergensChange, injuries, onInjuriesChange }: HealthStepProps) {
   const { spacing } = useAppTheme();
+
+  if (!lists) {
+    return <ActivityIndicator accessibilityLabel="Loading lists" />;
+  }
+
+  return (
+    <View style={{ gap: spacing.xl }}>
+      <AppText color="textMuted">Both are optional. They keep unsuitable foods and exercises out of your plans.</AppText>
+
+      {lists.allergens ? (
+        <MultiOptionGroup
+          label="Allergies and intolerances"
+          options={lists.allergens.map((a) => ({ value: a.id, label: a.name }))}
+          values={allergenIds}
+          onChange={onAllergensChange}
+        />
+      ) : (
+        <Unavailable what="allergen" />
+      )}
+
+      <InjuryEditor
+        title="Injuries and physical limitations"
+        lists={lists}
+        injuries={injuries}
+        onInjuriesChange={onInjuriesChange}
+      />
+    </View>
+  );
+}
+
+type InjuryEditorProps = {
+  title: string;
+  lists: ReferenceLists;
+  /** Injuries added here and not saved yet */
+  injuries: InjuryInput[];
+  onInjuriesChange: (injuries: InjuryInput[]) => void;
+};
+
+/** New injuries: several types at once, each with its own details (wizard and profile editing) */
+export function InjuryEditor({ title, lists, injuries, onInjuriesChange }: InjuryEditorProps) {
+  const { spacing } = useAppTheme();
   const [adding, setAdding] = useState(false);
   const [typeIds, setTypeIds] = useState<number[]>([]);
   const [drafts, setDrafts] = useState<Record<number, InjuryDraft>>({});
   const [typeError, setTypeError] = useState<string | undefined>();
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
 
-  if (!lists) {
-    return <ActivityIndicator accessibilityLabel="Loading lists" />;
-  }
-  const { allergens, injuryTypes, muscleGroups } = lists;
+  const { injuryTypes, muscleGroups } = lists;
   const canAddInjuries = injuryTypes !== null && muscleGroups !== null;
 
   const typeName = (id: number) => injuryTypes?.find((t) => t.id === id)?.type_name ?? `#${id}`;
@@ -163,73 +201,58 @@ export function HealthStep({ lists, allergenIds, onAllergensChange, injuries, on
   }
 
   return (
-    <View style={{ gap: spacing.xl }}>
-      <AppText color="textMuted">Both are optional. They keep unsuitable foods and exercises out of your plans.</AppText>
+    <View style={{ gap: spacing.md }}>
+      <AppText variant="bodyStrong">{title}</AppText>
+      {!canAddInjuries ? <Unavailable what="injury" /> : null}
 
-      {allergens ? (
-        <MultiOptionGroup
-          label="Allergies and intolerances"
-          options={allergens.map((a) => ({ value: a.id, label: a.name }))}
-          values={allergenIds}
-          onChange={onAllergensChange}
-        />
-      ) : (
-        <Unavailable what="allergen" />
-      )}
+      {injuries.map((injury, index) => (
+        <Card key={`${injury.injury_type_id}-${injury.affected_muscle_group_id}-${index}`} style={styles.injury}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyStrong">{typeName(injury.injury_type_id)}</AppText>
+            <AppText variant="caption" color="textMuted">
+              {groupName(injury.affected_muscle_group_id)} · {labelOf(SEVERITY_OPTIONS, injury.severity)} ·{' '}
+              {injuryDurationLabel(injury.start_date)}
+            </AppText>
+          </View>
+          <Button
+            title="Remove"
+            variant="ghost"
+            onPress={() => onInjuriesChange(injuries.filter((_, i) => i !== index))}
+          />
+        </Card>
+      ))}
 
-      <View style={{ gap: spacing.md }}>
-        <AppText variant="bodyStrong">Injuries and physical limitations</AppText>
-        {!canAddInjuries ? <Unavailable what="injury" /> : null}
-
-        {injuries.map((injury, index) => (
-          <Card key={`${injury.injury_type_id}-${injury.affected_muscle_group_id}-${index}`} style={styles.injury}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="bodyStrong">{typeName(injury.injury_type_id)}</AppText>
-              <AppText variant="caption" color="textMuted">
-                {groupName(injury.affected_muscle_group_id)} · {labelOf(SEVERITY_OPTIONS, injury.severity)} ·{' '}
-                {injuryDurationLabel(injury.start_date)}
-              </AppText>
-            </View>
-            <Button
-              title="Remove"
-              variant="ghost"
-              onPress={() => onInjuriesChange(injuries.filter((_, i) => i !== index))}
+      {canAddInjuries && adding ? (
+        <Card style={{ gap: spacing.lg }}>
+          <MultiOptionGroup
+            label="Type (choose all that apply)"
+            options={injuryTypes.map((t) => ({ value: t.id, label: t.type_name }))}
+            values={typeIds}
+            onChange={(ids) => {
+              setTypeIds(ids);
+              setTypeError(undefined);
+            }}
+            error={typeError}
+          />
+          {typeIds.map((typeId) => (
+            <InjuryDraftFields
+              key={typeId}
+              title={typeName(typeId)}
+              draft={draftOf(typeId)}
+              impliedGroup={impliedGroup(typeId)}
+              muscleGroups={muscleGroups}
+              errors={errors[typeId]}
+              onChange={(change) => setDrafts({ ...drafts, [typeId]: { ...draftOf(typeId), ...change } })}
             />
-          </Card>
-        ))}
+          ))}
+          <Button title={typeIds.length > 1 ? `Add ${typeIds.length} injuries` : 'Add injury'} onPress={addInjuries} />
+          <Button title="Cancel" variant="ghost" onPress={closeForm} />
+        </Card>
+      ) : null}
 
-        {canAddInjuries && adding ? (
-          <Card style={{ gap: spacing.lg }}>
-            <MultiOptionGroup
-              label="Type (choose all that apply)"
-              options={injuryTypes.map((t) => ({ value: t.id, label: t.type_name }))}
-              values={typeIds}
-              onChange={(ids) => {
-                setTypeIds(ids);
-                setTypeError(undefined);
-              }}
-              error={typeError}
-            />
-            {typeIds.map((typeId) => (
-              <InjuryDraftFields
-                key={typeId}
-                title={typeName(typeId)}
-                draft={draftOf(typeId)}
-                impliedGroup={impliedGroup(typeId)}
-                muscleGroups={muscleGroups}
-                errors={errors[typeId]}
-                onChange={(change) => setDrafts({ ...drafts, [typeId]: { ...draftOf(typeId), ...change } })}
-              />
-            ))}
-            <Button title={typeIds.length > 1 ? `Add ${typeIds.length} injuries` : 'Add injury'} onPress={addInjuries} />
-            <Button title="Cancel" variant="ghost" onPress={closeForm} />
-          </Card>
-        ) : null}
-
-        {canAddInjuries && !adding ? (
-          <Button title="+ Add injuries" variant="secondary" onPress={() => setAdding(true)} />
-        ) : null}
-      </View>
+      {canAddInjuries && !adding ? (
+        <Button title="+ Add injuries" variant="secondary" onPress={() => setAdding(true)} />
+      ) : null}
     </View>
   );
 }
