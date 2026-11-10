@@ -17,8 +17,8 @@ from app.db.base import Base
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
-from app.db.repositories.meal_recognitions import COLLECTION, MongoMealRecognitionRepository
 from app.db.repositories.library import SqlLibraryRepository
+from app.db.repositories.meal_recognitions import COLLECTION, MongoMealRecognitionRepository
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader

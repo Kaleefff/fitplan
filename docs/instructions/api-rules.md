@@ -48,7 +48,7 @@ Behaviour the OpenAPI contract (`docs/api/openapi.yaml`, D-03) must follow and t
 
 ## Recognition (FR-N1–N4)
 
-- Upload: type and size checked, EXIF stripped, stored as `PHOTO_DIR/meals/<user id>/<uuid>.<ext>`; `ai-service` called with a timeout; errors are returned directly (no `failed` document).
+- Upload: type and size checked, EXIF stripped, stored as `PHOTO_DIR/meals/<user id>/<uuid>.<ext>`; `ai-service` calls the Gemini API (D25) with a timeout chosen so the whole request stays within NFR-PERF (10 s); Gemini errors and timeouts are returned directly (no `failed` document). Only the photo is sent to Gemini: no user data, allergies or ids. `ai-service` uses a Gemini API key from a project with billing enabled (paid tier): paid-tier content is not used to train or improve Google's models, Google logs it for a limited period for abuse detection, security and legal reasons, and the terms allow only the paid tier for an app offered to users in the EEA.
 - Review: add, remove, replace items, change grams (nutrition recalculated, `corrected = true`). Confirm as `algorithms.md` 11. A failure inside confirm leaves PostgreSQL unchanged and the document intact.
 - `nutrition_log.meal_photo_url` holds the relative `meals/<user id>/<uuid>.<ext>`; any download URL is built at response time (`algorithms.md` 11).
 - Photos of confirmed meals are kept until account deletion; orphaned photos (no unexpired recognition and no nutrition log references them) are removed by the cleanup job as in `mongo_buffer.md` "Photo cleanup", which deletes nothing when MongoDB or PostgreSQL cannot be read.

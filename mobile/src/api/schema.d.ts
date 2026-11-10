@@ -871,7 +871,9 @@ export interface paths {
          * Upload a meal photo for recognition (FR-N1, FR-N2, FR-N3)
          * @description The result is a pending document in the MongoDB buffer that expires after
          *     6 h (docs/database/mongo_buffer.md). Nothing is written to PostgreSQL
-         *     until confirmation.
+         *     until confirmation. Recognition runs through `ai-service` and the Gemini
+         *     API (D25); only the photo is sent. An AI error or timeout is returned
+         *     directly and no document is stored (api-rules.md "Recognition").
          */
         post: operations["createRecognition"];
         delete?: never;
@@ -1718,9 +1720,11 @@ export interface components {
         };
         RecognisedItem: {
             name: string;
-            /** @description null when the label has no food match; the user must pick one before confirming */
+            /** @description null when the label has no food match (trimmed, lower-cased, active foods only); the user must pick one before confirming */
             food_item_id: number | null;
+            /** @description Starts at the model's estimate (fallback default_portion_g, algorithms.md 11), then as corrected. 0 only for an unmatched item without a model estimate; confirm rejects an item whose grams round to 0.0 (422 invalid_value) */
             grams: number;
+            /** @description The model's own estimate */
             confidence: number;
             nutrition: components["schemas"]["Macros"];
             corrected: boolean;
@@ -1735,6 +1739,7 @@ export interface components {
             status: "pending";
             meal_type: components["schemas"]["MealType"];
             photo_url?: string | null;
+            /** @description Highest item confidence; 0 when nothing is found */
             overall_confidence: number;
             recognised_items: components["schemas"]["RecognisedItem"][];
             totals?: components["schemas"]["Macros"];

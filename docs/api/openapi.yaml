@@ -1086,7 +1086,9 @@ paths:
       description: |
         The result is a pending document in the MongoDB buffer that expires after
         6 h (docs/database/mongo_buffer.md). Nothing is written to PostgreSQL
-        until confirmation.
+        until confirmation. Recognition runs through `ai-service` and the Gemini
+        API (D25); only the photo is sent. An AI error or timeout is returned
+        directly and no document is stored (api-rules.md "Recognition").
       requestBody:
         required: true
         content:
@@ -2382,9 +2384,9 @@ components:
         name: { type: string }
         food_item_id:
           type: [integer, "null"]
-          description: null when the label has no food match; the user must pick one before confirming
-        grams: { type: number, exclusiveMinimum: 0 }
-        confidence: { type: number, minimum: 0, maximum: 1 }
+          description: null when the label has no food match (trimmed, lower-cased, active foods only); the user must pick one before confirming
+        grams: { type: number, minimum: 0, maximum: 99999.9, description: "Starts at the model's estimate (fallback default_portion_g, algorithms.md 11), then as corrected. 0 only for an unmatched item without a model estimate; confirm rejects an item whose grams round to 0.0 (422 invalid_value)" }
+        confidence: { type: number, minimum: 0, maximum: 1, description: "The model's own estimate" }
         nutrition: { $ref: "#/components/schemas/Macros" }
         corrected: { type: boolean }
         low_confidence: { type: boolean, description: "confidence < 0.30" }
@@ -2398,7 +2400,7 @@ components:
         status: { type: string, const: pending }
         meal_type: { $ref: "#/components/schemas/MealType" }
         photo_url: { type: [string, "null"] }
-        overall_confidence: { type: number, minimum: 0, maximum: 1 }
+        overall_confidence: { type: number, minimum: 0, maximum: 1, description: "Highest item confidence; 0 when nothing is found" }
         recognised_items:
           type: array
           items: { $ref: "#/components/schemas/RecognisedItem" }
