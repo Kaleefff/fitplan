@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -20,13 +20,18 @@ import {
   acceptPlan,
   getActivePlan,
   getDraftPlan,
+  getNextSession,
   weekdaysOf,
+  type NextSession,
   type PlanSettings,
   type TrainingPlan,
 } from '@/training/training-api';
-import { formatDate } from '@/utils/dates';
+import { formatDate, formatDayAndDate } from '@/utils/dates';
 
-type Plans = { active: TrainingPlan | null; draft: TrainingPlan | null };
+type Plans = { active: TrainingPlan | null; draft: TrainingPlan | null; next: NextSession | null };
+
+const startWorkout = (sessionId: number) =>
+  router.push({ pathname: '/workout', params: { sessionId: String(sessionId) } });
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & Plans);
 
 // Training plan (M-10): generate a draft, review it day by day and accept it (FR-P1, P3, P7)
@@ -44,7 +49,8 @@ export default function TrainingScreen() {
   const load = useCallback(async () => {
     try {
       const [active, draft] = await Promise.all([getActivePlan(), getDraftPlan()]);
-      setState({ status: 'ready', active, draft });
+      const next = active ? await getNextSession() : null;
+      setState({ status: 'ready', active, draft, next });
     } catch (error) {
       setState({ status: 'error', message: userMessage(toApiError(error)) });
     }
@@ -73,7 +79,7 @@ export default function TrainingScreen() {
     );
   }
 
-  const { active, draft } = state;
+  const { active, draft, next } = state;
   const settings: PlanSettings | null = profile
     ? { goal: profile.goal, experience_level: profile.experience_level, equipment: profile.equipment }
     : null;
@@ -94,7 +100,7 @@ export default function TrainingScreen() {
           settings={settings}
           initialWeekdays={formDays ?? SPLIT_WEEKDAYS[3]}
           onGenerated={(plan, notice) => {
-            setState({ status: 'ready', active, draft: plan });
+            setState({ status: 'ready', active, draft: plan, next });
             setShowing('draft');
             setFormDays(null);
             setEditingDays(false);
@@ -111,7 +117,7 @@ export default function TrainingScreen() {
     setMessage(null);
     try {
       const accepted = await acceptPlan(plan.id);
-      setState({ status: 'ready', active: accepted, draft: null });
+      setState({ status: 'ready', active: accepted, draft: null, next: await getNextSession().catch(() => null) });
       setMessage(`Your plan has started. It runs until ${formatDate(accepted.end_date!)}.`);
     } catch (error) {
       const apiError = toApiError(error);
@@ -134,10 +140,10 @@ export default function TrainingScreen() {
     setEditingDays(false);
     setMessage('Training days saved.');
     if (active && saved.id === active.id) {
-      setState({ status: 'ready', active: saved, draft });
+      setState({ status: 'ready', active: saved, draft, next });
       load(); // the next workout moves with the days
     } else {
-      setState({ status: 'ready', active, draft: saved });
+      setState({ status: 'ready', active, draft: saved, next });
     }
   }
 
@@ -193,7 +199,28 @@ export default function TrainingScreen() {
         <ScheduleEditor plan={plan} onSaved={daysSaved} onCancel={() => setEditingDays(false)} onFailed={load} />
       ) : null}
 
-      <PlanView key={plan.id} plan={plan} />
+      {!isDraft && next ? (
+        <Card>
+          <AppText variant="caption" color="textMuted">
+            Next workout
+          </AppText>
+          <AppText variant="title">{next.session.session_name}</AppText>
+          <AppText color="textMuted">{formatDayAndDate(next.date)}</AppText>
+          <Button title="Start workout" onPress={() => startWorkout(next.session.id)} />
+        </Card>
+      ) : null}
+
+      <PlanView
+        key={plan.id}
+        plan={plan}
+        sessionActions={
+          isDraft
+            ? undefined
+            : (session) => (
+                <Button title="Start this workout" variant="secondary" onPress={() => startWorkout(session.id)} />
+              )
+        }
+      />
     </Screen>
   );
 }

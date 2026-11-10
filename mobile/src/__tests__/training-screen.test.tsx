@@ -7,7 +7,9 @@ import { renderWithTheme } from '@/test-utils';
 import type { TrainingPlan } from '@/training/training-api';
 
 const mockUseEffect = useEffect;
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
+  router: { push: (...args: unknown[]) => mockPush(...args) },
   // Runs once on mount, as when the tab is first opened
   useFocusEffect: (effect: () => void) => mockUseEffect(effect, []),
 }));
@@ -20,6 +22,7 @@ const mockGetDraftPlan = jest.fn();
 const mockGeneratePlan = jest.fn();
 const mockAcceptPlan = jest.fn();
 const mockScheduleSessions = jest.fn();
+const mockGetNextSession = jest.fn();
 jest.mock('@/training/training-api', () => ({
   ...jest.requireActual('@/training/training-api'),
   getActivePlan: () => mockGetActivePlan(),
@@ -27,6 +30,7 @@ jest.mock('@/training/training-api', () => ({
   generatePlan: (...args: unknown[]) => mockGeneratePlan(...args),
   acceptPlan: (...args: unknown[]) => mockAcceptPlan(...args),
   scheduleSessions: (...args: unknown[]) => mockScheduleSessions(...args),
+  getNextSession: () => mockGetNextSession(),
 }));
 
 function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {}): TrainingPlan {
@@ -95,6 +99,7 @@ describe('TrainingScreen', () => {
     mockGetActivePlan.mockResolvedValue(null);
     mockGetDraftPlan.mockResolvedValue(null);
     mockScheduleSessions.mockImplementation((p: TrainingPlan) => Promise.resolve(p));
+    mockGetNextSession.mockResolvedValue(null);
   });
 
   it('generates a draft from the profile settings on the chosen weekdays', async () => {
@@ -224,5 +229,19 @@ describe('TrainingScreen', () => {
     expect(mockAcceptPlan).toHaveBeenCalledWith(2);
     expect(await screen.findByText('Your plan has started. It runs until 5 Jan 2027.')).toBeOnTheScreen();
     expect(screen.queryByRole('radio', { name: 'New draft' })).not.toBeOnTheScreen();
+  });
+
+  it('starts the next workout of the active plan', async () => {
+    const active = plan('active');
+    mockGetActivePlan.mockResolvedValue(active);
+    mockGetNextSession.mockResolvedValue({ training_plan_id: 1, date: '2026-11-12', session: active.sessions[1] });
+    await renderWithTheme(<TrainingScreen />);
+
+    expect(await screen.findByText('Thu, 12 Nov')).toBeOnTheScreen();
+    await press('Start workout');
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/workout', params: { sessionId: '12' } });
+
+    await press('Start this workout');
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/workout', params: { sessionId: '11' } });
   });
 });
