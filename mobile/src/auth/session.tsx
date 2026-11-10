@@ -33,8 +33,10 @@ type Session = {
   register: (input: RegisterInput) => Promise<void>;
   signOut: () => Promise<void>;
   retry: () => void;
-  /** Called by the wizard after PUT /users/me/profile succeeded; opens Home */
+  /** Called after PUT /users/me/profile succeeded: the wizard then opens Home, editing stays */
   completeProfile: (profile: Profile) => void;
+  /** Called after PATCH /users/me succeeded */
+  updateUser: (user: User) => void;
 };
 
 export const authManager = createAuthManager({
@@ -157,7 +159,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, status: 'signedIn', profile }));
   }, []);
 
-  const value: Session = { ...state, signIn, register, signOut, retry, completeProfile };
+  const updateUser = useCallback((user: User) => {
+    setState((current) => ({ ...current, user }));
+  }, []);
+
+  const value: Session = { ...state, signIn, register, signOut, retry, completeProfile, updateUser };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
