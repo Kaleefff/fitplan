@@ -66,11 +66,11 @@ jest.mock('@/profile/profile-api', () => ({
 }));
 
 const mockGetActivePlan = jest.fn();
-const mockGeneratePlan = jest.fn();
+const mockRegenerateLike = jest.fn();
 jest.mock('@/training/training-api', () => ({
   ...jest.requireActual('@/training/training-api'),
   getActivePlan: () => mockGetActivePlan(),
-  generatePlan: (...args: unknown[]) => mockGeneratePlan(...args),
+  regenerateLike: (...args: unknown[]) => mockRegenerateLike(...args),
 }));
 
 const kneeInjury = {
@@ -126,7 +126,7 @@ describe('EditProfileScreen', () => {
     mockApi.updateInjury.mockResolvedValue({});
     mockApi.saveAllergies.mockResolvedValue([]);
     mockApi.updateUser.mockResolvedValue({ name: 'Ola', surname: 'Kowalska' });
-    mockGeneratePlan.mockResolvedValue({ id: 5 });
+    mockRegenerateLike.mockResolvedValue({ id: 5 });
     await renderWithTheme(<EditProfileScreen />);
     await screen.findByText('Knee pain');
 
@@ -144,12 +144,8 @@ describe('EditProfileScreen', () => {
 
     expect(await screen.findByText('Your injuries changed. Generate a new plan?')).toBeOnTheScreen();
     await press('Generate new plan');
-    expect(mockGeneratePlan).toHaveBeenCalledWith({
-      goal: 'strength',
-      num_training_days: 3,
-      experience_level: 'beginner',
-      equipment: 'gym',
-    });
+    // Same goal, days, level, equipment and weekdays as the active plan
+    expect(mockRegenerateLike).toHaveBeenCalledWith(active);
     expect(mockNavigate).toHaveBeenCalledWith('/training');
   });
 

@@ -42,7 +42,7 @@ import {
 } from '@/profile/profile-api';
 import { profileToForm, toProfileInput, validateProfile, type ProfileForm } from '@/profile/validation';
 import { readInsufficientExercises } from '@/training/insufficient';
-import { generatePlan, getActivePlan, settingsOf, type TrainingPlan } from '@/training/training-api';
+import { getActivePlan, regenerateLike, type TrainingPlan } from '@/training/training-api';
 
 type Schemas = components['schemas'];
 type Injury = Schemas['Injury'];
@@ -226,7 +226,7 @@ export default function EditProfileScreen() {
   async function renewPlan(plan: TrainingPlan) {
     setGenerating(true);
     try {
-      await generatePlan(settingsOf(plan));
+      await regenerateLike(plan);
       setPlanToRenew(null);
       router.navigate('/training');
     } catch (error) {
