@@ -785,9 +785,13 @@ paths:
       tags: [training]
       operationId: swapSessionExercise
       summary: Swap an exercise for an alternative (FR-A1)
-      description: Keeps sets, reps, rest and weight. Ineligible choices give 422 `invalid_swap`.
-      x-todo:
-        - "DB: session_exercise.original_exercise_id (algorithms.md 4.9)"
+      description: |
+        Keeps sets, reps, rest and weight (algorithms.md 4.9). The planned exercise is kept in
+        `original_exercise_id`; swapping back to it clears it. Ineligible choices give 422
+        `invalid_swap` with one `details[]` item per failing rule on `body.exercise_id`, code
+        one of `unknown_exercise`, `same_exercise` (these two alone), `other_muscle_group`,
+        `already_in_session`, `above_level`, `needs_equipment`, `excluded_by_injury`. Level and
+        equipment are the plan's snapshot. An archived plan is 409.
       requestBody:
         required: true
         content:
@@ -2057,7 +2061,7 @@ components:
           description: Absent or null = today in the user's time zone; end date = start + 56 days
     SessionExercise:
       type: object
-      required: [id, exercise_id, exercise_name, sort_order, planned_sets, planned_reps, planned_weight, rest_seconds]
+      required: [id, exercise_id, exercise_name, sort_order, planned_sets, planned_reps, planned_weight, rest_seconds, original_exercise_id]
       properties:
         id: { type: integer }
         exercise_id: { type: integer }
@@ -2070,6 +2074,7 @@ components:
           minimum: 0
           description: kg; null until the baseline workout (algorithms.md 6)
         rest_seconds: { type: integer, minimum: 0 }
+        original_exercise_id: { type: [integer, "null"], description: "The planned exercise when this one was swapped in (algorithms.md 4.9)" }
     TrainingSession:
       type: object
       required: [id, session_order, session_name, day_of_week, estimated_duration, exercises]

@@ -137,6 +137,15 @@ LEVEL_ORDER = (DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, Difficult
 EQUIPMENT_ORDER = (Equipment.NONE, Equipment.HOME, Equipment.GYM)
 SEVERE_INJURY = frozenset({InjurySeverity.MODERATE, InjurySeverity.SEVERE})
 
+# 4.9: `details[].code` of 422 `invalid_swap`
+SWAP_UNKNOWN_EXERCISE = "unknown_exercise"
+SWAP_SAME_EXERCISE = "same_exercise"
+SWAP_OTHER_MUSCLE_GROUP = "other_muscle_group"
+SWAP_ALREADY_IN_SESSION = "already_in_session"
+SWAP_ABOVE_LEVEL = "above_level"
+SWAP_NEEDS_EQUIPMENT = "needs_equipment"
+SWAP_EXCLUDED_BY_INJURY = "excluded_by_injury"
+
 # 4.5 split templates: (session name, weekday 1 = Monday, groups); "full" = all required
 SESSION_GROUPS = {
     "Full Body": "full",

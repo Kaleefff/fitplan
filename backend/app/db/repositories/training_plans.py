@@ -207,21 +207,25 @@ class SqlTrainingPlanStore:
         )
         return {(session_id, day) for session_id, day in rows}
 
-    async def swap_context(self, user_id: int, session_exercise_id: int) -> SwapContext | None:
-        row = (
-            await self._session.execute(
-                select(
-                    SessionExercise.exercise_id,
-                    SessionExercise.training_session_id,
-                    TrainingPlan.status,
-                    TrainingPlan.experience_level,
-                    TrainingPlan.equipment,
-                )
-                .join(TrainingSession, TrainingSession.id == SessionExercise.training_session_id)
-                .join(TrainingPlan, TrainingPlan.id == TrainingSession.training_plan_id)
-                .where(SessionExercise.id == session_exercise_id, TrainingPlan.user_id == user_id)
+    async def swap_context(
+        self, user_id: int, session_exercise_id: int, *, lock: bool = False
+    ) -> SwapContext | None:
+        query = (
+            select(
+                SessionExercise.exercise_id,
+                SessionExercise.original_exercise_id,
+                SessionExercise.training_session_id,
+                TrainingPlan.status,
+                TrainingPlan.experience_level,
+                TrainingPlan.equipment,
             )
-        ).first()
+            .join(TrainingSession, TrainingSession.id == SessionExercise.training_session_id)
+            .join(TrainingPlan, TrainingPlan.id == TrainingSession.training_plan_id)
+            .where(SessionExercise.id == session_exercise_id, TrainingPlan.user_id == user_id)
+        )
+        if lock:
+            query = query.with_for_update(of=TrainingPlan)
+        row = (await self._session.execute(query)).first()
         if row is None:
             return None
         in_session = await self._session.scalars(
@@ -231,11 +235,30 @@ class SqlTrainingPlanStore:
         )
         return SwapContext(
             exercise_id=row.exercise_id,
+            original_exercise_id=row.original_exercise_id,
             plan_status=row.status.value,
             experience_level=DifficultyLevel(row.experience_level.value),
             equipment=Equipment(row.equipment.value),
             session_exercise_ids=frozenset(in_session),
         )
+
+    async def set_session_exercise(self, session_exercise_id: int, values: dict) -> None:
+        await self._session.execute(
+            update(SessionExercise)
+            .where(SessionExercise.id == session_exercise_id)
+            .values(**values)
+        )
+
+    async def session_exercise(self, session_exercise_id: int) -> SessionExerciseView:
+        row, name = (
+            await self._session.execute(
+                select(SessionExercise, Exercise.name)
+                .join(Exercise, Exercise.id == SessionExercise.exercise_id)
+                .where(SessionExercise.id == session_exercise_id)
+                .execution_options(populate_existing=True)
+            )
+        ).one()
+        return _exercise_view(row, name)
 
     async def profile_limits(self, user_id: int) -> tuple[DifficultyLevel, Equipment] | None:
         row = (
@@ -273,18 +296,7 @@ class SqlTrainingPlanStore:
         )
         by_session = defaultdict(list)
         for row, name in rows:
-            by_session[row.training_session_id].append(
-                SessionExerciseView(
-                    id=row.id,
-                    exercise_id=row.exercise_id,
-                    exercise_name=name,
-                    sort_order=row.sort_order,
-                    planned_sets=row.planned_sets,
-                    planned_reps=row.planned_reps,
-                    planned_weight=row.planned_weight,
-                    rest_seconds=row.rest_seconds,
-                )
-            )
+            by_session[row.training_session_id].append(_exercise_view(row, name))
         return PlanView(
             id=plan.id,
             plan_name=plan.plan_name,
@@ -309,6 +321,20 @@ class SqlTrainingPlanStore:
                 for s in sessions
             ),
         )
+
+
+def _exercise_view(row: SessionExercise, name: str) -> SessionExerciseView:
+    return SessionExerciseView(
+        id=row.id,
+        exercise_id=row.exercise_id,
+        exercise_name=name,
+        sort_order=row.sort_order,
+        planned_sets=row.planned_sets,
+        planned_reps=row.planned_reps,
+        planned_weight=row.planned_weight,
+        rest_seconds=row.rest_seconds,
+        original_exercise_id=row.original_exercise_id,
+    )
 
 
 class SqlTrainingPlanUnitOfWork:

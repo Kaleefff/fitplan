@@ -10,8 +10,6 @@ PENDING_OPERATIONS = (
     "listFoods",  # GET /foods
     "getFood",  # GET /foods/{food_id}
     "listFoodCategories",  # GET /food-categories
-    "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
-    "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
     "createRecognition",  # POST /meals/recognitions
