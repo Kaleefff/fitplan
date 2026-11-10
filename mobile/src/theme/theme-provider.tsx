@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useEffect, useState, type ReactNode } from 'react';
+import * as SystemUI from 'expo-system-ui';
 import { Appearance, Platform, useColorScheme } from 'react-native';
 
 import {
@@ -69,13 +70,23 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const scheme: ColorScheme =
+    preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
+
+  // The window behind the screens shows for a frame when a screen closes: without this it keeps
+  // the phone's own colour, so a dark app on a light phone flashed white
+  useEffect(() => {
+    if (loaded) {
+      SystemUI.setBackgroundColorAsync(colors[scheme].background).catch(() => {
+        // Only the flash stays; the screens themselves have the right colours
+      });
+    }
+  }, [loaded, scheme]);
+
   // Wait for the stored choice so the first frame already has the right colours
   if (!loaded) {
     return null;
   }
-
-  const scheme: ColorScheme =
-    preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
 
   const value: AppTheme = {
     scheme,
