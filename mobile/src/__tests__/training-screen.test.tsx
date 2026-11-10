@@ -19,12 +19,14 @@ const mockGetActivePlan = jest.fn();
 const mockGetDraftPlan = jest.fn();
 const mockGeneratePlan = jest.fn();
 const mockAcceptPlan = jest.fn();
+const mockScheduleSessions = jest.fn();
 jest.mock('@/training/training-api', () => ({
   ...jest.requireActual('@/training/training-api'),
   getActivePlan: () => mockGetActivePlan(),
   getDraftPlan: () => mockGetDraftPlan(),
   generatePlan: (...args: unknown[]) => mockGeneratePlan(...args),
   acceptPlan: (...args: unknown[]) => mockAcceptPlan(...args),
+  scheduleSessions: (...args: unknown[]) => mockScheduleSessions(...args),
 }));
 
 function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {}): TrainingPlan {
@@ -85,31 +87,63 @@ function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {})
 }
 
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
+const toggleDay = (name: string) => fireEvent.press(screen.getByRole('checkbox', { name }));
 
 describe('TrainingScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetActivePlan.mockResolvedValue(null);
     mockGetDraftPlan.mockResolvedValue(null);
+    mockScheduleSessions.mockImplementation((p: TrainingPlan) => Promise.resolve(p));
   });
 
-  it('generates a draft from the profile settings and the chosen days', async () => {
-    mockGeneratePlan.mockResolvedValue(plan('draft'));
+  it('generates a draft from the profile settings on the chosen weekdays', async () => {
+    const draft = plan('draft');
+    mockGeneratePlan.mockResolvedValue(draft);
     await renderWithTheme(<TrainingScreen />);
 
     expect(await screen.findByText('Create your training plan')).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('radio', { name: '2' }));
-    expect(screen.getByText('Full Body A and B on Monday and Thursday')).toBeOnTheScreen();
+    expect(screen.getByText('Muscle gain · Beginner · Gym equipment')).toBeOnTheScreen();
+    // The split's days (Mon, Wed, Fri) are chosen at the start
+    expect(screen.getByText('3 days a week · Mon: Full Body A · Wed: Full Body B · Fri: Full Body C')).toBeOnTheScreen();
+    for (const day of ['Mon', 'Wed', 'Fri', 'Tue', 'Thu', 'Sun']) {
+      await toggleDay(day);
+    }
+    expect(screen.getByText('3 days a week · Tue: Full Body A · Thu: Full Body B · Sun: Full Body C')).toBeOnTheScreen();
     await press('Generate plan');
 
     expect(mockGeneratePlan).toHaveBeenCalledWith({
       goal: 'muscle_gain',
-      num_training_days: 2,
+      num_training_days: 3,
       experience_level: 'beginner',
       equipment: 'gym',
     });
+    expect(mockScheduleSessions).toHaveBeenCalledWith(draft, [2, 4, 7]);
     expect(await screen.findByText('Draft · not started yet')).toBeOnTheScreen();
     expect(screen.getByText('1. Barbell back squat')).toBeOnTheScreen();
+  });
+
+  it('asks for at least one day', async () => {
+    await renderWithTheme(<TrainingScreen />);
+    await screen.findByText('Create your training plan');
+    for (const day of ['Mon', 'Wed', 'Fri']) {
+      await toggleDay(day);
+    }
+    await press('Generate plan');
+
+    expect(screen.getByText('Choose at least one day.')).toBeOnTheScreen();
+    expect(mockGeneratePlan).not.toHaveBeenCalled();
+  });
+
+  it('keeps the draft when its days cannot be changed', async () => {
+    mockGeneratePlan.mockResolvedValue(plan('draft'));
+    mockScheduleSessions.mockRejectedValue(new ApiError(409, 'conflict', 'Taken', []));
+    await renderWithTheme(<TrainingScreen />);
+    await screen.findByText('Create your training plan');
+    await press('Generate plan');
+
+    expect(await screen.findByText('Draft · not started yet')).toBeOnTheScreen();
+    expect(screen.getByText(/Your plan is ready, but its days could not be changed/)).toBeOnTheScreen();
   });
 
   it('shows the 422 suggestions and generates again with one (M-10 Done)', async () => {
@@ -125,8 +159,6 @@ describe('TrainingScreen', () => {
     await renderWithTheme(<TrainingScreen />);
     await screen.findByText('Create your training plan');
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'None, Bodyweight, chair, wall, towel' }));
-    await fireEvent.press(screen.getByRole('radio', { name: '3' }));
     await press('Generate plan');
 
     expect(screen.getByText('No exercise fits your level and equipment for: back.')).toBeOnTheScreen();
@@ -146,7 +178,6 @@ describe('TrainingScreen', () => {
     mockGeneratePlan.mockRejectedValue(new ApiError(422, 'insufficient_exercises', 'Not enough exercises', []));
     await renderWithTheme(<TrainingScreen />);
     await screen.findByText('Create your training plan');
-    await fireEvent.press(screen.getByRole('radio', { name: '1' }));
     await press('Generate plan');
 
     expect(screen.getByText(/Your injuries leave out every muscle group/)).toBeOnTheScreen();
@@ -161,6 +192,24 @@ describe('TrainingScreen', () => {
     await fireEvent.press(screen.getByRole('radio', { name: 'Thu, Full Body B' }));
     expect(screen.getByText('1. Push-up')).toBeOnTheScreen();
     expect(screen.getByText('3 sets × 12 reps · rest 60 s')).toBeOnTheScreen();
+  });
+
+  it('moves the active plan to other weekdays', async () => {
+    const active = plan('active');
+    mockGetActivePlan.mockResolvedValue(active);
+    await renderWithTheme(<TrainingScreen />);
+    await screen.findByText('Active · 2 Nov 2026 – 28 Dec 2026');
+    expect(screen.getByText('Muscle gain · Beginner · Gym equipment')).toBeOnTheScreen();
+
+    await press('Change training days');
+    await toggleDay('Tue');
+    await press('Save days');
+    expect(screen.getByText('Choose 2 days.')).toBeOnTheScreen();
+
+    await toggleDay('Mon');
+    await press('Save days');
+    expect(mockScheduleSessions).toHaveBeenCalledWith(active, [2, 4]);
+    expect(await screen.findByText('Training days saved.')).toBeOnTheScreen();
   });
 
   it('accepts a draft, which then replaces the current plan', async () => {

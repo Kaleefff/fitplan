@@ -11,13 +11,17 @@ import { FormMessage } from '@/components/form-message';
 import { OptionGroup } from '@/components/option-group';
 import { Screen } from '@/components/screen';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { GenerateForm, type PlanForm } from '@/training/generate-form';
+import { GenerateForm } from '@/training/generate-form';
+import { describeSettings } from '@/training/plan-labels';
 import { PlanView } from '@/training/plan-view';
+import { SPLIT_WEEKDAYS } from '@/training/schedule';
+import { ScheduleEditor } from '@/training/schedule-editor';
 import {
   acceptPlan,
   getActivePlan,
   getDraftPlan,
-  settingsOf,
+  weekdaysOf,
+  type PlanSettings,
   type TrainingPlan,
 } from '@/training/training-api';
 import { formatDate } from '@/utils/dates';
@@ -30,8 +34,9 @@ export default function TrainingScreen() {
   const { spacing } = useAppTheme();
   const { profile } = useSession();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  /** Initial values of the open generation form; null when the form is closed */
-  const [formFrom, setFormFrom] = useState<PlanForm | null>(null);
+  /** Weekdays the open generation form starts with; null when the form is closed */
+  const [formDays, setFormDays] = useState<number[] | null>(null);
+  const [editingDays, setEditingDays] = useState(false);
   const [showing, setShowing] = useState<'draft' | 'active'>('draft');
   const [message, setMessage] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
@@ -69,33 +74,33 @@ export default function TrainingScreen() {
   }
 
   const { active, draft } = state;
-  const fromProfile: PlanForm = {
-    goal: profile?.goal ?? null,
-    num_training_days: null,
-    experience_level: profile?.experience_level ?? null,
-    equipment: profile?.equipment ?? null,
-  };
+  const settings: PlanSettings | null = profile
+    ? { goal: profile.goal, experience_level: profile.experience_level, equipment: profile.equipment }
+    : null;
 
-  if (formFrom || (!active && !draft)) {
+  if (formDays || (!active && !draft)) {
     return (
       <Screen>
         {!active && !draft ? (
           <Card>
             <AppText variant="title">Create your training plan</AppText>
             <AppText color="textMuted">
-              Choose your goal and how many days a week you can train. You review the plan before it starts.
+              Choose the days you can train. Your goal, experience and equipment come from your profile. You review
+              the plan before it starts.
             </AppText>
           </Card>
         ) : null}
         <GenerateForm
-          initial={formFrom ?? fromProfile}
-          onGenerated={(plan) => {
+          settings={settings}
+          initialWeekdays={formDays ?? SPLIT_WEEKDAYS[3]}
+          onGenerated={(plan, notice) => {
             setState({ status: 'ready', active, draft: plan });
             setShowing('draft');
-            setFormFrom(null);
-            setMessage(null);
+            setFormDays(null);
+            setEditingDays(false);
+            setMessage(notice);
           }}
-          onCancel={active || draft ? () => setFormFrom(null) : undefined}
+          onCancel={active || draft ? () => setFormDays(null) : undefined}
         />
       </Screen>
     );
@@ -123,6 +128,18 @@ export default function TrainingScreen() {
 
   const plan = showing === 'draft' && draft ? draft : (active ?? draft)!;
   const isDraft = plan.status === 'draft';
+  const openForm = () => setFormDays([...weekdaysOf(plan)].sort((a, b) => a - b));
+
+  function daysSaved(saved: TrainingPlan) {
+    setEditingDays(false);
+    setMessage('Training days saved.');
+    if (active && saved.id === active.id) {
+      setState({ status: 'ready', active: saved, draft });
+      load(); // the next workout moves with the days
+    } else {
+      setState({ status: 'ready', active, draft: saved });
+    }
+  }
 
   return (
     <Screen>
@@ -136,7 +153,10 @@ export default function TrainingScreen() {
             { value: 'active' as const, label: 'Current plan' },
           ]}
           value={isDraft ? 'draft' : 'active'}
-          onChange={setShowing}
+          onChange={(next) => {
+            setShowing(next);
+            setEditingDays(false);
+          }}
         />
       ) : null}
 
@@ -147,6 +167,9 @@ export default function TrainingScreen() {
             ? 'Draft · not started yet'
             : `Active · ${formatDate(plan.start_date!)} – ${formatDate(plan.end_date!)}`}
         </AppText>
+        <AppText variant="caption" color="textMuted">
+          {describeSettings(plan)}
+        </AppText>
         {isDraft ? (
           <View style={{ gap: spacing.sm }}>
             {active ? (
@@ -155,12 +178,20 @@ export default function TrainingScreen() {
               </AppText>
             ) : null}
             <Button title="Accept plan" onPress={() => accept(plan)} loading={accepting} />
-            <Button title="Generate again" variant="secondary" onPress={() => setFormFrom(settingsOf(plan))} />
+            <Button title="Generate again" variant="secondary" onPress={openForm} />
           </View>
         ) : (
-          <Button title="Generate a new plan" variant="secondary" onPress={() => setFormFrom(settingsOf(plan))} />
+          <Button title="Generate a new plan" variant="secondary" onPress={openForm} />
         )}
+        {/* With 7 sessions every weekday is used, so there is nothing to move */}
+        {!editingDays && plan.sessions.length < 7 ? (
+          <Button title="Change training days" variant="ghost" onPress={() => setEditingDays(true)} />
+        ) : null}
       </Card>
+
+      {editingDays ? (
+        <ScheduleEditor plan={plan} onSaved={daysSaved} onCancel={() => setEditingDays(false)} onFailed={load} />
+      ) : null}
 
       <PlanView key={plan.id} plan={plan} />
     </Screen>

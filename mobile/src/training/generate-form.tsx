@@ -1,38 +1,30 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { fieldErrors, toApiError, userMessage } from '@/api/errors';
+import { toApiError, userMessage } from '@/api/errors';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { FormMessage } from '@/components/form-message';
-import { OptionGroup } from '@/components/option-group';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { EQUIPMENT_OPTIONS, GOAL_OPTIONS, labelOf, LEVEL_OPTIONS } from '@/profile/options';
+import { EQUIPMENT_OPTIONS, GOAL_OPTIONS, labelOf } from '@/profile/options';
 import { readInsufficientExercises, type InsufficientExercises } from '@/training/insufficient';
-import { generatePlan, type GenerateTrainingPlanRequest, type TrainingPlan } from '@/training/training-api';
-
-/** What the form holds; null until chosen */
-export type PlanForm = { [K in keyof GenerateTrainingPlanRequest]: GenerateTrainingPlanRequest[K] | null };
-
-const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((days) => ({ value: days, label: String(days) }));
-
-// Sessions and weekdays of the split, algorithms.md 4.5
-const SPLITS: Record<number, string> = {
-  1: 'Full Body on Wednesday',
-  2: 'Full Body A and B on Monday and Thursday',
-  3: 'Full Body A, B and C on Monday, Wednesday and Friday',
-  4: 'Upper A, Lower A, Upper B and Lower B on Monday, Tuesday, Thursday and Friday',
-  5: 'Upper, Lower, Push, Pull and Legs on Monday, Tuesday, Thursday, Friday and Saturday',
-  6: 'Push, Pull and Legs twice, Monday to Saturday',
-  7: 'Push, Pull and Legs twice, then Full Body, every day',
-};
-
-const CHOOSE = 'Choose an option.';
+import { describeSettings } from '@/training/plan-labels';
+import {
+  generatePlan,
+  scheduleSessions,
+  type PlanSettings,
+  type TrainingPlan,
+} from '@/training/training-api';
+import { WeekdayPicker } from '@/training/weekday-picker';
 
 type GenerateFormProps = {
-  initial: PlanForm;
-  onGenerated: (plan: TrainingPlan) => void;
+  /** Goal, level and equipment of the profile; null when the profile is not loaded */
+  settings: PlanSettings | null;
+  /** Weekdays chosen at the start, for example those of the current plan */
+  initialWeekdays: number[];
+  /** `notice` says that the plan was generated but its weekdays could not be set */
+  onGenerated: (plan: TrainingPlan, notice: string | null) => void;
   /** Shown as a Cancel button when there is a plan to go back to */
   onCancel?: () => void;
 };
@@ -60,7 +52,7 @@ function InsufficientMessage({
       )}
       {info.equipment || info.goals.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
-          <AppText color="textMuted">Try instead:</AppText>
+          <AppText color="textMuted">Try instead, for this plan only:</AppText>
           {info.equipment ? (
             <Button
               title={`Use ${labelOf(EQUIPMENT_OPTIONS, info.equipment).toLowerCase()} equipment`}
@@ -82,42 +74,45 @@ function InsufficientMessage({
   );
 }
 
-// Generation form of FR-P1; the 422 of FR-P3 comes back with suggestions that can be applied at once
-export function GenerateForm({ initial, onGenerated, onCancel }: GenerateFormProps) {
+// Generation form of FR-P1: goal, level and equipment come from the profile, the user picks the
+// weekdays (their number is num_training_days, FR-P9). The 422 of FR-P3 comes back with suggestions
+// that can be applied at once.
+export function GenerateForm({ settings, initialWeekdays, onGenerated, onCancel }: GenerateFormProps) {
   const { spacing } = useAppTheme();
-  const [form, setForm] = useState<PlanForm>(initial);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [weekdays, setWeekdays] = useState<number[]>(initialWeekdays);
+  const [error, setError] = useState<string | undefined>(undefined);
   const [message, setMessage] = useState<string | null>(null);
   const [insufficient, setInsufficient] = useState<InsufficientExercises | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function set<K extends keyof PlanForm>(field: K, value: PlanForm[K]) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors(({ [field]: _removed, ...rest }) => rest);
-  }
-
-  async function generate(next: PlanForm) {
-    const found: Record<string, string> = {};
-    for (const field of Object.keys(next) as (keyof PlanForm)[]) {
-      if (next[field] === null) found[field] = CHOOSE;
-    }
-    setForm(next);
-    setErrors(found);
+  async function generate(override: Partial<PlanSettings> = {}) {
     setMessage(null);
     setInsufficient(null);
-    if (Object.keys(found).length > 0) {
+    if (weekdays.length === 0) {
+      setError('Choose at least one day.');
+      return;
+    }
+    if (!settings) {
+      setMessage('Set up your profile before generating a plan.');
       return;
     }
     setBusy(true);
     try {
-      onGenerated(await generatePlan(next as GenerateTrainingPlanRequest));
-    } catch (error) {
-      const apiError = toApiError(error);
+      const plan = await generatePlan({ ...settings, ...override, num_training_days: weekdays.length });
+      try {
+        onGenerated(await scheduleSessions(plan, weekdays), null);
+      } catch (scheduleError) {
+        onGenerated(
+          plan,
+          `Your plan is ready, but its days could not be changed: ${userMessage(toApiError(scheduleError))} ` +
+            'Use "Change training days" to try again.',
+        );
+      }
+    } catch (generateError) {
+      const apiError = toApiError(generateError);
       const info = readInsufficientExercises(apiError);
       if (info) {
         setInsufficient(info);
-      } else if (apiError.code === 'validation_error') {
-        setErrors(fieldErrors(apiError));
       } else if (apiError.status === 404) {
         setMessage('Set up your profile before generating a plan.');
       } else {
@@ -131,51 +126,31 @@ export function GenerateForm({ initial, onGenerated, onCancel }: GenerateFormPro
   return (
     <View style={{ gap: spacing.lg }}>
       <FormMessage message={message} />
-      <OptionGroup
-        label="Goal"
-        options={GOAL_OPTIONS}
-        value={form.goal}
-        onChange={(v) => set('goal', v)}
-        error={errors.goal}
-      />
-      <View style={{ gap: spacing.xs }}>
-        <OptionGroup
-          label="Training days per week"
-          options={DAY_OPTIONS}
-          value={form.num_training_days}
-          onChange={(v) => set('num_training_days', v)}
-          error={errors.num_training_days}
-        />
-        {form.num_training_days ? (
-          <AppText variant="caption" color="textMuted">
-            {SPLITS[form.num_training_days]}
-          </AppText>
-        ) : null}
-      </View>
-      <OptionGroup
-        label="Training experience"
-        options={LEVEL_OPTIONS}
-        value={form.experience_level}
-        onChange={(v) => set('experience_level', v)}
-        error={errors.experience_level}
-      />
-      <OptionGroup
-        label="Available equipment"
-        options={EQUIPMENT_OPTIONS}
-        value={form.equipment}
-        onChange={(v) => set('equipment', v)}
-        error={errors.equipment}
+
+      <Card>
+        <AppText variant="bodyStrong">From your profile</AppText>
+        <AppText color="textMuted">{settings ? describeSettings(settings) : 'Profile not loaded.'}</AppText>
+      </Card>
+
+      <WeekdayPicker
+        label="Training days"
+        values={weekdays}
+        onChange={(next) => {
+          setWeekdays(next);
+          setError(undefined);
+        }}
+        error={error}
       />
 
       {insufficient ? (
         <InsufficientMessage
           info={insufficient}
-          onUseEquipment={(equipment) => generate({ ...form, equipment })}
-          onUseGoal={(goal) => generate({ ...form, goal })}
+          onUseEquipment={(equipment) => generate({ equipment })}
+          onUseGoal={(goal) => generate({ goal })}
         />
       ) : null}
 
-      <Button title="Generate plan" onPress={() => generate(form)} loading={busy} />
+      <Button title="Generate plan" onPress={() => generate()} loading={busy} />
       {onCancel ? <Button title="Cancel" variant="ghost" onPress={onCancel} /> : null}
     </View>
   );
