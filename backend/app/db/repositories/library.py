@@ -210,7 +210,7 @@ class SqlLibraryRepository:
                     .offset(offset)
                 )
             )
-            rows = await _food_rows(session, foods)
+            rows = await food_rows(session, foods)
         return Page(items=tuple(rows), total=total, limit=limit, offset=offset)
 
     async def get_food(self, food_id: int) -> FoodRow | None:
@@ -219,7 +219,7 @@ class SqlLibraryRepository:
             food = await session.get(FoodItem, food_id)
             if food is None or not food.is_active:
                 return None
-            return (await _food_rows(session, [food]))[0]
+            return (await food_rows(session, [food]))[0]
 
     # ------------------------------------------------------------ eligibility
 
@@ -300,7 +300,7 @@ class SqlLibraryRepository:
 
         async with self._sessions() as session:
             foods = list(await session.scalars(query.order_by(FoodItem.id)))
-            return await _food_rows(session, foods)
+            return await food_rows(session, foods)
 
 
 # ---------------------------------------------------------------- helpers
@@ -388,7 +388,8 @@ def _exercise_row(exercise: Exercise, groups: tuple[ExerciseGroupRow, ...]) -> E
     )
 
 
-async def _food_rows(session: AsyncSession, foods: list[FoodItem]) -> list[FoodRow]:
+async def food_rows(session: AsyncSession, foods: list[FoodItem]) -> list[FoodRow]:
+    """Foods with their categories and allergens; also used for excluded foods (B-06)."""
     ids = [f.id for f in foods]
     categories = await _links(
         session, FoodItemCategory.food_item_id, FoodItemCategory.food_category_id, ids
