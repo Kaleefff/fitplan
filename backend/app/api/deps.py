@@ -16,6 +16,7 @@ from app.services.diet_plans import DietPlanService
 from app.services.health import HealthChecker
 from app.services.library import LibraryService
 from app.services.nutrition import ProfileReader
+from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
 from app.services.schedule import ScheduleService
@@ -84,6 +85,10 @@ def get_analytics_service(request: Request) -> AnalyticsService:
 
 def get_library_service(request: Request) -> LibraryService:
     return request.app.state.library_service
+
+
+def get_nutrition_log_service(request: Request) -> NutritionLogService:
+    return request.app.state.nutrition_log_service
 
 
 @dataclass(frozen=True)
