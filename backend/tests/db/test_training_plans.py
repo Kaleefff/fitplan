@@ -32,10 +32,11 @@ from app.domain.constants import DifficultyLevel, Equipment, Goal
 from app.domain.training import generate_training_plan
 from app.main import create_app
 from app.services.repositories import Repositories
+from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-TODAY = date.today()
+TODAY = today()
 
 
 @functools.cache

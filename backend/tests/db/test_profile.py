@@ -28,10 +28,11 @@ from app.db.seed import load
 from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
+from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-TODAY = date.today()
+TODAY = today()
 PROFILE = {
     "age": 25,
     "sex": "male",

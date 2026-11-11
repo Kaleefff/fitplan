@@ -30,11 +30,12 @@ from app.db.repositories.nutrition_logs import (
 from app.db.seed import load
 from app.db.session import database_url
 from app.domain.constants import MealType
+from tests.clock import today
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 pytestmark = pytest.mark.anyio
 
-TODAY = date.today()
+TODAY = today()
 CRAB = "Crab, cooked"  # 97 kcal, 19.4 g protein, 1.54 g fat, 0 g carbs per 100 g
 YOGURT = "Greek yogurt, plain, whole milk"  # 97, 9, 5, 3.98
 OIL = "Olive oil"  # 884, 0, 100, 0
