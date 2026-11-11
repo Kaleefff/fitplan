@@ -8,7 +8,7 @@ import asyncio
 import functools
 import uuid
 from collections.abc import AsyncIterator
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest

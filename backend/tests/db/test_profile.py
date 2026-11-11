@@ -5,7 +5,7 @@ The reference rows come from the DB-02 seed; skipped without PostgreSQL.
 
 import functools
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient

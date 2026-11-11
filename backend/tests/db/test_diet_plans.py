@@ -8,7 +8,7 @@ import functools
 import time
 from collections import defaultdict
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient

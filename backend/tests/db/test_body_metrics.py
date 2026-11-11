@@ -6,7 +6,7 @@ Skipped without PostgreSQL.
 import functools
 import uuid
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
