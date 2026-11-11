@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -130,6 +131,7 @@ export function GenerateForm({ settings, initialWeekdays, onGenerated, onCancel 
       <Card>
         <AppText variant="bodyStrong">From your profile</AppText>
         <AppText color="textMuted">{settings ? describeSettings(settings) : 'Profile not loaded.'}</AppText>
+        <Button title="Edit profile" variant="ghost" onPress={() => router.push('/edit-profile')} />
       </Card>
 
       <WeekdayPicker

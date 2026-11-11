@@ -11,6 +11,7 @@ from app.api.deps import (
     get_profile_service,
     get_user_repository,
 )
+from app.api.v1.library import FoodItemOut
 from app.core.errors import VALIDATION_ERROR_RESPONSE, AppError, Error, ErrorCode
 from app.domain.constants import (
     AGE_MAX,
@@ -28,7 +29,6 @@ from app.domain.constants import (
 from app.domain.rounding import round_half_up
 from app.services.auth import UserRepository
 from app.services.profile import (
-    FoodView,
     InjuryIn,
     InjuryView,
     NamedView,
@@ -166,28 +166,6 @@ class AllergenOut(BaseModel):
 
 class ExcludedFoodsBody(BaseModel):
     food_item_ids: list[Id] = Field(description="Duplicates are dropped")
-
-
-class FoodItemOut(BaseModel):
-    id: int
-    name: str
-    cals_per_100g: float
-    protein_per_100g: float
-    fat_per_100g: float
-    carbs_per_100g: float
-    category_ids: list[int]
-
-    @classmethod
-    def of(cls, f: FoodView) -> "FoodItemOut":
-        return cls(
-            id=f.id,
-            name=f.name,
-            cals_per_100g=float(f.cals_per_100g),
-            protein_per_100g=float(f.protein_per_100g),
-            fat_per_100g=float(f.fat_per_100g),
-            carbs_per_100g=float(f.carbs_per_100g),
-            category_ids=list(f.category_ids),
-        )
 
 
 def _error(description: str) -> dict:
