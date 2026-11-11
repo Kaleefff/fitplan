@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 
 import { useSession } from '@/auth/session';
@@ -7,7 +8,7 @@ import { Card } from '@/components/card';
 import { Screen } from '@/components/screen';
 import { ThemeSwitch } from '@/components/theme-switch';
 
-// Opened from the gear in the header; profile, account and reminders are added in later tasks
+// Opened from the gear in the header; account and reminders are added in later tasks
 export default function SettingsScreen() {
   const { user, signOut } = useSession();
   const [signingOut, setSigningOut] = useState(false);
@@ -19,6 +20,12 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
+      <Card>
+        <AppText variant="title">Profile</AppText>
+        <AppText color="textMuted">Your body data, goal, training settings, injuries and allergies.</AppText>
+        <Button title="Edit profile" variant="secondary" onPress={() => router.push('/edit-profile')} />
+      </Card>
+
       <Card>
         <AppText variant="title">Appearance</AppText>
         <AppText color="textMuted">System follows the dark mode setting of your phone.</AppText>

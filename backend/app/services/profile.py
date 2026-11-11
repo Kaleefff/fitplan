@@ -14,6 +14,7 @@ from typing import Literal, Protocol
 from zoneinfo import ZoneInfo
 
 from app.core.errors import AppError, ErrorCode
+from app.db.repositories.library import FoodRow
 from app.domain.constants import DifficultyLevel, Equipment, Goal, InjurySeverity, Sex
 from app.domain.nutrition import bmr, tdee
 
@@ -61,17 +62,6 @@ class NamedView:
     extra: dict
 
 
-@dataclass(frozen=True)
-class FoodView:
-    id: int
-    name: str
-    cals_per_100g: Decimal
-    protein_per_100g: Decimal
-    fat_per_100g: Decimal
-    carbs_per_100g: Decimal
-    category_ids: tuple[int, ...]
-
-
 class ProfileStore(Protocol):
     """Every call of one unit of work runs in the same transaction."""
 
@@ -99,7 +89,7 @@ class ProfileStore(Protocol):
 
     async def replace_allergens(self, user_id: int, allergen_ids: list[int]) -> None: ...
 
-    async def excluded_foods(self, user_id: int) -> list[FoodView]: ...
+    async def excluded_foods(self, user_id: int) -> list[FoodRow]: ...
 
     async def replace_excluded_foods(self, user_id: int, food_ids: list[int]) -> None: ...
 
@@ -220,11 +210,11 @@ class ProfileService:
             await store.replace_allergens(user_id, wanted)
             return await store.allergens(user_id)
 
-    async def get_excluded_foods(self, user_id: int) -> list[FoodView]:
+    async def get_excluded_foods(self, user_id: int) -> list[FoodRow]:
         async with self._unit_of_work() as store:
             return await store.excluded_foods(user_id)
 
-    async def put_excluded_foods(self, user_id: int, food_ids: list[int]) -> list[FoodView]:
+    async def put_excluded_foods(self, user_id: int, food_ids: list[int]) -> list[FoodRow]:
         """As allergies; an inactive food counts as unknown (api-rules.md Conventions)."""
         wanted = list(dict.fromkeys(food_ids))
         async with self._unit_of_work() as store:

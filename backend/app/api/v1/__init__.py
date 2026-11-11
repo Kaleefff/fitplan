@@ -9,6 +9,7 @@ from app.api.v1 import (
     health,
     library,
     nutrition,
+    nutrition_logs,
     profile,
     reference,
     schedule,
@@ -32,3 +33,4 @@ api_router.include_router(schedule.router)
 api_router.include_router(diet_plans.router)
 api_router.include_router(analytics.router)
 api_router.include_router(library.router)
+api_router.include_router(nutrition_logs.router)

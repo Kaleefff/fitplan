@@ -10,6 +10,8 @@ PENDING_OPERATIONS = (
     "listFoods",  # GET /foods
     "getFood",  # GET /foods/{food_id}
     "listFoodCategories",  # GET /food-categories
+    "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
+    "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
     "createRecognition",  # POST /meals/recognitions
@@ -19,11 +21,6 @@ PENDING_OPERATIONS = (
     "updateRecognitionItem",  # PATCH /meals/recognitions/{recognition_id}/items/{item_index}
     "deleteRecognitionItem",  # DELETE /meals/recognitions/{recognition_id}/items/{item_index}
     "confirmRecognition",  # POST /meals/recognitions/{recognition_id}/confirm
-    "listNutritionLogs",  # GET /nutrition-logs
-    "createNutritionLog",  # POST /nutrition-logs
-    "updateNutritionLog",  # PATCH /nutrition-logs/{nutrition_log_id}
-    "deleteNutritionLog",  # DELETE /nutrition-logs/{nutrition_log_id}
-    "getDailySummary",  # GET /nutrition/daily-summary
     "getMealSuggestions",  # GET /nutrition/suggestions
     "listReports",  # GET /reports
     "generateReport",  # POST /reports

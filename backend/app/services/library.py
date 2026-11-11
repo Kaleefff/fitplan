@@ -1,6 +1,7 @@
-"""Exercise library and alternatives (B-08; FR-P8, FR-A1).
+"""Exercise and food libraries (B-08, B-09; FR-P8, FR-A1).
 
-Lists and details come from DB-06's library queries. Alternatives follow
+Lists and details come from DB-06's library queries; inactive foods are hidden
+(api-rules.md Conventions). Alternatives follow
 algorithms.md 4.9: eligible exercises (4.2, 4.3) with the same primary group, not
 the current one and not already in the session. With a session exercise the plan's
 level and equipment snapshot applies (the same check as the swap of B-13); without
@@ -14,7 +15,7 @@ from typing import Protocol
 from app.core.errors import AppError, ErrorCode
 from app.db.enums import DifficultyLevel as DbLevel
 from app.db.enums import EquipmentType
-from app.db.repositories.library import ExerciseRow, Page
+from app.db.repositories.library import ExerciseRow, FoodCategoryRow, FoodRow, Page
 from app.services.training_plans import TrainingPlanUnitOfWork
 
 
@@ -30,6 +31,19 @@ class LibraryReader(Protocol):
     ) -> Page[ExerciseRow]: ...
 
     async def get_exercise(self, exercise_id: int) -> ExerciseRow | None: ...
+
+    async def food_categories(self) -> list[FoodCategoryRow]: ...
+
+    async def list_foods(
+        self,
+        *,
+        q: str | None = None,
+        category_id: int | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Page[FoodRow]: ...
+
+    async def get_food(self, food_id: int) -> FoodRow | None: ...
 
     async def eligible_exercises(
         self,
@@ -73,6 +87,23 @@ class LibraryService:
         if exercise is None:
             raise _not_found()
         return exercise
+
+    async def foods(
+        self, *, q: str | None, category_id: int | None, limit: int, offset: int
+    ) -> Page[FoodRow]:
+        return await self._library.list_foods(
+            q=q, category_id=category_id, limit=limit, offset=offset
+        )
+
+    async def food(self, food_id: int) -> FoodRow:
+        """404 for an unknown or inactive food."""
+        food = await self._library.get_food(food_id)
+        if food is None:
+            raise _not_found()
+        return food
+
+    async def food_categories(self) -> list[FoodCategoryRow]:
+        return await self._library.food_categories()
 
     async def alternatives(
         self, user_id: int, exercise_id: int, session_exercise_id: int | None
