@@ -60,6 +60,7 @@ function RootNavigator() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ title: 'Settings' }} />
             <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />
+            <Stack.Screen name="workout" options={{ title: 'Workout' }} />
           </Stack.Protected>
         </Stack>
       )}
