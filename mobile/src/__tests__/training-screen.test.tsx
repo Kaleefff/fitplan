@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { ApiError } from '@/api/errors';
 import TrainingScreen from '@/app/(tabs)/training';
 import { renderWithTheme } from '@/test-utils';
-import type { TrainingPlan } from '@/training/training-api';
+import type { SessionExercise, TrainingPlan } from '@/training/training-api';
 
 const mockUseEffect = useEffect;
 const mockPush = jest.fn();
@@ -23,6 +23,9 @@ const mockGeneratePlan = jest.fn();
 const mockAcceptPlan = jest.fn();
 const mockScheduleSessions = jest.fn();
 const mockGetNextSession = jest.fn();
+const mockEditSessionExercise = jest.fn();
+const mockGetAlternatives = jest.fn();
+const mockSwapSessionExercise = jest.fn();
 jest.mock('@/training/training-api', () => ({
   ...jest.requireActual('@/training/training-api'),
   getActivePlan: () => mockGetActivePlan(),
@@ -31,6 +34,9 @@ jest.mock('@/training/training-api', () => ({
   acceptPlan: (...args: unknown[]) => mockAcceptPlan(...args),
   scheduleSessions: (...args: unknown[]) => mockScheduleSessions(...args),
   getNextSession: () => mockGetNextSession(),
+  editSessionExercise: (...args: unknown[]) => mockEditSessionExercise(...args),
+  getAlternatives: (...args: unknown[]) => mockGetAlternatives(...args),
+  swapSessionExercise: (...args: unknown[]) => mockSwapSessionExercise(...args),
 }));
 
 function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {}): TrainingPlan {
@@ -64,7 +70,7 @@ function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {})
             planned_weight: 60,
             rest_seconds: 120,
           },
-        ],
+        ] as SessionExercise[],
       },
       {
         id: 12,
@@ -83,7 +89,7 @@ function plan(status: TrainingPlan['status'], extra: Partial<TrainingPlan> = {})
             planned_weight: null,
             rest_seconds: 60,
           },
-        ],
+        ] as SessionExercise[],
       },
     ],
     ...extra,
@@ -243,5 +249,77 @@ describe('TrainingScreen', () => {
 
     await press('Start this workout');
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/workout', params: { sessionId: '11' } });
+  });
+
+  describe('changing a planned exercise (FR-A1)', () => {
+    const squat = plan('active').sessions[0].exercises[0];
+    const openSquat = async () => {
+      mockGetActivePlan.mockResolvedValue(plan('active'));
+      await renderWithTheme(<TrainingScreen />);
+      await screen.findByText('Tap an exercise to change it.');
+      await fireEvent.press(screen.getByRole('button', { name: /^Barbell back squat/ }));
+    };
+
+    it('sends only the changed fields and shows them at once', async () => {
+      mockEditSessionExercise.mockResolvedValue({ ...squat, planned_sets: 4, planned_weight: 62.5 });
+      await openSquat();
+
+      await fireEvent.changeText(screen.getByLabelText('Sets'), '0');
+      await press('Save changes');
+      expect(screen.getByText('Enter a number from 1 to 32767.')).toBeOnTheScreen();
+      expect(mockEditSessionExercise).not.toHaveBeenCalled();
+
+      await fireEvent.changeText(screen.getByLabelText('Sets'), '4');
+      await fireEvent.changeText(screen.getByLabelText('Weight'), '62,5');
+      await press('Save changes');
+
+      expect(mockEditSessionExercise).toHaveBeenCalledWith(101, { planned_sets: 4, planned_weight: 62.5 });
+      expect(await screen.findByText('Barbell back squat updated.')).toBeOnTheScreen();
+      expect(screen.getByText('4 sets × 10 reps · 62.5 kg · rest 120 s')).toBeOnTheScreen();
+    });
+
+    it('swaps the exercise for an alternative', async () => {
+      mockGetAlternatives.mockResolvedValue([
+        {
+          id: 9,
+          name: 'Goblet squat',
+          difficulty_level: 'beginner',
+          equipment: 'home',
+          is_compound: true,
+          is_bodyweight: false,
+          description: '',
+          instruction: '',
+          muscle_groups: [],
+        },
+      ]);
+      mockSwapSessionExercise.mockResolvedValue({ ...squat, exercise_id: 9, exercise_name: 'Goblet squat' });
+      await openSquat();
+
+      await press('Swap exercise');
+      expect(mockGetAlternatives).toHaveBeenCalledWith(squat);
+      await fireEvent.press(await screen.findByRole('button', { name: /^Goblet squat/ }));
+
+      expect(mockSwapSessionExercise).toHaveBeenCalledWith(101, 9);
+      expect(await screen.findByText('Barbell back squat swapped for Goblet squat.')).toBeOnTheScreen();
+      expect(screen.getByText('1. Goblet squat')).toBeOnTheScreen();
+    });
+
+    it('points to the injuries when the exercise hurts', async () => {
+      await openSquat();
+
+      await fireEvent.press(screen.getByRole('radio', { name: 'It hurts' }));
+      expect(screen.getByText(/Add the injury to your profile/)).toBeOnTheScreen();
+      await press('Add an injury');
+      expect(mockPush).toHaveBeenCalledWith('/edit-profile');
+    });
+
+    it('explains that an archived plan cannot be changed', async () => {
+      mockEditSessionExercise.mockRejectedValue(new ApiError(409, 'conflict', 'Plan is archived', []));
+      await openSquat();
+
+      await fireEvent.changeText(screen.getByLabelText('Reps'), '8');
+      await press('Save changes');
+      expect(await screen.findByText('This plan can no longer be changed. Open your current plan.')).toBeOnTheScreen();
+    });
   });
 });

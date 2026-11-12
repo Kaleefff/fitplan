@@ -1,4 +1,4 @@
-import type { TrainingSession } from '@/training/training-api';
+import type { SessionExercise, TrainingSession } from '@/training/training-api';
 import {
   countNotDone,
   describeAdjustment,
@@ -35,7 +35,7 @@ const session: TrainingSession = {
       planned_weight: 60,
       rest_seconds: 120,
     },
-  ],
+  ] as SessionExercise[],
 };
 
 describe('workout form', () => {
