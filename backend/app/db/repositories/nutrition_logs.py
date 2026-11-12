@@ -83,6 +83,14 @@ class NutritionLogIn:
     hunger_level_before: int | None
     hunger_level_after: int | None
     items: tuple[ItemIn, ...]
+    # set by a confirmed recognition (DB-08); the two ai_ fields are null together
+    meal_photo_url: str | None = None
+    ai_confidence: Decimal | None = None
+    ai_was_edited: bool | None = None
+
+    def __post_init__(self) -> None:
+        if (self.ai_confidence is None) != (self.ai_was_edited is None):
+            raise ValueError("ai_confidence and ai_was_edited are both set or both None")
 
 
 @dataclass(frozen=True)
@@ -189,6 +197,9 @@ class SqlNutritionLogStore:
             log_date=log.log_date,
             meal_type=DbMealType(log.meal_type.value),
             planned_meal_id=log.planned_meal_id,
+            meal_photo_url=log.meal_photo_url,
+            ai_confidence=log.ai_confidence,
+            ai_was_edited=log.ai_was_edited,
             hunger_level_before=log.hunger_level_before,
             hunger_level_after=log.hunger_level_after,
         )
