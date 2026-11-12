@@ -9,6 +9,9 @@ export type TrainingPlan = Schemas['TrainingPlan'];
 export type TrainingSession = Schemas['TrainingSession'];
 export type GenerateTrainingPlanRequest = Schemas['GenerateTrainingPlanRequest'];
 export type NextSession = Schemas['NextSession'];
+export type SessionExercise = TrainingSession['exercises'][number];
+export type SessionExercisePatch = Schemas['SessionExercisePatch'];
+export type Exercise = Schemas['Exercise'];
 /** What the plan takes from the profile; the user chooses only the training days */
 export type PlanSettings = Pick<GenerateTrainingPlanRequest, 'goal' | 'experience_level' | 'equipment'>;
 
@@ -106,4 +109,45 @@ export async function regenerateLike(plan: TrainingPlan): Promise<TrainingPlan> 
   } catch {
     return draft;
   }
+}
+
+/** Changes sets, reps, weight or rest of a planned exercise; draft or active plan, archived is 409 */
+export function editSessionExercise(id: number, changes: SessionExercisePatch): Promise<SessionExercise> {
+  return unwrap(
+    api.PATCH('/session-exercises/{session_exercise_id}', {
+      params: { path: { session_exercise_id: id } },
+      body: changes,
+    }),
+  );
+}
+
+/** Exercises that may take the place of a planned one: same main muscle group (algorithms.md 4.9) */
+export function getAlternatives(exercise: SessionExercise): Promise<Exercise[]> {
+  return unwrap(
+    api.GET('/exercises/{exercise_id}/alternatives', {
+      params: { path: { exercise_id: exercise.exercise_id }, query: { session_exercise_id: exercise.id } },
+    }),
+  );
+}
+
+/** Keeps sets, reps, rest and weight (FR-A1); an ineligible choice is 422 `invalid_swap` */
+export function swapSessionExercise(id: number, exerciseId: number): Promise<SessionExercise> {
+  return unwrap(
+    api.PUT('/session-exercises/{session_exercise_id}/swap', {
+      params: { path: { session_exercise_id: id } },
+      body: { exercise_id: exerciseId },
+    }),
+  );
+}
+
+/** The plan with one of its exercises replaced by the server's answer */
+export function withExercise(plan: TrainingPlan, updated: SessionExercise): TrainingPlan {
+  return {
+    ...plan,
+    sessions: plan.sessions.map((session) =>
+      session.exercises.some((e) => e.id === updated.id)
+        ? { ...session, exercises: session.exercises.map((e) => (e.id === updated.id ? updated : e)) }
+        : session,
+    ),
+  };
 }

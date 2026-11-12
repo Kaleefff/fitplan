@@ -12,6 +12,7 @@ import { OptionGroup } from '@/components/option-group';
 import { Screen } from '@/components/screen';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { GenerateForm } from '@/training/generate-form';
+import { ExerciseEditor } from '@/training/exercise-editor';
 import { describeSettings } from '@/training/plan-labels';
 import { PlanView } from '@/training/plan-view';
 import { SPLIT_WEEKDAYS } from '@/training/schedule';
@@ -22,8 +23,10 @@ import {
   getDraftPlan,
   getNextSession,
   weekdaysOf,
+  withExercise,
   type NextSession,
   type PlanSettings,
+  type SessionExercise,
   type TrainingPlan,
 } from '@/training/training-api';
 import { formatDate, formatDayAndDate } from '@/utils/dates';
@@ -42,6 +45,8 @@ export default function TrainingScreen() {
   /** Weekdays the open generation form starts with; null when the form is closed */
   const [formDays, setFormDays] = useState<number[] | null>(null);
   const [editingDays, setEditingDays] = useState(false);
+  /** The planned exercise whose editor is open */
+  const [editingExercise, setEditingExercise] = useState<SessionExercise | null>(null);
   const [showing, setShowing] = useState<'draft' | 'active'>('draft');
   const [message, setMessage] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
@@ -147,6 +152,17 @@ export default function TrainingScreen() {
     }
   }
 
+  function exerciseSaved(updated: SessionExercise, text: string) {
+    setEditingExercise(null);
+    setMessage(text);
+    setState({
+      status: 'ready',
+      active: active && plan.id === active.id ? withExercise(active, updated) : active,
+      draft: draft && plan.id === draft.id ? withExercise(draft, updated) : draft,
+      next,
+    });
+  }
+
   return (
     <Screen>
       <FormMessage message={message} tone="info" />
@@ -210,9 +226,23 @@ export default function TrainingScreen() {
         </Card>
       ) : null}
 
+      {editingExercise ? (
+        <ExerciseEditor
+          key={editingExercise.id}
+          exercise={editingExercise}
+          onClose={() => setEditingExercise(null)}
+          onSaved={exerciseSaved}
+          onStale={load}
+        />
+      ) : null}
+
       <PlanView
         key={plan.id}
         plan={plan}
+        onExercisePress={(exercise) => {
+          setMessage(null);
+          setEditingExercise(exercise);
+        }}
         sessionActions={
           isDraft
             ? undefined

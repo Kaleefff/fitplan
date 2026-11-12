@@ -2,7 +2,7 @@ import { fireEvent, screen } from '@testing-library/react-native';
 
 import WorkoutScreen from '@/app/workout';
 import { renderWithTheme } from '@/test-utils';
-import type { TrainingPlan } from '@/training/training-api';
+import type { SessionExercise, TrainingPlan } from '@/training/training-api';
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => '1b4e28ba-2fa1-11d2-883f-0016d3cca427' }));
 jest.mock('expo-router', () => ({
@@ -34,7 +34,7 @@ const activePlan: Partial<TrainingPlan> = {
           planned_weight: 60,
           rest_seconds: 120,
         },
-      ],
+      ] as SessionExercise[],
     },
   ],
 };
