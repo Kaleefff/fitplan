@@ -15,6 +15,7 @@ from app.domain.constants import (
     EXERCISES_PER_SESSION,
     FULL_SETS_MAX_EXERCISES,
     GROUP_PRIORITY,
+    GROUP_REGION,
     LEVEL_ORDER,
     MAIN_GROUPS,
     MIN_SETS,
@@ -115,14 +116,19 @@ def is_eligible(
 
 
 def _priority(exercise: ExerciseInfo) -> tuple:
-    """4.6: is_compound DESC, difficulty_level DESC, id."""
-    return (not exercise.is_compound, -LEVEL_ORDER.index(exercise.difficulty_level), exercise.id)
+    """4.6: is_compound DESC, difficulty_level DESC, equipment DESC, id."""
+    return (
+        not exercise.is_compound,
+        -LEVEL_ORDER.index(exercise.difficulty_level),
+        -EQUIPMENT_ORDER.index(exercise.equipment),
+        exercise.id,
+    )
 
 
 @dataclass(frozen=True)
 class _Coverage:
     eligible: dict[str, list[ExerciseInfo]]  # required group -> sorted eligible exercises
-    skipped: tuple[str, ...]  # only injuries left it empty
+    skipped: tuple[str, ...]  # injuries left it empty, or a severe injury in its region
     empty: tuple[str, ...]  # level or equipment left it empty
 
 
@@ -134,7 +140,16 @@ def _coverage(
     exercises: list[ExerciseInfo],
 ) -> _Coverage:
     eligible, skipped, empty = {}, [], []
+    # 4.3: a severe injury skips every main group of the affected group's region
+    severe_regions = {
+        GROUP_REGION[injury.affected_group]
+        for injury in injuries
+        if injury.severity == InjurySeverity.SEVERE
+    }
     for group in MAIN_GROUPS[goal]:
+        if GROUP_REGION[group] in severe_regions:
+            skipped.append(group)
+            continue
         fitting = [
             e
             for e in exercises
@@ -199,8 +214,7 @@ def _split(num_days: int, required: list[str]) -> list[tuple[str, int, list[str]
     for group in required:
         if not any(group in groups for _, _, groups in sessions):
             min(sessions, key=lambda s: len(s[2]))[2].append(group)
-    # A session whose groups were all skipped for injuries trains every required group
-    # (algorithms.md is silent; questions.md, B-11).
+    # 4.5: a session left with no group trains every required group and keeps its name
     return [(name, day, groups or list(required)) for name, day, groups in sessions]
 
 
