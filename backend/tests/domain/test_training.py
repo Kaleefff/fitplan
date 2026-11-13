@@ -6,6 +6,7 @@ from hypothesis import strategies as st
 
 from app.domain.constants import (
     ALL_GROUPS,
+    GROUP_REGION,
     MAIN_GROUPS,
     MIN_SETS,
     DifficultyLevel,
@@ -107,6 +108,30 @@ def test_split(days, names, weekdays):
 # ---------------------------------------------------------------- 4.6, 4.7 worked examples
 
 
+def test_equipment_breaks_a_tie_closest_tier_first():
+    """4.6: same compound flag and level, so equipment DESC decides, then id."""
+    chest_gym = ExerciseInfo(901, INT, GYM, True, "chest")
+    chest_none = ExerciseInfo(900, INT, NONE, True, "chest")
+    exercises = catalog(more=[chest_none, chest_gym])
+
+    gym = generate_training_plan(Goal.MUSCLE_GAIN, 3, INT, GYM, [], exercises)
+    home = generate_training_plan(Goal.MUSCLE_GAIN, 3, INT, HOME, [], exercises)
+
+    # gym pool: 901 (gym), 12 (home), 900 (none), ...; home pool: 12, 900, ...
+    assert _chest(gym) == [901, eid("chest", 2), 900]
+    assert _chest(home) == [eid("chest", 2), 900, eid("chest", 1)]
+
+
+def _chest(plan) -> list[int]:
+    """The chest exercise of each session (one per group in these plans)."""
+    return [
+        e.exercise_id
+        for s in plan.sessions
+        for e in s.exercises
+        if e.exercise_id in (900, 901) or ALL_GROUPS[e.exercise_id // 10] == "chest"
+    ]
+
+
 def test_full_body_muscle_gain_rotates_and_trims_sets():
     """Intermediate, gym: per group [10i+2, 10i+1, 10i+3] (compound, harder first)."""
     plan = generate_training_plan(Goal.MUSCLE_GAIN, 3, INT, GYM, [], catalog())
@@ -174,6 +199,40 @@ def test_injured_group_is_skipped():
     )
     assert plan.skipped_groups == ("chest",)
     assert all("chest" not in by_group(s) for s in plan.sessions)
+
+
+def test_a_severe_injury_skips_every_main_group_of_its_region():
+    severe_triceps = [ActiveInjury(1, "triceps", InjurySeverity.SEVERE)]  # not a main group here
+    plan = generate_training_plan(Goal.MAINTENANCE, 3, ADV, GYM, severe_triceps, catalog())
+
+    assert plan.skipped_groups == ("chest", "back", "shoulders")
+    trained = {g for s in plan.sessions for g in by_group(s)}
+    assert trained == {"quadriceps", "hamstrings", "glutes", "core"}
+
+
+def test_a_moderate_injury_does_not_skip_the_region():
+    moderate = [ActiveInjury(1, "triceps", InjurySeverity.MODERATE)]
+    plan = generate_training_plan(Goal.MAINTENANCE, 3, ADV, GYM, moderate, catalog())
+
+    assert plan.skipped_groups == ()
+
+
+def test_a_region_skipped_group_needs_no_exercise():
+    """Calves exist only in the gym, but a severe knee injury skips the lower region."""
+    calves_gym_only = [e for e in catalog() if e.primary_group != "calves"] + [
+        ExerciseInfo(999, BEG, GYM, False, "calves")
+    ]
+    injuries = [ActiveInjury(1, "quadriceps", InjurySeverity.SEVERE)]
+    plan = generate_training_plan(Goal.MUSCLE_GAIN, 3, ADV, HOME, injuries, calves_gym_only)
+
+    assert plan.skipped_groups == ("quadriceps", "hamstrings", "glutes", "calves")
+
+
+def test_severe_injuries_in_every_region_are_insufficient_without_suggestions():
+    injuries = [ActiveInjury(1, g, InjurySeverity.SEVERE) for g in ("chest", "calves", "core")]
+    with pytest.raises(InsufficientExercisesError) as error:
+        generate_training_plan(Goal.STRENGTH, 3, ADV, GYM, injuries, catalog())
+    assert error.value.details == []
 
 
 def test_session_left_empty_by_injuries_trains_every_required_group():
@@ -267,6 +326,10 @@ def test_every_required_group_is_trained_and_nothing_ineligible(
         return
 
     required = set(MAIN_GROUPS[goal]) - set(plan.skipped_groups)
+    severe_regions = {
+        GROUP_REGION[i.affected_group] for i in injuries if i.severity == InjurySeverity.SEVERE
+    }
+    assert not {g for g in required if GROUP_REGION[g] in severe_regions}
     trained = {by_id[e.exercise_id].primary_group for s in plan.sessions for e in s.exercises}
     assert trained == required
     assert len(plan.sessions) == days

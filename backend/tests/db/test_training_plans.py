@@ -202,6 +202,34 @@ def test_injured_group_is_skipped(api):
     assert not names & {"Pike push-up", "Dumbbell shoulder press", "Barbell overhead press"}
 
 
+def test_a_severe_injury_skips_its_region(api):
+    headers = _login(api)
+    with _sync_engine().begin() as db:
+        db.execute(
+            text(
+                "INSERT INTO injury (user_id, injury_type_id, affected_muscle_group_id, severity,"
+                " start_date) SELECT 1, (SELECT min(id) FROM injury_type), m.id, 'severe',"
+                " current_date FROM muscle_group m WHERE m.group_name = 'calves'"
+            )
+        )
+
+    plan = _generate(api, headers).json()
+
+    # section 4.3: calves are lower (not a main group of strength), so every lower main
+    # group is skipped and the plan trains only the upper and core groups
+    assert set(plan["skipped_muscle_groups"]) == {"quadriceps", "hamstrings", "glutes"}
+    ids = [e["exercise_id"] for s in plan["sessions"] for e in s["exercises"]]
+    with _sync_engine().connect() as db:
+        trained = db.execute(
+            text(
+                "SELECT DISTINCT m.group_name FROM exercise_muscle_group g JOIN muscle_group m"
+                " ON m.id = g.muscle_group_id WHERE g.is_primary AND g.exercise_id = ANY(:ids)"
+            ),
+            {"ids": ids},
+        ).scalars()
+        assert set(trained) == {"chest", "back", "shoulders", "core"}
+
+
 def test_not_enough_exercises_is_422_with_suggestions_and_keeps_the_draft(api):
     headers = _login(api)
     draft = _generate(api, headers).json()
