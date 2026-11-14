@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -130,8 +131,10 @@ export function DietFormView({ initial, onGenerated, onCancel }: DietFormViewPro
       />
       <Card>
         <AppText variant="caption" color="textMuted">
-          Foods with your allergens are always left out. Change your allergies in Settings.
+          Foods with your allergens and the foods you excluded are always left out. Change your allergies in
+          Settings.
         </AppText>
+        <Button title="Excluded foods" variant="ghost" onPress={() => router.push('/excluded-foods')} />
       </Card>
       <Button title="Generate diet plan" onPress={generate} loading={busy} />
       {onCancel ? <Button title="Cancel" variant="ghost" onPress={onCancel} /> : null}

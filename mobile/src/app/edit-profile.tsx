@@ -350,6 +350,11 @@ export default function EditProfileScreen() {
                 onChange={setAllergenIds}
               />
             ) : null}
+            <Button
+              title="Foods you do not eat"
+              variant="ghost"
+              onPress={() => router.push('/excluded-foods')}
+            />
             <View style={{ gap: spacing.md }}>
               <AppText variant="bodyStrong">Your injuries</AppText>
               {health.injuries.length === 0 ? <AppText color="textMuted">No injuries saved.</AppText> : null}
