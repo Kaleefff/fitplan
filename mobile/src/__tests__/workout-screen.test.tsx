@@ -5,8 +5,9 @@ import { renderWithTheme } from '@/test-utils';
 import type { SessionExercise, TrainingPlan } from '@/training/training-api';
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => '1b4e28ba-2fa1-11d2-883f-0016d3cca427' }));
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  router: { back: jest.fn() },
+  router: { back: jest.fn(), push: (...args: unknown[]) => mockPush(...args) },
   useLocalSearchParams: () => ({ sessionId: '11' }),
 }));
 
@@ -113,5 +114,13 @@ describe('WorkoutScreen', () => {
 
     expect(mockLogWorkout.mock.calls[1][0].client_uuid).toBe(mockLogWorkout.mock.calls[0][0].client_uuid);
     expect(await screen.findByText('Your plan stays the same for the next workout.')).toBeOnTheScreen();
+  });
+
+  it('opens how to do an exercise without leaving the workout', async () => {
+    await renderWithTheme(<WorkoutScreen />);
+    await screen.findByText('Full Body A');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'How to do Barbell back squat' }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/exercise/[id]', params: { id: '5' } });
   });
 });
