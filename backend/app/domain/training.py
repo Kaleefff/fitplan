@@ -24,6 +24,13 @@ from app.domain.constants import (
     SETS_REPS_REST,
     SEVERE_INJURY,
     SPLITS,
+    SWAP_ABOVE_LEVEL,
+    SWAP_ALREADY_IN_SESSION,
+    SWAP_EXCLUDED_BY_INJURY,
+    SWAP_NEEDS_EQUIPMENT,
+    SWAP_OTHER_MUSCLE_GROUP,
+    SWAP_SAME_EXERCISE,
+    SWAP_UNKNOWN_EXERCISE,
     DifficultyLevel,
     Equipment,
     Goal,
@@ -112,6 +119,41 @@ def is_eligible(
     return fits_level_and_equipment(exercise, level, equipment) and not excluded_by_injury(
         exercise, injuries
     )
+
+
+# ---------------------------------------------------------------- 4.9 swap
+
+
+def swap_problems(
+    current: ExerciseInfo,
+    candidate: ExerciseInfo | None,
+    in_session: frozenset[int],
+    level: DifficultyLevel,
+    equipment: Equipment,
+    injuries: list[ActiveInjury],
+) -> list[str]:
+    """Why `candidate` may not replace `current` (422 `invalid_swap` codes); [] = allowed.
+
+    `level` and `equipment` are the plan's snapshot; `in_session` holds every exercise
+    of the session, `current` included. An unknown or the same exercise stops the
+    check; otherwise every failing rule is listed, in the order of 4.9.
+    """
+    if candidate is None:
+        return [SWAP_UNKNOWN_EXERCISE]
+    if candidate.id == current.id:
+        return [SWAP_SAME_EXERCISE]
+    problems = []
+    if candidate.primary_group != current.primary_group:
+        problems.append(SWAP_OTHER_MUSCLE_GROUP)
+    if candidate.id in in_session:
+        problems.append(SWAP_ALREADY_IN_SESSION)
+    if LEVEL_ORDER.index(candidate.difficulty_level) > LEVEL_ORDER.index(level):
+        problems.append(SWAP_ABOVE_LEVEL)
+    if EQUIPMENT_ORDER.index(candidate.equipment) > EQUIPMENT_ORDER.index(equipment):
+        problems.append(SWAP_NEEDS_EQUIPMENT)
+    if excluded_by_injury(candidate, injuries):
+        problems.append(SWAP_EXCLUDED_BY_INJURY)
+    return problems
 
 
 def _priority(exercise: ExerciseInfo) -> tuple:
