@@ -58,7 +58,7 @@ class FakePlans:
     async def profile_limits(self, user_id: int):
         return self.profile
 
-    async def swap_context(self, user_id: int, session_exercise_id: int):
+    async def swap_context(self, user_id: int, session_exercise_id: int, *, lock=False):
         return self.context if user_id == USER and session_exercise_id == 7 else None
 
     @asynccontextmanager
@@ -76,6 +76,7 @@ def _alternatives(plans: FakePlans, exercise_id=PUSH_UP, session_exercise_id=Non
 def _context(exercise_id=PUSH_UP) -> SwapContext:
     return SwapContext(
         exercise_id=exercise_id,
+        original_exercise_id=None,
         plan_status="active",
         experience_level=DifficultyLevel.INTERMEDIATE,
         equipment=Equipment.HOME,

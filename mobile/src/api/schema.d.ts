@@ -639,7 +639,12 @@ export interface paths {
         get?: never;
         /**
          * Swap an exercise for an alternative (FR-A1)
-         * @description Keeps sets, reps, rest and weight. Ineligible choices give 422 `invalid_swap`.
+         * @description Keeps sets, reps, rest and weight (algorithms.md 4.9). The planned exercise is kept in
+         *     `original_exercise_id`; swapping back to it clears it. Ineligible choices give 422
+         *     `invalid_swap` with one `details[]` item per failing rule on `body.exercise_id`, code
+         *     one of `unknown_exercise`, `same_exercise` (these two alone), `other_muscle_group`,
+         *     `already_in_session`, `above_level`, `needs_equipment`, `excluded_by_injury`. Level and
+         *     equipment are the plan's snapshot. An archived plan is 409.
          */
         put: operations["swapSessionExercise"];
         post?: never;
@@ -1512,6 +1517,8 @@ export interface components {
             /** @description kg; null until the baseline workout (algorithms.md 6) */
             planned_weight: number | null;
             rest_seconds: number;
+            /** @description The planned exercise when this one was swapped in (algorithms.md 4.9) */
+            original_exercise_id: number | null;
         };
         TrainingSession: {
             id: number;

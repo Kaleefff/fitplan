@@ -7,8 +7,6 @@ serve. Remove an operation here in the PR that implements it.
 PENDING_OPERATIONS = (
     "signInWithGoogle",  # POST /auth/google
     "signInWithApple",  # POST /auth/apple
-    "updateSessionExercise",  # PATCH /session-exercises/{session_exercise_id}
-    "swapSessionExercise",  # PUT /session-exercises/{session_exercise_id}/swap
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
     "createRecognition",  # POST /meals/recognitions

@@ -1,8 +1,9 @@
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Body, Depends, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.deps import (
     CurrentUser,
@@ -18,8 +19,15 @@ from app.domain.constants import (
     Equipment,
     Goal,
 )
+from app.domain.rounding import round_half_up
 from app.services.auth import UserRepository
-from app.services.training_plans import PlanRequest, PlanView, SessionView, TrainingPlanService
+from app.services.training_plans import (
+    PlanRequest,
+    PlanView,
+    SessionExerciseView,
+    SessionView,
+    TrainingPlanService,
+)
 
 router = APIRouter(prefix="/training-plans", tags=["training"])
 
@@ -47,6 +55,23 @@ class SessionExerciseOut(BaseModel):
     planned_reps: int
     planned_weight: float | None = Field(description="kg; null until the baseline workout")
     rest_seconds: int
+    original_exercise_id: int | None = Field(
+        description="The planned exercise when this one was swapped in (algorithms.md 4.9)"
+    )
+
+    @classmethod
+    def of(cls, e: SessionExerciseView) -> "SessionExerciseOut":
+        return cls(
+            id=e.id,
+            exercise_id=e.exercise_id,
+            exercise_name=e.exercise_name,
+            sort_order=e.sort_order,
+            planned_sets=e.planned_sets,
+            planned_reps=e.planned_reps,
+            planned_weight=None if e.planned_weight is None else float(e.planned_weight),
+            rest_seconds=e.rest_seconds,
+            original_exercise_id=e.original_exercise_id,
+        )
 
 
 class TrainingSessionOut(BaseModel):
@@ -97,19 +122,7 @@ def session_out(s: SessionView) -> TrainingSessionOut:
         session_name=s.session_name,
         day_of_week=s.day_of_week,
         estimated_duration=s.estimated_duration,
-        exercises=[
-            SessionExerciseOut(
-                id=e.id,
-                exercise_id=e.exercise_id,
-                exercise_name=e.exercise_name,
-                sort_order=e.sort_order,
-                planned_sets=e.planned_sets,
-                planned_reps=e.planned_reps,
-                planned_weight=None if e.planned_weight is None else float(e.planned_weight),
-                rest_seconds=e.rest_seconds,
-            )
-            for e in s.exercises
-        ],
+        exercises=[SessionExerciseOut.of(e) for e in s.exercises],
     )
 
 
@@ -184,6 +197,7 @@ async def accept(
 
 
 sessions_router = APIRouter(tags=["workouts"])
+exercises_router = APIRouter(tags=["training"])
 
 
 class NextSessionOut(BaseModel):
@@ -208,3 +222,68 @@ async def get_next_session(
         raise AppError(401, ErrorCode.UNAUTHORIZED, "Unknown user")
     plan, session, day = await service.next_session(user.id, account.timezone, datetime.now(UTC))
     return NextSessionOut(training_plan_id=plan.id, date=day, session=session_out(session))
+
+
+# ---------------------------------------------------------------- plan edits (B-13, FR-A1)
+
+SMALLINT_MAX = 32_767  # session_exercise columns are SMALLINT
+SessionExerciseId = Annotated[int, Path(ge=1, le=INT_MAX)]
+
+
+class SessionExercisePatchBody(BaseModel):
+    """At least one field; a field that is sent may not be null."""
+
+    planned_sets: int = Field(default=None, ge=1, le=SMALLINT_MAX)
+    planned_reps: int = Field(default=None, ge=1, le=SMALLINT_MAX)
+    planned_weight: float = Field(default=None, ge=0, le=999.99, description="kg")
+    rest_seconds: int = Field(default=None, ge=0, le=SMALLINT_MAX)
+
+    @model_validator(mode="after")
+    def _some_field(self) -> "SessionExercisePatchBody":
+        if not self.model_fields_set:
+            raise ValueError("At least one field is required")
+        return self
+
+
+class SwapBody(BaseModel):
+    exercise_id: int = Field(ge=1, le=INT_MAX)
+
+
+EDIT_RESPONSES = {
+    **VALIDATION_ERROR_RESPONSE,
+    401: UNAUTHORIZED,
+    404: _error("No such session exercise of the user"),
+    409: _error("The plan is archived"),
+}
+
+
+@exercises_router.patch(
+    "/session-exercises/{session_exercise_id}",
+    operation_id="updateSessionExercise",
+    summary="Edit sets, reps, rest or weight of a planned exercise (FR-A1)",
+    responses=EDIT_RESPONSES,
+)
+async def update_session_exercise(
+    session_exercise_id: SessionExerciseId,
+    body: SessionExercisePatchBody,
+    user: User,
+    service: Service,
+) -> SessionExerciseOut:
+    changes = {f: getattr(body, f) for f in body.model_fields_set}
+    if "planned_weight" in changes:
+        changes["planned_weight"] = round_half_up(Decimal(str(changes["planned_weight"])), 2)
+    return SessionExerciseOut.of(
+        await service.update_session_exercise(user.id, session_exercise_id, changes)
+    )
+
+
+@exercises_router.put(
+    "/session-exercises/{session_exercise_id}/swap",
+    operation_id="swapSessionExercise",
+    summary="Swap an exercise for an alternative (FR-A1)",
+    responses=EDIT_RESPONSES,
+)
+async def swap_session_exercise(
+    session_exercise_id: SessionExerciseId, body: SwapBody, user: User, service: Service
+) -> SessionExerciseOut:
+    return SessionExerciseOut.of(await service.swap(user.id, session_exercise_id, body.exercise_id))
