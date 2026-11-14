@@ -31,10 +31,11 @@ from app.db.session import database_url
 from app.domain.prediction import predict_goal
 from app.main import create_app
 from app.services.repositories import Repositories
+from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-TODAY = date.today()
+TODAY = today()
 
 
 def day(n: int) -> date:

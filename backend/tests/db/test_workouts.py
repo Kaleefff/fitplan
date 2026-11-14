@@ -33,10 +33,11 @@ from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
 from app.services.workouts import ExerciseIn, SetIn, WorkoutIn, WorkoutService
+from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
-TODAY = date.today()
+TODAY = today()
 BENCH, SQUAT, PUSH_UP, ROW = 1, 2, 3, 4  # exercise ids of the seed below
 
 
