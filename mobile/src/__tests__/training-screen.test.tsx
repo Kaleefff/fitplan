@@ -256,8 +256,8 @@ describe('TrainingScreen', () => {
     const openSquat = async () => {
       mockGetActivePlan.mockResolvedValue(plan('active'));
       await renderWithTheme(<TrainingScreen />);
-      await screen.findByText('Tap an exercise to change it.');
-      await fireEvent.press(screen.getByRole('button', { name: /^Barbell back squat/ }));
+      await screen.findByText('Tap an exercise to see how to do it. The pencil changes it.');
+      await fireEvent.press(screen.getByRole('button', { name: 'Change Barbell back squat' }));
     };
 
     it('sends only the changed fields and shows them at once', async () => {
@@ -321,5 +321,13 @@ describe('TrainingScreen', () => {
       await press('Save changes');
       expect(await screen.findByText('This plan can no longer be changed. Open your current plan.')).toBeOnTheScreen();
     });
+  });
+
+  it('opens how to do an exercise of the plan', async () => {
+    mockGetActivePlan.mockResolvedValue(plan('active'));
+    await renderWithTheme(<TrainingScreen />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: /^Barbell back squat/ }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/exercise/[id]', params: { id: '5' } });
   });
 });

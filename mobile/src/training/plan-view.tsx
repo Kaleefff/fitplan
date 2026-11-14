@@ -10,7 +10,15 @@ import { minTouchSize } from '@/theme/tokens';
 import type { SessionExercise, TrainingPlan, TrainingSession } from '@/training/training-api';
 import { WEEKDAYS, WEEKDAYS_SHORT } from '@/utils/dates';
 
-function ExerciseRow({ exercise, onPress }: { exercise: SessionExercise; onPress?: () => void }) {
+type ExerciseRowProps = {
+  exercise: SessionExercise;
+  /** Opens the exercise details */
+  onInfo?: () => void;
+  /** Opens the editor: sets, reps, weight, rest or swap */
+  onEdit?: () => void;
+};
+
+function ExerciseRow({ exercise, onInfo, onEdit }: ExerciseRowProps) {
   const { colors, spacing } = useAppTheme();
   const parts = [`${exercise.planned_sets} sets × ${exercise.planned_reps} reps`];
   if (exercise.planned_weight !== null) {
@@ -18,28 +26,43 @@ function ExerciseRow({ exercise, onPress }: { exercise: SessionExercise; onPress
   }
   parts.push(`rest ${exercise.rest_seconds} s`);
   const text = (
-    <View style={styles.text}>
+    <>
       <AppText variant="bodyStrong">
         {exercise.sort_order}. {exercise.exercise_name}
       </AppText>
       <AppText variant="caption" color="textMuted">
         {parts.join(' · ')}
       </AppText>
-    </View>
+    </>
   );
-  if (!onPress) {
-    return <View accessible>{text}</View>;
-  }
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${exercise.exercise_name}, ${parts.join(', ')}`}
-      accessibilityHint="Change sets, reps, weight or rest, or swap the exercise"
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, { gap: spacing.sm, opacity: pressed ? 0.7 : 1 }]}>
-      {text}
-      <Ionicons name="create-outline" size={22} color={colors.primary} />
-    </Pressable>
+    <View style={[styles.row, { gap: spacing.sm }]}>
+      {onInfo ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${exercise.exercise_name}, ${parts.join(', ')}`}
+          accessibilityHint="Shows how to do the exercise"
+          onPress={onInfo}
+          style={({ pressed }) => [styles.text, { opacity: pressed ? 0.7 : 1 }]}>
+          {text}
+        </Pressable>
+      ) : (
+        <View style={styles.text} accessible>
+          {text}
+        </View>
+      )}
+      {onEdit ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Change ${exercise.exercise_name}`}
+          accessibilityHint="Change sets, reps, weight or rest, or swap the exercise"
+          onPress={onEdit}
+          hitSlop={spacing.xs}
+          style={({ pressed }) => [styles.icon, { opacity: pressed ? 0.7 : 1 }]}>
+          <Ionicons name="create-outline" size={22} color={colors.primary} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -47,12 +70,14 @@ type PlanViewProps = {
   plan: TrainingPlan;
   /** Buttons under the chosen session, for example "Start workout" */
   sessionActions?: (session: TrainingSession) => ReactNode;
-  /** Makes the exercises tappable, to change them */
-  onExercisePress?: (exercise: SessionExercise) => void;
+  /** Makes the exercises tappable, to show how to do them */
+  onExerciseInfo?: (exercise: SessionExercise) => void;
+  /** Adds a button to each exercise, to change it */
+  onExerciseEdit?: (exercise: SessionExercise) => void;
 };
 
 /** Sessions of a plan, one weekday at a time */
-export function PlanView({ plan, sessionActions, onExercisePress }: PlanViewProps) {
+export function PlanView({ plan, sessionActions, onExerciseInfo, onExerciseEdit }: PlanViewProps) {
   const { spacing } = useAppTheme();
   const sessions = [...plan.sessions].sort((a, b) => a.day_of_week - b.day_of_week);
   const [selectedId, setSelectedId] = useState(sessions[0]?.id ?? null);
@@ -80,9 +105,14 @@ export function PlanView({ plan, sessionActions, onExercisePress }: PlanViewProp
             <AppText color="textMuted">
               {WEEKDAYS[session.day_of_week]} · about {session.estimated_duration} min
             </AppText>
-            {onExercisePress ? (
+            {onExerciseInfo || onExerciseEdit ? (
               <AppText variant="caption" color="textMuted">
-                Tap an exercise to change it.
+                {[
+                  onExerciseInfo ? 'Tap an exercise to see how to do it.' : '',
+                  onExerciseEdit ? 'The pencil changes it.' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               </AppText>
             ) : null}
           </View>
@@ -92,7 +122,8 @@ export function PlanView({ plan, sessionActions, onExercisePress }: PlanViewProp
               <ExerciseRow
                 key={exercise.id}
                 exercise={exercise}
-                onPress={onExercisePress ? () => onExercisePress(exercise) : undefined}
+                onInfo={onExerciseInfo ? () => onExerciseInfo(exercise) : undefined}
+                onEdit={onExerciseEdit ? () => onExerciseEdit(exercise) : undefined}
               />
             ))}
           {sessionActions?.(session)}
@@ -104,5 +135,6 @@ export function PlanView({ plan, sessionActions, onExercisePress }: PlanViewProp
 
 const styles = StyleSheet.create({
   row: { minHeight: minTouchSize, flexDirection: 'row', alignItems: 'center' },
-  text: { flex: 1 },
+  text: { flex: 1, minHeight: minTouchSize, justifyContent: 'center' },
+  icon: { minWidth: minTouchSize, minHeight: minTouchSize, alignItems: 'center', justifyContent: 'center' },
 });

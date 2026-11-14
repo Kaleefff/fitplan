@@ -9,8 +9,8 @@ import { Dialog } from '@/components/dialog';
 import { FormMessage } from '@/components/form-message';
 import { OptionGroup } from '@/components/option-group';
 import { TextField } from '@/components/text-field';
+import { exerciseTags } from '@/exercises/exercise-api';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { EQUIPMENT_OPTIONS, labelOf, LEVEL_OPTIONS } from '@/profile/options';
 import { minTouchSize } from '@/theme/tokens';
 import {
   changesOf,
@@ -52,15 +52,11 @@ function planError(error: ApiError): string {
 
 function AlternativeRow({ exercise, onPress }: { exercise: Exercise; onPress: () => void }) {
   const { colors, radius, spacing } = useAppTheme();
-  const details = [
-    exercise.is_compound ? 'Compound' : 'Isolation',
-    labelOf(LEVEL_OPTIONS, exercise.difficulty_level),
-    exercise.is_bodyweight ? 'Body weight' : `${labelOf(EQUIPMENT_OPTIONS, exercise.equipment)} equipment`,
-  ];
+  const details = exerciseTags(exercise);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${exercise.name}, ${details.join(', ')}`}
+      accessibilityLabel={`${exercise.name}, ${details}`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.alternative,
@@ -73,7 +69,7 @@ function AlternativeRow({ exercise, onPress }: { exercise: Exercise; onPress: ()
       ]}>
       <AppText variant="bodyStrong">{exercise.name}</AppText>
       <AppText variant="caption" color="textMuted">
-        {details.join(' · ')}
+        {details}
       </AppText>
     </Pressable>
   );
