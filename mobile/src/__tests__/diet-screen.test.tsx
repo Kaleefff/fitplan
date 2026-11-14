@@ -8,7 +8,9 @@ import { renderWithTheme } from '@/test-utils';
 import { isoDate } from '@/utils/dates';
 
 const mockUseEffect = useEffect;
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
+  router: { push: (...args: unknown[]) => mockPush(...args) },
   useFocusEffect: (effect: () => void) => mockUseEffect(effect, []),
 }));
 jest.mock('@/auth/session', () => ({ useSession: () => ({ profile: { profile_update: '2026-11-10T10:00:00Z' } }) }));
@@ -133,5 +135,16 @@ describe('DietScreen', () => {
     await press('Accept plan');
     expect(mockAccept).toHaveBeenCalledWith(2);
     expect(await screen.findByText('Your diet plan has started. It runs until 5 Jan 2027.')).toBeOnTheScreen();
+  });
+
+  it('opens the excluded foods with a tapped food of the plan', async () => {
+    mockGetActive.mockResolvedValue(plan('active', { start_date: isoDate(), end_date: isoDate() }));
+    await renderWithTheme(<DietScreen />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Food 1.2, 150 grams' }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/excluded-foods', params: { add: '102' } });
+
+    await press('Excluded foods');
+    expect(mockPush).toHaveBeenLastCalledWith('/excluded-foods');
   });
 });

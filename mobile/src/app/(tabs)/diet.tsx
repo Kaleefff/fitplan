@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -22,6 +22,9 @@ type Plans = { active: DietPlan | null; draft: DietPlan | null };
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & Plans);
 
 const NEW_FORM: DietForm = { meals_per_day: null, diet_type: 'omnivore', dietary_restrictions: '' };
+
+const openExcludedFoods = (foodId?: number) =>
+  router.push(foodId ? { pathname: '/excluded-foods', params: { add: String(foodId) } } : '/excluded-foods');
 
 const settingsOf = (plan: DietPlan): DietForm => ({
   meals_per_day: plan.meals_per_day,
@@ -166,9 +169,15 @@ export default function DietScreen() {
         ) : (
           <Button title="Generate a new plan" variant="secondary" onPress={() => setFormFrom(settingsOf(plan))} />
         )}
+        <Button title="Excluded foods" variant="ghost" onPress={() => openExcludedFoods()} />
       </Card>
 
-      <DietPlanView key={plan.id} plan={plan} tdee={tdee} />
+      <DietPlanView
+        key={plan.id}
+        plan={plan}
+        tdee={tdee}
+        onFoodPress={(item) => openExcludedFoods(item.food_item_id)}
+      />
     </Screen>
   );
 }

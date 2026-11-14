@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Card } from '@/components/card';
@@ -7,7 +8,7 @@ import { OptionGroup } from '@/components/option-group';
 import { dayIndexOn, type DietPlan, type Meal } from '@/diet/diet-api';
 import { grams, MEAL_TYPE_LABELS } from '@/diet/labels';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import type { ColorName } from '@/theme/tokens';
+import { minTouchSize, type ColorName } from '@/theme/tokens';
 import { isoDate } from '@/utils/dates';
 
 function Macro({ label, value, color }: { label: string; value: number; color: ColorName }) {
@@ -23,8 +24,10 @@ function Macro({ label, value, color }: { label: string; value: number; color: C
   );
 }
 
-function MealCard({ meal }: { meal: Meal }) {
-  const { spacing } = useAppTheme();
+type FoodPress = (item: Meal['items'][number]) => void;
+
+function MealCard({ meal, onFoodPress }: { meal: Meal; onFoodPress?: FoodPress }) {
+  const { colors, spacing } = useAppTheme();
   return (
     <Card style={{ gap: spacing.sm }}>
       <View style={styles.row}>
@@ -38,12 +41,26 @@ function MealCard({ meal }: { meal: Meal }) {
       <AppText variant="caption" color="textMuted">
         Protein {grams(meal.planned_protein)} g · Fat {grams(meal.planned_fat)} g · Carbs {grams(meal.planned_carbs)} g
       </AppText>
-      {meal.items.map((item) => (
-        <View key={item.food_item_id} style={styles.row} accessible>
-          <AppText style={styles.fill}>{item.name}</AppText>
-          <AppText color="textMuted">{grams(item.grams)} g</AppText>
-        </View>
-      ))}
+      {meal.items.map((item) =>
+        onFoodPress ? (
+          <Pressable
+            key={item.food_item_id}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.name}, ${grams(item.grams)} grams`}
+            accessibilityHint="Exclude this food from your diet plans"
+            onPress={() => onFoodPress(item)}
+            style={({ pressed }) => [styles.row, styles.food, { gap: spacing.sm, opacity: pressed ? 0.7 : 1 }]}>
+            <AppText style={styles.fill}>{item.name}</AppText>
+            <AppText color="textMuted">{grams(item.grams)} g</AppText>
+            <Ionicons name="remove-circle-outline" size={20} color={colors.textMuted} />
+          </Pressable>
+        ) : (
+          <View key={item.food_item_id} style={styles.row} accessible>
+            <AppText style={styles.fill}>{item.name}</AppText>
+            <AppText color="textMuted">{grams(item.grams)} g</AppText>
+          </View>
+        ),
+      )}
     </Card>
   );
 }
@@ -52,10 +69,12 @@ type DietPlanViewProps = {
   plan: DietPlan;
   /** From GET /nutrition/targets; null while it is not loaded */
   tdee: number | null;
+  /** Makes the foods tappable, to exclude them from new plans */
+  onFoodPress?: FoodPress;
 };
 
 /** Daily targets and the meals of one day of the 7-day plan (FR-P4–P6) */
-export function DietPlanView({ plan, tdee }: DietPlanViewProps) {
+export function DietPlanView({ plan, tdee, onFoodPress }: DietPlanViewProps) {
   const { spacing } = useAppTheme();
   const todayIndex = plan.start_date ? dayIndexOn(plan.start_date, isoDate()) : null;
   const [day, setDay] = useState(todayIndex ?? 1);
@@ -95,8 +114,13 @@ export function DietPlanView({ plan, tdee }: DietPlanViewProps) {
         onChange={setDay}
       />
       <AppText color="textMuted">Planned for day {day}: {dayKcal} kcal</AppText>
+      {onFoodPress ? (
+        <AppText variant="caption" color="textMuted">
+          Tap a food you do not want, to leave it out of your next plans.
+        </AppText>
+      ) : null}
       {meals.map((meal) => (
-        <MealCard key={meal.id} meal={meal} />
+        <MealCard key={meal.id} meal={meal} onFoodPress={onFoodPress} />
       ))}
     </View>
   );
@@ -105,6 +129,7 @@ export function DietPlanView({ plan, tdee }: DietPlanViewProps) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   fill: { flex: 1 },
+  food: { minHeight: minTouchSize },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline' },
   macro: { alignItems: 'center', flex: 1 },
 });
