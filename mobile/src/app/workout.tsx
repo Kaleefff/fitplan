@@ -164,7 +164,7 @@ type LoadState = { status: 'loading' } | { status: 'missing'; message: string } 
 // Workout session (M-13): log sets with reps, weight, done and optional RPE, rest between sets,
 // overall RPE at the end, then the plan changes and new records (FR-A2, A4, A5)
 export default function WorkoutScreen() {
-  const { spacing } = useAppTheme();
+  const { colors, spacing } = useAppTheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [drafts, setDrafts] = useState<ExerciseDraft[]>([]);
@@ -267,11 +267,23 @@ export default function WorkoutScreen() {
 
         {drafts.map((draft, e) => (
           <Card key={draft.exercise.id} style={{ gap: spacing.md }}>
-            <View>
-              <AppText variant="bodyStrong">{draft.exercise.exercise_name}</AppText>
-              <AppText variant="caption" color="textMuted">
-                {plannedText(draft.exercise)}
-              </AppText>
+            <View style={[styles.row, { gap: spacing.sm }]}>
+              <View style={styles.fill}>
+                <AppText variant="bodyStrong">{draft.exercise.exercise_name}</AppText>
+                <AppText variant="caption" color="textMuted">
+                  {plannedText(draft.exercise)}
+                </AppText>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`How to do ${draft.exercise.exercise_name}`}
+                onPress={() =>
+                  router.push({ pathname: '/exercise/[id]', params: { id: String(draft.exercise.exercise_id) } })
+                }
+                hitSlop={spacing.xs}
+                style={({ pressed }) => [styles.info, { opacity: pressed ? 0.7 : 1 }]}>
+                <Ionicons name="information-circle-outline" size={26} color={colors.primary} />
+              </Pressable>
             </View>
             {draft.sets.map((set, s) => (
               <SetRow
@@ -332,5 +344,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   field: { flex: 1 },
+  info: { width: minTouchSize, height: minTouchSize, alignItems: 'center', justifyContent: 'center' },
   done: { width: minTouchSize, height: minTouchSize, marginTop: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

@@ -33,6 +33,8 @@ import { formatDate, formatDayAndDate } from '@/utils/dates';
 
 type Plans = { active: TrainingPlan | null; draft: TrainingPlan | null; next: NextSession | null };
 
+const openExercise = (exerciseId: number) =>
+  router.push({ pathname: '/exercise/[id]', params: { id: String(exerciseId) } });
 const startWorkout = (sessionId: number) =>
   router.push({ pathname: '/workout', params: { sessionId: String(sessionId) } });
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & Plans);
@@ -239,7 +241,8 @@ export default function TrainingScreen() {
       <PlanView
         key={plan.id}
         plan={plan}
-        onExercisePress={(exercise) => {
+        onExerciseInfo={(exercise) => openExercise(exercise.exercise_id)}
+        onExerciseEdit={(exercise) => {
           setMessage(null);
           setEditingExercise(exercise);
         }}
