@@ -67,6 +67,7 @@ class SqlDietPlanStore:
                 is_vegetarian=f.is_vegetarian,
                 is_vegan=f.is_vegan,
                 allergen_ids=frozenset(allergens[f.id]),
+                name=f.name,
             )
             for f in rows
         ]
