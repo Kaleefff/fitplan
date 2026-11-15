@@ -221,6 +221,39 @@ def test_charts(api):
     assert all(date.fromisoformat(d).weekday() == 0 for d, _ in weeks)  # dated Monday
 
 
+def test_compliance_charts_per_iso_week(api):
+    """algorithms.md 8: section 7 over the days of each ISO week inside the window.
+    The split depends on today's weekday, so the expected values follow the rule."""
+    headers = _login(api)
+    _fixture_week(1)
+    start = day(6)
+    monday = start - timedelta(days=start.weekday())
+    expected_workouts, expected_diet = [], []
+    while monday <= TODAY:
+        first, last = max(monday, start), min(monday + timedelta(days=6), TODAY)
+        covered = max(first, day(5))  # training plan from today-5, 3 a week
+        days = (last - covered).days + 1
+        done = sum(1 for d in (day(5), day(1)) if covered <= d <= last)
+        expected_workouts.append(
+            (monday.isoformat(), round(done / (3 * days / 7) * 100, 2) if days > 0 else None)
+        )
+        covered = max(first, day(4))  # diet plan from today-4; only today-4 is within 10 %
+        days = (last - covered).days + 1
+        passed = 1 if covered <= day(4) <= last else 0
+        expected_diet.append(
+            (monday.isoformat(), round(passed / days * 100, 2) if days > 0 else None)
+        )
+        monday += timedelta(days=7)
+
+    def points(metric):
+        body = api.get(f"/api/v1/analytics/charts/{metric}", headers=headers).json()
+        assert (body["status"], body["metric"], body["period"]) == ("ok", metric, "week")
+        return [(p["date"], p["value"]) for p in body["points"]]
+
+    assert points("workout_compliance") == expected_workouts
+    assert points("diet_compliance") == expected_diet
+
+
 def test_six_days_of_history_is_insufficient_and_other_users_see_nothing(api):
     headers = _login(api)
     for days_ago in range(6):
