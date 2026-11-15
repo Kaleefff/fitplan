@@ -291,5 +291,12 @@ LOW_FIT_R2 = 0.5
 MAX_GAP_DAYS = 10
 LOW_TRAINING_COMPLIANCE_PCT = 60.0
 
+# --- Section 10: meal suggestions ------------------------------------------
+SUGGESTION_MIN_REMAINING_KCAL = 100  # below it: no suggestions, `target_reached`
+SUGGESTION_IDEAL_SHARE = 0.35  # ideal_kcal = min(remaining kcal, 0.35 x daily target)
+SUGGESTION_KCAL_MARGIN = 1.05  # candidates above remaining kcal x 1.05 are dropped
+SUGGESTION_COUNT = 5
+
 # --- Section 12: scheduler ---------------------------------------------------
 SCHEDULER_INTERVAL_SECONDS = 15 * 60  # one pass of every job (B-26)
+
