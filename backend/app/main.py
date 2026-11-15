@@ -24,6 +24,7 @@ from app.services.body_metrics import BodyMetricsService
 from app.services.diet_plans import DietPlanService
 from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.library import LibraryService
+from app.services.meal_suggestions import MealSuggestionService
 from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
@@ -110,6 +111,9 @@ def create_app(
     app.state.analytics_service = AnalyticsService(repositories.analytics)
     app.state.library_service = LibraryService(repositories.library, repositories.training_plans)
     app.state.nutrition_log_service = NutritionLogService(repositories.nutrition_logs)
+    app.state.meal_suggestion_service = MealSuggestionService(
+        repositories.diet_plans, repositories.nutrition_logs
+    )
     app.state.account_service = AccountService(
         settings,
         repositories.users,

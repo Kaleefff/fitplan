@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.api.deps import (
     CurrentUser,
     get_current_user,
+    get_meal_suggestion_service,
     get_nutrition_log_service,
     get_user_repository,
 )
@@ -19,7 +20,9 @@ from app.core.errors import VALIDATION_ERROR_RESPONSE, AppError, Error, ErrorCod
 from app.db.repositories.nutrition_logs import ItemIn, Macros, NutritionLogIn, NutritionLogView
 from app.domain.constants import MealType
 from app.domain.rounding import round_half_up
+from app.domain.suggestions import Suggestion, SuggestionKind, SuggestionStatus
 from app.services.auth import UserRepository
+from app.services.meal_suggestions import MealSuggestionService
 from app.services.nutrition_logs import NutritionLogService, today
 
 router = APIRouter(tags=["nutrition"])
@@ -274,4 +277,64 @@ async def get_daily_summary(
         avg_hunger_before=_one_decimal(summary.avg_hunger_before),
         avg_hunger_after=_one_decimal(summary.avg_hunger_after),
         logs=[NutritionLogOut.of(log) for log in summary.logs],
+    )
+
+
+# ---------------------------------------------------------------- suggestions (B-22)
+
+
+def _macros(values: tuple[float, ...]) -> MacrosOut:
+    """algorithms.md section 0: kcal integers, grams and macros one decimal."""
+    kcal, protein, fat, carbs = (Decimal(repr(v)) for v in values)
+    return MacrosOut(
+        kcal=float(round_half_up(kcal)),
+        protein=float(round_half_up(protein, 1)),
+        fat=float(round_half_up(fat, 1)),
+        carbs=float(round_half_up(carbs, 1)),
+    )
+
+
+class SuggestionOut(BaseModel):
+    kind: SuggestionKind
+    food_item_id: int | None = None
+    meal_id: int | None = None
+    name: str
+    grams: float
+    nutrition: MacrosOut
+
+    @classmethod
+    def of(cls, s: Suggestion) -> "SuggestionOut":
+        return cls(
+            kind=s.kind,
+            food_item_id=s.food_item_id,
+            meal_id=s.meal_id,
+            name=s.name,
+            grams=float(round_half_up(Decimal(repr(s.grams)), 1)),
+            nutrition=_macros(s.nutrition),
+        )
+
+
+class SuggestionListOut(BaseModel):
+    status: SuggestionStatus
+    remaining: MacrosOut
+    suggestions: list[SuggestionOut] = Field(max_length=5)
+
+
+@router.get(
+    "/nutrition/suggestions",
+    operation_id="getMealSuggestions",
+    summary="Real-time meal suggestions for the rest of today (FR-N5)",
+    responses={401: UNAUTHORIZED, 404: _error("No active diet plan")},
+)
+async def get_meal_suggestions(
+    user: User,
+    users: Users,
+    suggestions: Annotated[MealSuggestionService, Depends(get_meal_suggestion_service)],
+) -> SuggestionListOut:
+    day = today(await _timezone(users, user), datetime.now(UTC))
+    result = await suggestions.suggestions(user.id, day)
+    return SuggestionListOut(
+        status=result.status,
+        remaining=_macros(result.remaining),
+        suggestions=[SuggestionOut.of(s) for s in result.suggestions],
     )
