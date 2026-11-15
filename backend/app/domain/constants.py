@@ -299,4 +299,3 @@ SUGGESTION_COUNT = 5
 
 # --- Section 12: scheduler ---------------------------------------------------
 SCHEDULER_INTERVAL_SECONDS = 15 * 60  # one pass of every job (B-26)
-
