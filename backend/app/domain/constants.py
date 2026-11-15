@@ -290,3 +290,6 @@ MAX_DAYS_TO_GOAL = 730
 LOW_FIT_R2 = 0.5
 MAX_GAP_DAYS = 10
 LOW_TRAINING_COMPLIANCE_PCT = 60.0
+
+# --- Section 12: scheduler ---------------------------------------------------
+SCHEDULER_INTERVAL_SECONDS = 15 * 60  # one pass of every job (B-26)
