@@ -34,6 +34,7 @@ from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 EMAIL, OLD, NEW = "ann@example.com", "secret123", "brandnew456"
@@ -76,7 +77,7 @@ def inbox() -> Iterator[tuple[Inbox, int]]:
 @pytest.fixture
 def api(migrated_db, inbox) -> Iterator[TestClient]:  # noqa: F811
     with _sync_engine().begin() as db:
-        db.execute(text("TRUNCATE app_user RESTART IDENTITY CASCADE"))
+        delete_users(db)
     engine = create_async_engine(database_url().set(database=TEST_DB))
     factory = async_sessionmaker(engine, expire_on_commit=False)
     repositories = Repositories(

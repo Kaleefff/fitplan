@@ -35,6 +35,7 @@ from app.services.repositories import Repositories
 from app.services.workouts import ExerciseIn, SetIn, WorkoutIn, WorkoutService
 from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 TODAY = today()
@@ -124,11 +125,9 @@ def _count(table: str) -> int:
 @pytest.fixture
 def sessions(migrated_db):  # noqa: F811
     with _sync_engine().begin() as db:
+        delete_users(db)
         db.execute(
-            text(
-                "TRUNCATE app_user, muscle_group, exercise, exercise_muscle_group"
-                " RESTART IDENTITY CASCADE"
-            )
+            text("TRUNCATE muscle_group, exercise, exercise_muscle_group RESTART IDENTITY CASCADE")
         )
         db.execute(text(SEED))
     engine = create_async_engine(database_url().set(database=TEST_DB))

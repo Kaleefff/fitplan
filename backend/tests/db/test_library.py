@@ -19,6 +19,7 @@ from app.db.session import database_url
 from app.domain import constants as domain
 from app.domain.diet import FoodInfo, food_is_eligible
 from app.domain.training import is_eligible
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 pytestmark = pytest.mark.anyio
@@ -34,9 +35,10 @@ def anyio_backend() -> str:
 def seeded(migrated_db) -> None:  # noqa: F811
     engine = create_engine(database_url().set(database=TEST_DB))
     with engine.begin() as db:
+        delete_users(db)
         db.execute(
             text(
-                "TRUNCATE app_user, muscle_group, exercise, exercise_muscle_group, injury_type,"
+                "TRUNCATE muscle_group, exercise, exercise_muscle_group, injury_type,"
                 " food_item, food_category, allergen RESTART IDENTITY CASCADE"
             )
         )
@@ -60,7 +62,7 @@ def users(seeded) -> Iterator["Users"]:
     engine = create_engine(database_url().set(database=TEST_DB))
     yield Users(engine)
     with engine.begin() as db:
-        db.execute(text("TRUNCATE app_user RESTART IDENTITY CASCADE"))
+        delete_users(db)
     engine.dispose()
 
 

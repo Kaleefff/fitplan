@@ -44,6 +44,10 @@ from app.db.enums import (
     PlanStatus,
 )
 
+# D26: NO ACTION foreign keys to exercise.id are checked at commit, so one
+# DELETE FROM app_user cascades cleanly; deleting a custom exercise sets them IMMEDIATE.
+EXERCISE_REFERENCE = {"deferrable": True, "initially": "DEFERRED"}
+
 
 class MuscleGroup(Base):
     __tablename__ = "muscle_group"
@@ -56,10 +60,30 @@ class MuscleGroup(Base):
 
 
 class Exercise(Base):
+    """`user_id` NULL: a library exercise (seeded); NOT NULL: a custom exercise visible
+    only to that user and deleted with the account (D26, FR-P10)."""
+
     __tablename__ = "exercise"
+    __table_args__ = (
+        # also serves `WHERE user_id = ?` (the cascade from app_user): no index of its own
+        Index(
+            "ux_exercise_library_name",
+            "name",
+            unique=True,
+            postgresql_where=text("user_id IS NULL"),
+        ),
+        Index(
+            "ux_exercise_custom_name",
+            "user_id",
+            text("lower(name)"),
+            unique=True,
+            postgresql_where=text("user_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100))
     difficulty_level: Mapped[DifficultyLevel] = mapped_column(DIFFICULTY_LEVEL)
     equipment: Mapped[EquipmentType] = mapped_column(EQUIPMENT_TYPE)
     is_compound: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
@@ -204,8 +228,10 @@ class SessionExercise(Base):
     training_session_id: Mapped[int] = mapped_column(
         ForeignKey("training_session.id", ondelete="CASCADE")
     )
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id"))
-    original_exercise_id: Mapped[int | None] = mapped_column(ForeignKey("exercise.id"))
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id", **EXERCISE_REFERENCE))
+    original_exercise_id: Mapped[int | None] = mapped_column(
+        ForeignKey("exercise.id", **EXERCISE_REFERENCE)
+    )
     sort_order: Mapped[int] = mapped_column(SmallInteger)
     planned_sets: Mapped[int] = mapped_column(SmallInteger)
     planned_reps: Mapped[int] = mapped_column(SmallInteger)
@@ -250,7 +276,7 @@ class WorkoutLogExercise(Base):
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
     workout_log_id: Mapped[int] = mapped_column(ForeignKey("workout_log.id", ondelete="CASCADE"))
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id"))
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id", **EXERCISE_REFERENCE))
     session_exercise_id: Mapped[int | None] = mapped_column(
         ForeignKey("session_exercise.id", ondelete="SET NULL")
     )
@@ -325,7 +351,7 @@ class PersonalRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id"))
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercise.id", **EXERCISE_REFERENCE))
     max_weight: Mapped[Decimal] = mapped_column(Numeric(5, 2))
     max_reps: Mapped[int] = mapped_column(SmallInteger)
     e1rm: Mapped[Decimal] = mapped_column(Numeric(6, 2))

@@ -22,6 +22,7 @@ from app.db.session import database_url
 from app.domain.constants import Goal, Sex
 from app.services.tokens import InvalidRefreshTokenError, TokenService
 from tests.conftest import make_settings
+from tests.db.conftest import delete_users_async
 from tests.db.test_migrations import run_alembic
 
 TEST_DB = "fitplan_repo_test"
@@ -64,7 +65,7 @@ def migrated_db() -> Iterator[None]:
 async def sessions(migrated_db) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = create_async_engine(database_url().set(database=TEST_DB))
     async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE app_user RESTART IDENTITY CASCADE"))
+        await delete_users_async(connection)
     yield async_sessionmaker(engine, expire_on_commit=False)
     await engine.dispose()
 
