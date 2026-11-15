@@ -141,7 +141,7 @@ def test_seed_is_idempotent_and_covers_every_combination(api, sessions):
 
     async def load():
         async with factory() as session:
-            return await SqlTrainingPlanStore(session).catalogue()
+            return await SqlTrainingPlanStore(session).catalogue(0, include_custom=False)
 
     catalogue = api.portal.call(load)
     for goal, days, level, equipment in itertools.product(

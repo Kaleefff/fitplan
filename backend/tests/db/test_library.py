@@ -6,6 +6,7 @@ PostgreSQL.
 
 import itertools
 from collections.abc import AsyncIterator, Iterator
+from functools import partial
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -24,6 +25,7 @@ from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixt
 
 pytestmark = pytest.mark.anyio
 INACTIVE = "Smoked salmon"
+ANYONE = 0  # no user has id 0: reads see the library only (D26)
 
 
 @pytest.fixture
@@ -162,7 +164,7 @@ async def _all(list_page, **filters):
 
 
 async def _all_exercises(library: SqlLibraryRepository, **filters):
-    return await _all(library.list_exercises, **filters)
+    return await _all(partial(library.list_exercises, ANYONE, custom_only=False), **filters)
 
 
 async def _all_foods(library: SqlLibraryRepository, **filters):
@@ -182,8 +184,8 @@ async def test_muscle_groups_are_ordered_by_name(library):
 
 
 async def test_exercises_are_ordered_by_name_then_id_and_paginated(library):
-    first = await library.list_exercises(limit=10)
-    second = await library.list_exercises(limit=10, offset=10)
+    first = await library.list_exercises(ANYONE, custom_only=False, limit=10)
+    second = await library.list_exercises(ANYONE, custom_only=False, limit=10, offset=10)
     everything = await _all_exercises(library)
 
     assert first.total == second.total == len(everything)
@@ -194,7 +196,7 @@ async def test_exercises_are_ordered_by_name_then_id_and_paginated(library):
 
 
 async def test_offset_past_the_end_is_an_empty_page_with_the_total(library):
-    page = await library.list_exercises(offset=10_000)
+    page = await library.list_exercises(ANYONE, custom_only=False, offset=10_000)
     assert page.items == ()
     assert page.total > 0
 
@@ -206,8 +208,8 @@ async def test_search_is_case_insensitive_and_treats_wildcards_literally(library
     found = await _all_exercises(library, q=word.swapcase())
     assert found
     assert all(word.lower() in e.name.lower() for e in found)
-    assert (await library.list_exercises(q="%")).total == 0
-    assert (await library.list_exercises(q="_")).total == 0
+    assert (await library.list_exercises(ANYONE, custom_only=False, q="%")).total == 0
+    assert (await library.list_exercises(ANYONE, custom_only=False, q="_")).total == 0
 
 
 async def test_muscle_group_filter_matches_primary_and_secondary_groups(library):
@@ -240,8 +242,8 @@ async def test_filters_combine(library):
 
 
 async def test_exercise_detail_lists_the_primary_group_first(library):
-    some = (await library.list_exercises(limit=1)).items[0]
-    exercise = await library.get_exercise(some.id)
+    some = (await library.list_exercises(ANYONE, custom_only=False, limit=1)).items[0]
+    exercise = await library.get_exercise(ANYONE, some.id)
 
     assert exercise == some
     assert exercise.muscle_groups[0].is_primary
@@ -249,7 +251,7 @@ async def test_exercise_detail_lists_the_primary_group_first(library):
 
 
 async def test_unknown_exercise_is_none(library):
-    assert await library.get_exercise(999_999) is None
+    assert await library.get_exercise(ANYONE, 999_999) is None
 
 
 # ---------------------------------------------------------------- foods
@@ -413,7 +415,8 @@ async def test_exercise_eligibility_agrees_with_the_domain_rule(library, users):
     engine = create_async_engine(database_url().set(database=TEST_DB))
     async with async_sessionmaker(engine)() as session:
         store = SqlTrainingPlanStore(session)
-        catalogue, injuries = await store.catalogue(), await store.active_injuries(user)
+        catalogue = await store.catalogue(user, include_custom=True)
+        injuries = await store.active_injuries(user)
     await engine.dispose()
     assert len(injuries) == 2
 

@@ -30,6 +30,7 @@ from app.db.models import (
     WorkoutLogExercise,
     WorkoutSet,
 )
+from app.db.repositories.library import lock_visible_exercises, visible_to
 from app.domain.adaptation import Adjustment
 from app.domain.constants import BodyRegion
 from app.services.workouts import (
@@ -97,15 +98,23 @@ class SqlWorkoutStore:
             ),
         )
 
-    async def exercise_names(self, exercise_ids: set[int]) -> dict[int, str]:
+    async def exercise_names(self, user_id: int, exercise_ids: set[int]) -> dict[int, str]:
+        """Names of the given exercises the user may log: library exercises and the user's
+        own (D26); another user's custom exercise is left out, like an unknown id."""
         rows = await self._session.execute(
-            select(Exercise.id, Exercise.name).where(Exercise.id.in_(exercise_ids))
+            select(Exercise.id, Exercise.name).where(
+                Exercise.id.in_(exercise_ids), visible_to(user_id)
+            )
         )
         return {exercise_id: name for exercise_id, name in rows}
 
     async def insert_workout(
         self, user_id: int, workout: WorkoutIn, session_exercise_ids: list[int | None]
-    ) -> int:
+    ) -> int | None:
+        """The new workout's id; None, with nothing written, when a logged exercise is not
+        visible to the user (D26)."""
+        if not await self._exercises_visible(user_id, workout):
+            return None
         log = WorkoutLog(
             user_id=user_id,
             training_session_id=workout.training_session_id,
@@ -132,7 +141,11 @@ class SqlWorkoutStore:
         workout: WorkoutIn,
         session_exercise_ids: list[int | None],
     ) -> bool:
-        """PUT: same row and client_uuid, new fields and exercises; nothing is adapted."""
+        """PUT: same row and client_uuid, new fields and exercises; nothing is adapted.
+        False, with nothing written, for an unknown or another user's workout and when a
+        logged exercise is not visible to the user (D26)."""
+        if not await self._exercises_visible(user_id, workout):
+            return False
         log = await self._session.scalar(
             select(WorkoutLog)
             .where(
@@ -153,6 +166,11 @@ class SqlWorkoutStore:
         await self._insert_exercises(workout_id, workout, session_exercise_ids)
         await self._session.flush()
         return True
+
+    async def _exercises_visible(self, user_id: int, workout: WorkoutIn) -> bool:
+        return await lock_visible_exercises(
+            self._session, user_id, {e.exercise_id for e in workout.exercises}
+        )
 
     async def _insert_exercises(
         self, workout_id: int, workout: WorkoutIn, session_exercise_ids: list[int | None]
@@ -232,7 +250,11 @@ class SqlWorkoutStore:
         reps: int,
         estimated_1rm: Decimal,
         achieved: date,
-    ) -> int:
+    ) -> int | None:
+        """The new current record's id; None, with nothing written, when the exercise is
+        not visible to the user (D26)."""
+        if not await lock_visible_exercises(self._session, user_id, {exercise_id}):
+            return None
         await self._session.execute(
             update(PersonalRecord)
             .where(
