@@ -13,7 +13,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
@@ -575,3 +575,55 @@ def test_concurrent_first_records_of_one_exercise_keep_one_current(api, sessions
     # the second waits for the first, sees its 60 x 10 and has no improvement
     assert sorted(len(r.new_personal_records) for r in results) == [0, 1]
     assert _count("personal_record") == 1
+
+
+def test_concurrent_first_records_in_the_store_wait_instead_of_deadlocking(sessions):
+    """DB-09 (FR-A2) at the repository level; the test above runs the same race through
+    WorkoutService. Both transactions have inserted their workout, so each holds FOR KEY
+    SHARE on the user row through workout_log's foreign key, before either reads the
+    current record. The user-row lock in current_record must not conflict with FOR KEY
+    SHARE (FOR NO KEY UPDATE, not FOR UPDATE): the second waits instead of deadlocking."""
+    engine, factory = sessions
+    with _sync_engine().begin() as db:
+        user_id = db.execute(
+            text(
+                "INSERT INTO app_user (email, password_hash, name, surname)"
+                " VALUES ('ann@example.com', 'x', 'A', 'B') RETURNING id"
+            )
+        ).scalar_one()
+    unit_of_work = SqlWorkoutUnitOfWork(factory)
+    sets = (SetIn(1, 10, Decimal("60"), True, None),)
+    workout = WorkoutIn(None, None, TODAY, 7, (ExerciseIn(BENCH, None, 1, sets),))
+    statements: list[str] = []
+    event.listen(
+        engine.sync_engine,
+        "before_cursor_execute",
+        lambda conn, cursor, statement, *rest: statements.append(statement),
+    )
+
+    async def save(both_inserted: asyncio.Barrier):
+        async with unit_of_work() as store:
+            workout_id = await store.insert_workout(user_id, workout, [None])
+            await both_inserted.wait()
+            current = await store.current_record(user_id, BENCH)
+            if current is None:
+                await store.replace_record(
+                    user_id, BENCH, workout_id, Decimal("60"), 10, Decimal("80"), TODAY
+                )
+            return current
+
+    async def both():
+        both_inserted = asyncio.Barrier(2)
+        try:
+            return await asyncio.gather(save(both_inserted), save(both_inserted))
+        finally:
+            await engine.dispose()
+
+    results = asyncio.run(both())
+
+    # the second waited for the first, saw its 60 x 10 and stored nothing
+    assert sorted(results, key=lambda r: r is not None) == [None, (Decimal("60"), 10)]
+    assert _count("personal_record") == 1
+    user_locks = [s for s in statements if "FROM app_user" in s and " FOR " in s]
+    assert user_locks
+    assert all("FOR NO KEY UPDATE" in s for s in user_locks), user_locks

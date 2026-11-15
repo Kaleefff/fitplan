@@ -225,9 +225,13 @@ class SqlWorkoutStore:
 
     async def current_record(self, user_id: int, exercise_id: int) -> tuple[Decimal, int] | None:
         # no record yet means no row to lock: one writer per user, or two first records
-        # of an exercise would both be current (ux_personal_record_one_current)
+        # of an exercise would both be current (ux_personal_record_one_current).
+        # FOR NO KEY UPDATE, not FOR UPDATE: the workout inserted earlier in this
+        # transaction already holds FOR KEY SHARE on the user row through its foreign key,
+        # and so may a concurrent save of the same user; FOR UPDATE conflicts with that and
+        # two saves deadlocked (DB-09, FR-A2). FOR NO KEY UPDATE still serialises writers.
         await self._session.execute(
-            select(AppUser.id).where(AppUser.id == user_id).with_for_update()
+            select(AppUser.id).where(AppUser.id == user_id).with_for_update(key_share=True)
         )
         row = await self._session.execute(
             select(PersonalRecord.max_weight, PersonalRecord.max_reps)
