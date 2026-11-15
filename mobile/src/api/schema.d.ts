@@ -1118,7 +1118,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Chart series (FR-R3) */
+        /**
+         * Chart series (FR-R3)
+         * @description algorithms.md 8: weight per weigh-in, tonnage per workout day, calories per
+         *     logged day; workouts_per_week, workout_compliance and diet_compliance per ISO
+         *     week dated Monday. Compliance (%) is computed over the days of that week inside
+         *     the window and is null where algorithms.md 7 gives null.
+         */
         get: operations["getAnalyticsChart"];
         put?: never;
         post?: never;
@@ -1917,13 +1923,14 @@ export interface components {
         ChartPoint: {
             /** Format: date */
             date: string;
-            value: number;
+            /** @description null only in the compliance series */
+            value: number | null;
         };
         ChartSeries: {
             /** @enum {string} */
             status: "ok" | "insufficient_data";
             /** @enum {string} */
-            metric: "weight" | "tonnage" | "workouts_per_week" | "calories";
+            metric: "weight" | "tonnage" | "workouts_per_week" | "calories" | "workout_compliance" | "diet_compliance";
             /** @enum {string} */
             period: "week" | "month" | "3months";
             points: components["schemas"]["ChartPoint"][];
@@ -3958,7 +3965,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                metric: "weight" | "tonnage" | "workouts_per_week" | "calories";
+                metric: "weight" | "tonnage" | "workouts_per_week" | "calories" | "workout_compliance" | "diet_compliance";
             };
             cookie?: never;
         };
