@@ -47,6 +47,7 @@ class FoodInfo:
     is_vegetarian: bool = False
     is_vegan: bool = False
     allergen_ids: frozenset[int] = frozenset()
+    name: str = ""  # shown by meal suggestions (section 10)
 
 
 @dataclass(frozen=True)
