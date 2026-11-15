@@ -1,6 +1,14 @@
 # Open questions
 
-Agents add a line when a spec is silent or contradictory: `- [task id] question. Proposed default: ... (open)`. A human answers by changing the spec files, then deletes the line. Answered questions are not kept here.
+Agents add a line when a spec is silent or contradictory: `- [task id] key: question. Proposed default: ... (open)`. The task id is the task whose owner answers; the key is short and unique, and code TODOs cite `questions.md [task id] key`. A human answers by changing the spec files, then deletes the line. Answered questions are not kept here.
 
 
 - [M-10, B-11] Should the user choose a preferred training intensity when generating a plan (light / standard / hard)? The request (`GenerateTrainingPlanRequest`) has no such field, so the app cannot offer it. Proposed default: an optional `intensity` field, default `standard` (today's behaviour, `algorithms.md` 4.7 unchanged); `light` = one set fewer per exercise (min 2) and rest +30 s; `hard` = one set more per exercise (max 6) and rest −15 s (min 30 s); the value is stored on `training_plan` and returned in `TrainingPlan`, so "generate again" keeps it; adaptation (section 6) is unchanged. Needs a contract PR (API and APP) and a migration (DATA). (open)
+- [B-29] custom-exercise-generator: Does the training-plan generator (B-11, `algorithms.md` 4.6) use custom exercises (FR-P10)? Proposed default: no; a custom exercise reaches a plan only through a manual swap (4.9) until user-built plans exist. (open)
+- [B-29] custom-exercise-injuries: Custom exercises have no `injury_type_excluded_exercise` rows, so rule 1 of `algorithms.md` 4.3 never excludes them. Proposed default: no extra rule; rules 2 and 3 (the affected group is the primary group, or a secondary group for a moderate or severe injury) apply in alternatives and eligibility as for library exercises. (open)
+- [B-29] custom-exercise-delete: What happens on deleting a custom exercise that a session exercise (also as `original_exercise_id`), a logged workout (soft-deleted ones included) or a personal record still references? Proposed default: 409 `conflict`; an unused exercise is deleted for real. (open)
+- [DB-16] custom-exercise-name: Are custom exercise names unique per user (case-insensitive), and may one equal a library name? Proposed default: unique per user on `lower(name)`; equal to a library name is allowed. (open)
+- [B-29] custom-exercise-limit: Is there a limit of custom exercises per user? Proposed default: 200. (open)
+- [B-29] custom-exercise-text: Are `description` and `instruction` optional for custom exercises? Proposed default: optional, stored as an empty string; schema unchanged; library rows keep the seed validation. (open)
+- [B-29] custom-exercise-level: FR-P10 does not list `difficulty_level`, but the column is NOT NULL and a swap checks it against the plan's level (4.9 `above_level`). Proposed default: required on create, as for library exercises. (open)
+- [B-29] custom-exercise-library-write: What does `PATCH` or `DELETE` of a library exercise answer? Proposed default: 404, as for another user's custom exercise (the repository finds no owned row). (open)

@@ -38,6 +38,14 @@ Behaviour the OpenAPI contract (`docs/api/openapi.yaml`, D-03) must follow and t
 - Adding, editing or ending an injury never changes a plan. When it happens and an active training plan exists, the app asks "Your injuries changed. Generate a new plan?"; yes calls generate with the active plan's goal, days, level and equipment (`algorithms.md` 4.8). The active plan stays until the new draft is accepted; logged workouts are not touched.
 - `GET /sessions/next`: each session of the active plan recurs on its weekday from `start_date` to `end_date`; the next date is today or later in the user's time zone, skipping dates on which that session already has a workout; earliest date wins, ties by `session_order`; 404 without one.
 
+## Custom exercises (FR-P10)
+
+- Ownership as D26. Every exercise read (list, search, detail, alternatives, eligibility, workout validation) returns `user_id IS NULL OR user_id = current user`.
+- Another user's custom exercise answers exactly like a missing row: 404 on reads; on writes the existing unknown-exercise error (swap 422 `unknown_exercise`, workout 422 `not_found`).
+- Only the owner can edit or delete a custom exercise. Library exercises are read-only.
+- A custom exercise has exactly one primary muscle group; the secondary groups do not include it.
+- Ordering and pagination stay as in Conventions, with library and own exercises mixed.
+
 ## Logs (FR-A2, A3, R1 data)
 
 - Every create carries a client `client_uuid`, unique per user (`UNIQUE (user_id, client_uuid)` on `workout_log`, `nutrition_log`, `body_metrics`): another user's identical UUID is stored as that user's own row. Repeating it returns the first answer (201, nothing applied twice); the `client_uuid` of the user's own deleted row is 409. Deletes are soft (`deleted_at`) and keep the adjustments and records they produced.

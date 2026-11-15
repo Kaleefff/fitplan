@@ -30,6 +30,7 @@ Actor: the user of the mobile app. External system: the Gemini API (meal photo r
 | FR-P7 | Review a plan, then accept it or regenerate it with changed preferences |
 | FR-P8 | Browse the exercise library (text instructions) and the food database (nutrition values) |
 | FR-P9 | Schedule training days and meal times with reminders (local notifications; server push for reports and achievements is *stretch*, FR-R7) |
+| FR-P10 | Add, edit and delete own exercises (name, primary muscle group, secondary groups, equipment, flags, instructions); a custom exercise is visible only to its author and is deleted with the account |
 
 ### FR-A Adaptation and progression
 | ID | Requirement |
