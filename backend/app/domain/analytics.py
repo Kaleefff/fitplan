@@ -173,9 +173,32 @@ def _monday(day: date) -> date:
     return day - timedelta(days=day.weekday())
 
 
-def series(metric: str, data: AnalyticsData, start: date, end: date) -> list[tuple[date, float]]:
-    """Weight per weigh-in, tonnage per workout day, calories per logged day, workouts per
-    ISO week dated Monday."""
+def _weeks(start: date, end: date) -> list[tuple[date, date, date]]:
+    """ISO weeks touching the window: (Monday, first and last day inside the window)."""
+    weeks = []
+    monday = _monday(start)
+    while monday <= end:
+        weeks.append((monday, max(monday, start), min(monday + timedelta(days=6), end)))
+        monday += timedelta(days=7)
+    return weeks
+
+
+def series(
+    metric: str, data: AnalyticsData, start: date, end: date
+) -> list[tuple[date, float | None]]:
+    """Weight per weigh-in, tonnage per workout day, calories per logged day; workouts,
+    workout and diet compliance per ISO week dated Monday (compliance over the days of
+    the week inside the window, None where section 7 gives None)."""
+    if metric == "workout_compliance":
+        return [
+            (monday, training_compliance(data.workouts, data.training_plan, first, last))
+            for monday, first, last in _weeks(start, end)
+        ]
+    if metric == "diet_compliance":
+        return [
+            (monday, _diet_compliance(data.daily_kcal, data.diet_plan, first, last))
+            for monday, first, last in _weeks(start, end)
+        ]
     if metric == "weight":
         return [(day, float(weight)) for day, weight in data.weigh_ins]
     if metric == "calories":
@@ -188,11 +211,7 @@ def series(metric: str, data: AnalyticsData, start: date, end: date) -> list[tup
             if _counted(row):
                 per_day[row.log_date] += row.reps * row.weight
         return [(day, float(total)) for day, total in sorted(per_day.items())]
-    weeks: dict[date, int] = {}
-    monday = _monday(start)
-    while monday <= end:
-        weeks[monday] = 0
-        monday += timedelta(days=7)
+    weeks: dict[date, int] = {monday: 0 for monday, _, _ in _weeks(start, end)}
     for _, day in data.workouts:
         weeks[_monday(day)] += 1
     return sorted((day, float(count)) for day, count in weeks.items())
