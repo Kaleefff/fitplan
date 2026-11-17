@@ -9,6 +9,12 @@ Lists follow api-rules.md: ordered by name, then id, and paginated with `limit` 
 `offset`; `total` counts every row that matches the filters. Names are compared
 case-insensitively in byte order (`_by_name`), so the order does not depend on the
 database's locale (`postgres:17` defaults to en_US.utf8, a plain cluster to C).
+
+Custom exercises (D26, FR-P10, api-rules.md "Custom exercises"): every exercise read
+takes the current user's id as a required argument and returns library exercises
+(`user_id IS NULL`) and the user's own only (`visible_to`); there is no unscoped
+variant. Another user's custom exercise is indistinguishable from a missing row.
+`lock_visible_exercises` is the check every write of an `exercise_id` runs first.
 """
 
 from collections import defaultdict
@@ -77,6 +83,7 @@ class ExerciseRow:
     is_bodyweight: bool
     description: str
     instruction: str
+    is_custom: bool  # the user's own exercise (user_id IS NOT NULL), not a library one
     muscle_groups: tuple[ExerciseGroupRow, ...]  # primary first, then by name
 
 
@@ -124,15 +131,21 @@ class SqlLibraryRepository:
 
     async def list_exercises(
         self,
+        user_id: int,
         *,
+        custom_only: bool,
         q: str | None = None,
         muscle_group_id: int | None = None,
         difficulty_level: DifficultyLevel | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> Page[ExerciseRow]:
-        """`muscle_group_id` matches an exercise that trains the group, primary or not."""
-        query = select(Exercise)
+        """Library exercises and the user's own, mixed in one order; `custom_only` keeps
+        the user's own only ("My exercises", M-24). `muscle_group_id` matches an exercise
+        that trains the group, primary or not."""
+        query = select(Exercise).where(
+            Exercise.user_id == user_id if custom_only else visible_to(user_id)
+        )
         if q:
             query = query.where(Exercise.name.icontains(q.strip(), autoescape=True))
         if muscle_group_id is not None:
@@ -154,21 +167,24 @@ class SqlLibraryRepository:
                     .offset(offset)
                 )
             )
-            groups = await _exercise_groups(session, [e.id for e in exercises])
+            groups = await exercise_groups(session, [e.id for e in exercises])
         return Page(
-            items=tuple(_exercise_row(e, groups[e.id]) for e in exercises),
+            items=tuple(exercise_row(e, groups[e.id]) for e in exercises),
             total=total,
             limit=limit,
             offset=offset,
         )
 
-    async def get_exercise(self, exercise_id: int) -> ExerciseRow | None:
+    async def get_exercise(self, user_id: int, exercise_id: int) -> ExerciseRow | None:
+        """None for an unknown exercise and for another user's custom one (both 404)."""
         async with self._sessions() as session:
-            exercise = await session.get(Exercise, exercise_id)
+            exercise = await session.scalar(
+                select(Exercise).where(Exercise.id == exercise_id, visible_to(user_id))
+            )
             if exercise is None:
                 return None
-            groups = await _exercise_groups(session, [exercise_id])
-        return _exercise_row(exercise, groups[exercise_id])
+            groups = await exercise_groups(session, [exercise_id])
+        return exercise_row(exercise, groups[exercise_id])
 
     # ------------------------------------------------------------ foods
 
@@ -232,14 +248,16 @@ class SqlLibraryRepository:
         primary_group_id: int | None = None,
         exclude_ids: Collection[int] = (),
     ) -> list[ExerciseRow]:
-        """Exercises the user may do (4.2, 4.3), compound first, then by name (4.9).
+        """Exercises the user may do (4.2, 4.3), compound first, then by name (4.9):
+        library exercises and the user's own custom ones.
 
         `level` and `equipment` None mean no limit (4.9 without a profile); the user's
         active injuries always apply. `primary_group_id` and `exclude_ids` serve the
         alternatives of 4.9 (same primary group, not the current exercise and not one
-        already in the session). The generator sorts by its own rule (4.6).
+        already in the session). The generator sorts by its own rule (4.6) and reads
+        `SqlTrainingPlanStore.catalogue` instead.
         """
-        query = select(Exercise).where(~_excluded_by_injury(user_id))
+        query = select(Exercise).where(visible_to(user_id), ~_excluded_by_injury(user_id))
         if level is not None:
             query = query.where(Exercise.difficulty_level <= level)  # enum order
         if equipment is not None:
@@ -263,8 +281,8 @@ class SqlLibraryRepository:
                     )
                 )
             )
-            groups = await _exercise_groups(session, [e.id for e in exercises])
-        return [_exercise_row(e, groups[e.id]) for e in exercises]
+            groups = await exercise_groups(session, [e.id for e in exercises])
+        return [exercise_row(e, groups[e.id]) for e in exercises]
 
     async def eligible_foods(
         self,
@@ -303,6 +321,37 @@ class SqlLibraryRepository:
             return await food_rows(session, foods)
 
 
+# ---------------------------------------------------------------- ownership (D26)
+
+
+def visible_to(user_id: int) -> ColumnElement[bool]:
+    """A library exercise or one of the user's custom exercises."""
+    return or_(Exercise.user_id.is_(None), Exercise.user_id == user_id)
+
+
+async def lock_visible_exercises(
+    session: AsyncSession, user_id: int, exercise_ids: Collection[int]
+) -> bool:
+    """D26: True when every id is a library exercise or one of the user's own.
+
+    Run before every write that stores an `exercise_id`, in the same transaction. The
+    rows are read FOR KEY SHARE and stay locked until commit: a concurrent delete of a
+    custom exercise waits, then finds the new reference and answers "in use", instead
+    of this write failing at commit on the deferred foreign key (or the delete winning,
+    after which this read finds no row and the write answers "not found").
+    """
+    ids = set(exercise_ids)
+    if not ids:
+        return True
+    found = await session.scalars(
+        select(Exercise.id)
+        .where(Exercise.id.in_(ids), visible_to(user_id))
+        .order_by(Exercise.id)
+        .with_for_update(read=True, key_share=True)
+    )
+    return set(found) == ids
+
+
 # ---------------------------------------------------------------- helpers
 
 
@@ -310,6 +359,10 @@ def _excluded_by_injury(user_id: int) -> ColumnElement[bool]:
     """4.3: an active injury of the user excludes the exercise when (1) the injury type
     lists it, (2) its primary group is the affected group, or (3) the injury is moderate
     or severe and the affected group is one of its secondary groups.
+
+    TODO(questions.md [B-29] custom-exercise-injuries): a custom exercise has no
+    `injury_type_excluded_exercise` rows, so rule 1 never matches it; rules 2 and 3 work
+    on its muscle groups as for a library exercise, and no extra rule is added.
 
     The inner subqueries name `exercise` two levels down, where SQLAlchemy does not
     correlate on its own, hence `correlate(Exercise, Injury)`.
@@ -347,7 +400,7 @@ async def _count(session: AsyncSession, query: Select) -> int:
     return await session.scalar(select(func.count()).select_from(query.order_by(None).subquery()))
 
 
-async def _exercise_groups(
+async def exercise_groups(
     session: AsyncSession, exercise_ids: list[int]
 ) -> dict[int, tuple[ExerciseGroupRow, ...]]:
     groups: dict[int, list[ExerciseGroupRow]] = defaultdict(list)
@@ -374,7 +427,8 @@ async def _exercise_groups(
     }
 
 
-def _exercise_row(exercise: Exercise, groups: tuple[ExerciseGroupRow, ...]) -> ExerciseRow:
+def exercise_row(exercise: Exercise, groups: tuple[ExerciseGroupRow, ...]) -> ExerciseRow:
+    """The one place an `ExerciseRow` is built (list, detail, alternatives, custom writes)."""
     return ExerciseRow(
         id=exercise.id,
         name=exercise.name,
@@ -384,6 +438,7 @@ def _exercise_row(exercise: Exercise, groups: tuple[ExerciseGroupRow, ...]) -> E
         is_bodyweight=exercise.is_bodyweight,
         description=exercise.description,
         instruction=exercise.instruction,
+        is_custom=exercise.user_id is not None,
         muscle_groups=groups,
     )
 

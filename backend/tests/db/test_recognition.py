@@ -51,6 +51,7 @@ from app.db.repositories.recognition import (
 from app.db.seed import load
 from app.db.session import database_url
 from app.domain.constants import RECOGNITION_LOW_CONFIDENCE, MealType
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 pytestmark = pytest.mark.anyio
@@ -102,9 +103,10 @@ def _execute(sql: str, **params) -> None:
 @pytest.fixture(scope="module")
 def seeded(migrated_db):  # noqa: F811
     with _sync_engine().begin() as db:
+        delete_users(db)
         db.execute(
             text(
-                "TRUNCATE app_user, muscle_group, injury_type, allergen, food_category, food_item"
+                "TRUNCATE muscle_group, injury_type, allergen, food_category, food_item"
                 " RESTART IDENTITY CASCADE"
             )
         )
@@ -127,7 +129,8 @@ def seeded(migrated_db):  # noqa: F811
 
 @pytest.fixture
 async def engine(seeded) -> AsyncIterator[AsyncEngine]:
-    _execute("TRUNCATE app_user RESTART IDENTITY CASCADE")
+    with _sync_engine().begin() as db:
+        delete_users(db)
     engine = create_async_engine(database_url().set(database=TEST_DB))
     yield engine
     await engine.dispose()

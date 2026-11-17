@@ -6,6 +6,7 @@ compose; skipped when PostgreSQL is not reachable.
 """
 
 import shutil
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -281,6 +282,7 @@ def test_exclusion_no_longer_listed_is_deleted(db, exercise_seed):
         ("exercise.csv", "Brace and hold.", "", r"empty \['instruction'\]"),
         ("exercise.csv", "beginner,none,false", "beginner,bands,false", "not a valid Equipment"),
         ("exercise.csv", ",is_bodyweight,", ",", r"columns \['is_bodyweight'\] missing"),
+        ("exercise.csv", "name,difficulty", "user_id,name,difficulty", "not set by a seed"),
         ("injury_type_excluded_exercise.csv", ",Push-up", ",Burpee", "not in exercise.csv"),
         ("injury_type_excluded_exercise.csv", "Wrist sprain,", "Broken wrist,", "unknown injury"),
         (
@@ -300,6 +302,75 @@ def test_broken_exercise_files_change_nothing(db, exercise_seed, file, old, new,
         run(db, exercise_seed)
 
     assert snapshot(db) == before
+
+
+def custom_exercise(engine: Engine, name: str) -> int:
+    """A user's custom exercise (D26) with core as its only, primary group."""
+    with engine.begin() as connection:
+        user_id = connection.execute(
+            text(
+                "INSERT INTO app_user (email, password_hash, name, surname)"
+                " VALUES (:email, 'x', 'Custom', 'Owner') RETURNING id"
+            ),
+            {"email": f"{uuid.uuid4().hex}@example.com"},
+        ).scalar_one()
+        exercise_id = connection.execute(
+            text(
+                "INSERT INTO exercise (user_id, name, difficulty_level, equipment,"
+                " description, instruction)"
+                " VALUES (:user_id, :name, 'advanced', 'gym', 'mine', 'my way') RETURNING id"
+            ),
+            {"user_id": user_id, "name": name},
+        ).scalar_one()
+        connection.execute(
+            text(
+                "INSERT INTO exercise_muscle_group (exercise_id, muscle_group_id, is_primary)"
+                " SELECT :id, id, true FROM muscle_group WHERE group_name = 'core'"
+            ),
+            {"id": exercise_id},
+        )
+    return exercise_id
+
+
+def exercise_state(engine: Engine, exercise_id: int) -> tuple:
+    with engine.connect() as connection:
+        row = connection.execute(
+            text("SELECT * FROM exercise WHERE id = :id"), {"id": exercise_id}
+        ).one()
+        groups = connection.execute(
+            text(
+                "SELECT muscle_group_id, is_primary FROM exercise_muscle_group"
+                " WHERE exercise_id = :id ORDER BY 1"
+            ),
+            {"id": exercise_id},
+        ).all()
+        excluded = connection.execute(
+            text(
+                "SELECT injury_type_id FROM injury_type_excluded_exercise WHERE exercise_id = :id"
+            ),
+            {"id": exercise_id},
+        ).all()
+    return tuple(row), tuple(groups), tuple(excluded)
+
+
+def test_seed_never_touches_a_custom_exercise_with_a_library_name(db, exercise_seed):
+    run(db, exercise_seed)
+    custom = custom_exercise(db, "Push-up")
+    before = exercise_state(db, custom)
+    replace_line(exercise_seed / "exercise.csv", "Lower and press up.", "Lower slowly.")
+
+    changed = by_table(run(db, exercise_seed))
+    again = by_table(run(db, exercise_seed))
+
+    assert exercise_state(db, custom) == before  # name, fields, groups, no exclusion
+    assert (changed["exercise"].inserted, changed["exercise"].updated) == (0, 1)
+    assert [again[t].unchanged for t in EXERCISE_TABLES] == [2, 4, 1]
+    assert links(db) >= {("Push-up", "chest", True), ("Push-up", "core", True)}
+    with db.connect() as connection:
+        library = connection.execute(
+            text("SELECT instruction FROM exercise WHERE name = 'Push-up' AND user_id IS NULL")
+        ).scalar_one()
+    assert library == "Lower slowly."
 
 
 # ---------------------------------------------------------------- foods (DB-04)

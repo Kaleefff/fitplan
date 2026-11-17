@@ -31,6 +31,7 @@ from app.main import create_app
 from app.services.repositories import Repositories
 from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 TODAY = today()
@@ -68,9 +69,10 @@ def _id(sql: str, **params) -> int:
 @pytest.fixture
 def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
     with _sync_engine().begin() as db:
+        delete_users(db)
         db.execute(
             text(
-                "TRUNCATE app_user, muscle_group, injury_type, allergen, food_category, food_item"
+                "TRUNCATE muscle_group, injury_type, allergen, food_category, food_item"
                 " RESTART IDENTITY CASCADE"
             )
         )

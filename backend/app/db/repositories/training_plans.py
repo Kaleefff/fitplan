@@ -23,6 +23,7 @@ from app.db.models import (
     UserProfile,
     WorkoutLog,
 )
+from app.db.repositories.library import lock_visible_exercises, visible_to
 from app.domain.constants import DifficultyLevel, Equipment, InjurySeverity
 from app.domain.training import ActiveInjury, ExerciseInfo, GeneratedPlan
 from app.services.training_plans import (
@@ -43,14 +44,25 @@ class SqlTrainingPlanStore:
             select(AppUser.id).where(AppUser.id == user_id).with_for_update()
         )
 
-    async def catalogue(self) -> list[ExerciseInfo]:
+    async def catalogue(self, user_id: int, *, include_custom: bool) -> list[ExerciseInfo]:
+        """Exercises for the generator and the swap check (D26): library exercises, plus
+        the user's own custom ones when `include_custom`; never another user's.
+
+        TODO(questions.md [B-29] custom-exercise-generator): the proposed default is that
+        the generator passes include_custom=False (custom exercises reach a plan only
+        through a manual swap) and the swap passes include_custom=True.
+        """
+        scope = visible_to(user_id) if include_custom else Exercise.user_id.is_(None)
         groups = defaultdict(lambda: (None, set()))
         rows = await self._session.execute(
             select(
                 ExerciseMuscleGroup.exercise_id,
                 MuscleGroup.group_name,
                 ExerciseMuscleGroup.is_primary,
-            ).join(MuscleGroup, MuscleGroup.id == ExerciseMuscleGroup.muscle_group_id)
+            )
+            .join(MuscleGroup, MuscleGroup.id == ExerciseMuscleGroup.muscle_group_id)
+            .join(Exercise, Exercise.id == ExerciseMuscleGroup.exercise_id)
+            .where(scope)
         )
         for exercise_id, group, is_primary in rows:
             primary, secondary = groups[exercise_id]
@@ -62,9 +74,11 @@ class SqlTrainingPlanStore:
             select(
                 InjuryTypeExcludedExercise.injury_type_id, InjuryTypeExcludedExercise.exercise_id
             )
+            .join(Exercise, Exercise.id == InjuryTypeExcludedExercise.exercise_id)
+            .where(scope)
         ):
             excluded[exercise_id].add(injury_type_id)
-        exercises = await self._session.scalars(select(Exercise).order_by(Exercise.id))
+        exercises = await self._session.scalars(select(Exercise).where(scope).order_by(Exercise.id))
         return [
             ExerciseInfo(
                 id=e.id,
@@ -90,7 +104,14 @@ class SqlTrainingPlanStore:
             for type_id, group, severity in rows
         ]
 
-    async def replace_draft(self, user_id: int, request: PlanRequest, plan: GeneratedPlan) -> int:
+    async def replace_draft(
+        self, user_id: int, request: PlanRequest, plan: GeneratedPlan
+    ) -> int | None:
+        """The new draft's id; None, with nothing written, when a planned exercise is not
+        visible to the user (D26)."""
+        planned_ids = {e.exercise_id for s in plan.sessions for e in s.exercises}
+        if not await lock_visible_exercises(self._session, user_id, planned_ids):
+            return None
         await self._session.execute(
             delete(TrainingPlan).where(
                 TrainingPlan.user_id == user_id, TrainingPlan.status == PlanStatus.DRAFT
@@ -242,12 +263,31 @@ class SqlTrainingPlanStore:
             session_exercise_ids=frozenset(in_session),
         )
 
-    async def set_session_exercise(self, session_exercise_id: int, values: dict) -> None:
-        await self._session.execute(
+    async def set_session_exercise(self, session_exercise_id: int, values: dict) -> bool:
+        """Writes the given `session_exercise` columns. False, with nothing written, when
+        the row does not exist or `exercise_id` / `original_exercise_id` is not visible
+        to the plan's owner (D26: the swap stores both)."""
+        owner = await self._session.scalar(
+            select(TrainingPlan.user_id)
+            .join(TrainingSession, TrainingSession.training_plan_id == TrainingPlan.id)
+            .join(SessionExercise, SessionExercise.training_session_id == TrainingSession.id)
+            .where(SessionExercise.id == session_exercise_id)
+        )
+        if owner is None:
+            return False
+        referenced = {
+            values[column]
+            for column in ("exercise_id", "original_exercise_id")
+            if values.get(column) is not None
+        }
+        if not await lock_visible_exercises(self._session, owner, referenced):
+            return False
+        result = await self._session.execute(
             update(SessionExercise)
             .where(SessionExercise.id == session_exercise_id)
             .values(**values)
         )
+        return result.rowcount == 1
 
     async def session_exercise(self, session_exercise_id: int) -> SessionExerciseView:
         row, name = (

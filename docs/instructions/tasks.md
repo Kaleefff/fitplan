@@ -15,7 +15,7 @@ Rules: one task = one branch (`db/`, `api/`, `app/`, `docs/` + id) = one PR, rev
 | 1 Foundation | 12–18 Oct | DB-00 | B-01, D-03 | M-01, D-09 |
 | 2 Data, auth, profile | 19 Oct – 1 Nov | DB-01 … DB-06, DB-14, D-05 | B-02 … B-06, B-10, B-28 | M-02 … M-07 |
 | 3 AI scanner and logs | 2–22 Nov | A-01, DB-07 … DB-09, DB-15 | B-08 … B-13, B-15, B-17, B-19 … B-21 | M-09 … M-11, M-13 … M-15, M-17, M-18 |
-| 4 Analytics, feedback, reports | 23–29 Nov | DB-10 … DB-12 | B-14, B-16, B-22, B-23, B-25, B-26 | M-08, M-12, M-16, M-19, M-23 |
+| 4 Analytics, feedback, reports | 23–29 Nov | DB-10 … DB-12, DB-16 | B-14, B-16, B-22, B-23, B-25, B-26, B-29 | M-08, M-12, M-16, M-19, M-23, M-24 |
 | Stretch (D22) | after the owner's core work | DB-13 | B-07, B-27, B-26 push and recovery reminder, B-25 export | M-04 social, M-20, M-19 push and export, M-08 recovery reminder |
 | 5 Tests and optimisation | 30 Nov – 6 Dec | T-01, T-03, T-04, T-08, Z-01 | T-02, T-05 | T-06, T-07, M-21, M-22, Z-02 |
 
@@ -273,6 +273,10 @@ Done: fixtures for regular, irregular, flat and wrong-direction data give the st
 Do: `EXPLAIN ANALYZE` of generator, log and analytics queries on seeded data with a year of history for test users; add indexes in a migration.
 Done: no sequential scan on large tables in those queries; results noted in the PR.
 
+**DB-16 · Custom exercises: data layer** · Reqs: FR-P10, FR-U5 · Depends: DB-06
+Do: `exercise.user_id` (FK to `app_user`, ON DELETE CASCADE, indexed; D26), name uniqueness split into library names and per-user case-insensitive custom names, model; an owner-scoped repository (list, search, detail, create, update, delete for the owner; exactly one primary group); eligibility queries and the generator catalogue scoped to the user; every write of an `exercise_id` (session exercises including swaps and `original_exercise_id`, workout exercises, personal records) checks that the exercise is visible to the owner (D26); the seed loader limited to library rows.
+Done: tests prove that user A never sees user B's custom exercise in any query and cannot reference it in any write; deleting a user removes their custom exercises; running the seed loader twice leaves custom rows untouched; a custom exercise still referenced is not deleted.
+
 ### API
 
 **B-16 · Adaptation and progression** · Reqs: FR-A4, A5 · Depends: B-15 · Status: domain function merged with B-01; change request: the reserve signal needs sets at `≥ planned_weight` and progression is `planned_weight + step`, not lowest set + step (vector K). Open: wiring into `POST /workouts`.
@@ -297,6 +301,10 @@ Done: no orphan photo remains after expiry.
 **B-22 · Meal suggestions** · Reqs: FR-N5 · Depends: B-21, B-10
 Done: suggestions never exceed remaining kcal × 1.05 and never contain an allergen.
 
+**B-29 · Custom exercise endpoints** · Reqs: FR-P10, FR-A1 · Depends: DB-16, B-08
+Do: `POST /exercises`, `PATCH /exercises/{id}`, `DELETE /exercises/{id}` through a contract PR (`docs/api/openapi.yaml`, reviewed by API and APP), including how the library marks and filters own exercises for M-24; validation; custom exercises in swaps (`algorithms.md` 4.9); any algorithm change; the scoped repository calls of DB-16 (`api-rules.md` Custom exercises).
+Done: the 404 for other users' exercises is tested and the T-05 security checklist covers it.
+
 ### APP
 
 **M-12 · Schedule and local reminders** · Reqs: FR-P9 · Depends: M-10, M-11, B-14
@@ -311,6 +319,10 @@ Done: after deletion local data is cleared and login is shown.
 **M-16 · Meal suggestions** · Reqs: FR-N5 · Depends: M-14, B-22. Done: suggestions refresh after a new log; one tap adds one.
 
 **M-19 · Reports** · Reqs: FR-R1 · Depends: M-18, B-25. Done: list and detail show the API figures.
+
+**M-24 · Custom exercises** · Reqs: FR-P10 · Depends: M-09, B-29 contract PR
+Do: create and edit form, a "My exercises" filter in the library, a custom-exercise badge, delete confirmation. Built against the mock until B-29 is merged.
+Done: a created exercise appears in the library with the badge; deleting one still in use shows the 409 message.
 
 ---
 
@@ -344,13 +356,13 @@ Done: results table with pass or fail per NFR.
 
 **T-03 · AI accuracy** · DATA · Do: rerun the D-05 evaluation on the final pipeline (label accuracy, label and alternatives, gram error, latency); add to `docs/ai_evaluation.md`.
 
-**T-08 · GDPR deletion audit** · DATA + API · Done: written audit with the queries showing nothing left in PostgreSQL, MongoDB, photos or logs; it states that photos are sent to Gemini at analysis time only and are not stored by the app outside `PHOTO_DIR`, and records the paid Gemini tier (D25) and Google's limited abuse-monitoring logging of photos.
+**T-08 · GDPR deletion audit** · DATA + API · Done: written audit with the queries showing nothing left in PostgreSQL (custom exercises included, FR-P10), MongoDB, photos or logs; it states that photos are sent to Gemini at analysis time only and are not stored by the app outside `PHOTO_DIR`, and records the paid Gemini tier (D25) and Google's limited abuse-monitoring logging of photos.
 
 **T-02 · Integration and requirement tests** · API
 Do: replace the mock with the real stack together with APP, fix contract drift, run scenarios S1–S3 (chapter 6.1), the FR-P2 property test and the FR-A4 negative test, complete pytest coverage.
 Done: every FR in the matrix below has a passing test or a recorded defect.
 
-**T-05 · Security review** · API · Do: the `api-rules.md` checklist: user A cannot read user B, token tampering, brute force, reset enumeration, upload abuse, injection, HTTPS only. Done: no open high or critical finding.
+**T-05 · Security review** · API · Do: the `api-rules.md` checklist: user A cannot read user B (custom exercises included, FR-P10), token tampering, brute force, reset enumeration, upload abuse, injection, HTTPS only. Done: no open high or critical finding.
 
 **M-21 · Performance and compatibility** · APP · Reqs: NFR-PERF, NFR-COMP. Done: interactions ≤ 300 ms on the reference device; release build ~200 MB or less.
 
@@ -384,6 +396,7 @@ After 6 Dec: **W-01** thesis documentation in Polish (diagrams and chapters matc
 | FR-P7 | DB-14, B-11, B-12, M-10, M-11 | T-02 |
 | FR-P8 | DB-03, DB-04, DB-06, B-08, B-09, M-09 | T-02 |
 | FR-P9 | DB-14, B-14, M-12 (push: S-03) | T-02 |
+| FR-P10 | DB-16, B-29, M-24 | T-02, T-05 |
 | FR-A1 | DB-06, B-08, B-13, M-10 | T-02 |
 | FR-A2 | DB-09, B-15, M-13 | T-02 |
 | FR-A3 | DB-09, B-21, M-14 | T-02 |
