@@ -1402,13 +1402,18 @@ paths:
       tags: [analytics]
       operationId: getAnalyticsChart
       summary: Chart series (FR-R3)
+      description: |
+        algorithms.md 8: weight per weigh-in, tonnage per workout day, calories per
+        logged day; workouts_per_week, workout_compliance and diet_compliance per ISO
+        week dated Monday. Compliance (%) is computed over the days of that week inside
+        the window and is null where algorithms.md 7 gives null.
       parameters:
         - name: metric
           in: path
           required: true
           schema:
             type: string
-            enum: [weight, tonnage, workouts_per_week, calories]
+            enum: [weight, tonnage, workouts_per_week, calories, workout_compliance, diet_compliance]
         - $ref: "#/components/parameters/Period"
       responses:
         "200":
@@ -2621,13 +2626,15 @@ components:
       required: [date, value]
       properties:
         date: { type: string, format: date }
-        value: { type: number }
+        value: { type: [number, "null"], description: "null only in the compliance series" }
     ChartSeries:
       type: object
       required: [status, metric, period, points]
       properties:
         status: { type: string, enum: [ok, insufficient_data] }
-        metric: { type: string, enum: [weight, tonnage, workouts_per_week, calories] }
+        metric:
+          type: string
+          enum: [weight, tonnage, workouts_per_week, calories, workout_compliance, diet_compliance]
         period: { type: string, enum: [week, month, 3months] }
         points:
           type: array

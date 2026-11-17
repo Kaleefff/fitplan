@@ -143,3 +143,36 @@ def test_a_workout_day_without_weighted_sets_has_zero_tonnage():
     data = AnalyticsData([], [(3, day(0))], [row(3, 0, 11, 12, 0)], {}, None, None)
     start, end = window("week", TODAY)
     assert series("tonnage", data, start, end) == [(TODAY, 0.0)]
+
+
+def test_compliance_series_per_iso_week_inside_the_window():
+    """Window Thu 2026-10-08 .. Wed 10-14: week of Mon 10-05 keeps 10-08..10-11, week of
+    Mon 10-12 keeps 10-12..10-14.
+    Workouts (plan from 10-09, 3 a week): 10-09..10-11 has 1 workout / (3 x 3 / 7) =
+    77.78 %; 10-12..10-14 has 1 (10-13) / (3 x 3 / 7) = 77.78 %.
+    Diet (plan from 10-10, 2000 kcal): 10-10 (2000) passes, 10-11 (2300) fails = 50 %;
+    10-12 and 10-13 have no log, 10-14 (1700) fails = 0 %."""
+    start, end = window("week", TODAY)
+
+    workouts = series("workout_compliance", DATA, start, end)
+    diet = series("diet_compliance", DATA, start, end)
+
+    assert [d for d, _ in workouts] == [date(2026, 10, 5), date(2026, 10, 12)]
+    assert [v for _, v in workouts] == pytest.approx([700 / 9, 700 / 9])
+    assert diet == [(date(2026, 10, 5), 50.0), (date(2026, 10, 12), 0.0)]
+
+
+def test_compliance_series_is_null_where_no_plan_covers_the_week():
+    start, end = window("week", TODAY)
+    late = AnalyticsData(
+        [], DATA.workouts, [], {}, ActivePlan(day(1), day(-50), sessions_per_week=3), None
+    )
+
+    # the plan starts 10-13: 1 workout (10-13) / (3 x 2 / 7) = 116.67 %
+    workouts = series("workout_compliance", late, start, end)
+    assert workouts[0] == (date(2026, 10, 5), None)
+    assert workouts[1][1] == pytest.approx(700 / 6)
+    assert series("diet_compliance", late, start, end) == [
+        (date(2026, 10, 5), None),
+        (date(2026, 10, 12), None),
+    ]

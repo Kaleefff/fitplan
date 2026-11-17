@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import CurrentUser, get_analytics_service, get_current_user, get_user_repository
 from app.core.errors import VALIDATION_ERROR_RESPONSE, AppError, Error, ErrorCode
@@ -14,7 +14,9 @@ from app.services.auth import UserRepository
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 Period = Literal["week", "month", "3months"]
-Metric = Literal["weight", "tonnage", "workouts_per_week", "calories"]
+Metric = Literal[
+    "weight", "tonnage", "workouts_per_week", "calories", "workout_compliance", "diet_compliance"
+]
 PERIOD = Query(
     description="week = last 7 days, month = last 30 days, 3months = last 90 days (algorithms.md 8)"
 )
@@ -50,7 +52,7 @@ class AnalyticsSummaryOut(BaseModel):
 
 class ChartPointOut(BaseModel):
     date: date
-    value: float
+    value: float | None = Field(description="null where algorithms.md 7 gives null")
 
 
 class ChartSeriesOut(BaseModel):
