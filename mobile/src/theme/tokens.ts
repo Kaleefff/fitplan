@@ -28,6 +28,10 @@ export const lightColors = {
   protein: '#9333EA',
   carbs: '#EA580C',
   fat: '#CA8A04',
+
+  // Chart marks, checked with the dataviz palette validator against the surface of each mode
+  chartAnalytics: '#EA580C',
+  chartKcal: '#2563EB',
 } satisfies Record<string, string>;
 
 export type ColorName = keyof typeof lightColors;
@@ -59,6 +63,10 @@ export const darkColors: ThemeColors = {
   protein: '#C084FC',
   carbs: '#FB923C',
   fat: '#FACC15',
+
+  // The lighter theme hues are above the chart lightness band on the dark surface
+  chartAnalytics: '#EA580C',
+  chartKcal: '#3B82F6',
 };
 
 export const colors: Record<ColorScheme, ThemeColors> = {
