@@ -44,7 +44,7 @@ class AnalyticsService:
 
     async def chart(
         self, user_id: int, metric: str, period: str, timezone: str, now: datetime
-    ) -> tuple[str, list[tuple[date, float]]]:
+    ) -> tuple[str, list[tuple[date, float | None]]]:
         start, end = analytics.window(period, _today(timezone, now))
         async with self._unit_of_work() as store:
             if not analytics.enough_history(await store.record_days(user_id)):
