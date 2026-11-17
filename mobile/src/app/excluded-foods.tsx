@@ -19,17 +19,14 @@ import {
   getExcludedFoods,
   getFood,
   saveExcludedFoods,
-  searchFoods,
   type DietPlan,
   type FoodItem,
 } from '@/diet/diet-api';
 import { insufficientFoodsMessage } from '@/diet/diet-form';
+import { MIN_SEARCH, useFoodSearch } from '@/diet/use-food-search';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { minTouchSize } from '@/theme/tokens';
 
-/** Search starts from this many letters, a short wait after the last key */
-const MIN_SEARCH = 2;
-const SEARCH_DELAY_MS = 300;
 
 function FoodRow({ food, checked, onToggle }: { food: FoodItem; checked: boolean; onToggle: () => void }) {
   const { colors, spacing } = useAppTheme();
@@ -53,35 +50,6 @@ function FoodRow({ food, checked, onToggle }: { food: FoodItem; checked: boolean
       />
     </Pressable>
   );
-}
-
-type Search = { status: 'idle' } | { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; items: FoodItem[] };
-
-/** Results of the last finished search; idle and loading follow from the text */
-type Result = { query: string; items: FoodItem[] } | { query: string; error: string };
-
-function useFoodSearch(text: string): Search {
-  const [result, setResult] = useState<Result | null>(null);
-  const query = text.trim();
-  useEffect(() => {
-    if (query.length < MIN_SEARCH) {
-      return;
-    }
-    let current = true;
-    const timer = setTimeout(() => {
-      searchFoods(query)
-        .then((items) => current && setResult({ query, items }))
-        .catch((error) => current && setResult({ query, error: userMessage(toApiError(error)) }));
-    }, SEARCH_DELAY_MS);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
-
-  if (query.length < MIN_SEARCH) return { status: 'idle' };
-  if (result?.query !== query) return { status: 'loading' };
-  return 'error' in result ? { status: 'error', message: result.error } : { status: 'ready', items: result.items };
 }
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; saved: FoodItem[] };

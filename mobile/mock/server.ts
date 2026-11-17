@@ -7,7 +7,7 @@
  * Run: `npm run mock` (port 4010, change with MOCK_PORT); data is lost on restart.
  * Business rules are simplified; the real backend is the reference.
  */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 import type { components } from '../src/api/schema';
@@ -370,6 +370,297 @@ function sendReference(req: IncomingMessage, res: ServerResponse, list: unknown[
   send(res, 200, list);
 }
 
+// ---------------------------------------------------------------- foods and meal scanner (M-15)
+
+type Food = Schemas['FoodItem'];
+
+function food(
+  id: number,
+  name: string,
+  [kcal, protein, fat, carbs]: [number, number, number, number],
+  role: Food['diet_role'],
+  portion: number,
+  allergenIds: number[] = [],
+): Food {
+  return {
+    id,
+    name,
+    cals_per_100g: kcal,
+    protein_per_100g: protein,
+    fat_per_100g: fat,
+    carbs_per_100g: carbs,
+    diet_role: role,
+    suitable_meal_types: ['breakfast', 'lunch', 'dinner', 'snack'],
+    is_vegetarian: role !== 'protein',
+    is_vegan: role !== 'protein' && allergenIds.length === 0,
+    default_portion_g: portion,
+    min_portion_g: 10,
+    max_portion_g: 500,
+    portion_step_g: 10,
+    category_ids: [],
+    allergen_ids: allergenIds,
+  };
+}
+
+// Allergen 7 is Milk in the list above
+const foods: Food[] = [
+  food(1, 'Chicken breast, grilled', [165, 31, 3.6, 0], 'protein', 150),
+  food(2, 'White rice, cooked', [130, 2.7, 0.3, 28], 'carb', 150),
+  food(3, 'Broccoli, steamed', [35, 2.4, 0.4, 7.2], 'vegetable', 100),
+  food(4, 'Cheddar cheese', [403, 25, 33, 1.3], 'dairy', 30, [7]),
+  food(5, 'Olive oil', [884, 0, 100, 0], 'fat', 10),
+  food(6, 'Banana', [89, 1.1, 0.3, 23], 'fruit', 120),
+  food(7, 'Oat flakes', [379, 13, 6.5, 68], 'carb', 50),
+  food(8, 'Greek yogurt', [97, 9, 5, 3.9], 'dairy', 150, [7]),
+];
+
+function listFoods(req: IncomingMessage, res: ServerResponse) {
+  currentUser(req);
+  const query = new URL(req.url ?? '/', 'http://mock').searchParams;
+  const q = (query.get('q') ?? '').trim().toLowerCase();
+  const limit = Math.min(Number(query.get('limit') ?? 20) || 20, 100);
+  const items = foods.filter((f) => f.name.toLowerCase().includes(q));
+  send(res, 200, { total: items.length, limit, offset: 0, items: items.slice(0, limit) } satisfies Schemas['FoodPage']);
+}
+
+type StoredScan = { userId: number; doc: Schemas['Recognition']; edited: boolean };
+const scans = new Map<string, StoredScan>();
+const nutritionLogs: Schemas['NutritionLog'][] = [];
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+/** MOCK_SCAN_DELAY_MS=12000 shows the slow-request message; MOCK_SCAN_FAIL=1 answers 503 */
+const SCAN_DELAY_MS = Number(process.env.MOCK_SCAN_DELAY_MS ?? 1500);
+const SCAN_FAIL = process.env.MOCK_SCAN_FAIL === '1';
+
+const round = (value: number, places: number) => Math.round(value * 10 ** places) / 10 ** places;
+
+function scanItem(
+  userId: number,
+  name: string,
+  foodId: number | null,
+  grams: number,
+  confidence: number,
+): Schemas['RecognisedItem'] {
+  const match = foods.find((f) => f.id === foodId);
+  const factor = grams / 100;
+  const allergens = userAllergens.get(userId) ?? [];
+  return {
+    name,
+    food_item_id: match ? match.id : null,
+    grams,
+    confidence,
+    nutrition: {
+      kcal: match ? round(match.cals_per_100g * factor, 2) : 0,
+      protein: match ? round(match.protein_per_100g * factor, 2) : 0,
+      fat: match ? round(match.fat_per_100g * factor, 2) : 0,
+      carbs: match ? round(match.carbs_per_100g * factor, 2) : 0,
+    },
+    corrected: false,
+    low_confidence: confidence < 0.3,
+    allergy_warning: match ? match.allergen_ids.some((id) => allergens.includes(id)) : false,
+  };
+}
+
+function withTotals(doc: Schemas['Recognition']): Schemas['Recognition'] {
+  const sum = (key: keyof Schemas['Macros']) =>
+    round(
+      doc.recognised_items.reduce((total, item) => total + item.nutrition[key], 0),
+      2,
+    );
+  return {
+    ...doc,
+    overall_confidence: Math.max(0, ...doc.recognised_items.map((i) => i.confidence)),
+    totals: { kcal: sum('kcal'), protein: sum('protein'), fat: sum('fat'), carbs: sum('carbs') },
+  };
+}
+
+async function createRecognition(req: IncomingMessage, res: ServerResponse) {
+  const user = currentUser(req);
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    chunks.push(chunk as Buffer);
+  }
+  if (size > MAX_PHOTO_BYTES + 64 * 1024) {
+    throw new HttpError(413, 'payload_too_large', 'The photo is larger than 8 MB');
+  }
+  const body = Buffer.concat(chunks).toString('latin1');
+  const mealType = /name="meal_type"\r\n\r\n(\w+)/.exec(body)?.[1];
+  const details: Detail[] = [];
+  if (!/name="photo"/.test(body)) {
+    details.push({ field: 'body.photo', code: 'missing', message: 'Field required' });
+  }
+  if (!mealType || !['breakfast', 'lunch', 'dinner', 'snack'].includes(mealType)) {
+    details.push({ field: 'body.meal_type', code: 'enum', message: 'Unknown meal type' });
+  }
+  if (details.length > 0) {
+    throw validationError(details);
+  }
+  await new Promise((resolve) => setTimeout(resolve, SCAN_DELAY_MS));
+  if (SCAN_FAIL) {
+    throw new HttpError(503, 'ai_unavailable', 'The AI service did not answer in time');
+  }
+  // Canned result: matched items, one unsure, one with a milk allergen, one not in the food database
+  const id = randomBytes(12).toString('hex');
+  const now = Date.now();
+  const doc = withTotals({
+    id,
+    status: 'pending',
+    meal_type: mealType as Schemas['MealType'],
+    photo_url: null,
+    overall_confidence: 0,
+    recognised_items: [
+      scanItem(user.id, 'grilled chicken', 1, 160, 0.92),
+      scanItem(user.id, 'rice', 2, 180, 0.71),
+      scanItem(user.id, 'broccoli', 3, 80, 0.22),
+      scanItem(user.id, 'cheese', 4, 20, 0.55),
+      scanItem(user.id, 'sauce', null, 0, 0.4),
+    ],
+    created_at: new Date(now).toISOString(),
+    expires_at: new Date(now + 6 * 3600 * 1000).toISOString(),
+  });
+  scans.set(id, { userId: user.id, doc, edited: false });
+  send(res, 201, doc);
+}
+
+function ownScan(req: IncomingMessage, id: string): StoredScan {
+  const scan = scans.get(id);
+  if (!scan || scan.userId !== currentUser(req).id) {
+    throw new HttpError(404, 'not_found', 'Recognition not found or expired');
+  }
+  return scan;
+}
+
+function gramsFrom(body: Record<string, unknown>, details: Detail[], required: boolean): number | undefined {
+  const grams = body.grams;
+  if (grams === undefined && !required) return undefined;
+  if (typeof grams !== 'number' || grams <= 0 || grams > 99999.9) {
+    details.push({ field: 'body.grams', code: 'out_of_range', message: 'Grams must be above 0 and at most 99999.9' });
+    return undefined;
+  }
+  return round(grams, 1);
+}
+
+function foodFrom(body: Record<string, unknown>, details: Detail[], required: boolean): Food | undefined {
+  if (body.food_item_id === undefined && !required) return undefined;
+  const match = foods.find((f) => f.id === body.food_item_id);
+  if (!match) {
+    details.push({ field: 'body.food_item_id', code: 'not_found', message: 'Unknown food' });
+  }
+  return match;
+}
+
+function confirmScan(scan: StoredScan, body: Record<string, unknown>): Schemas['NutritionLog'] {
+  const items = scan.doc.recognised_items;
+  const details: Detail[] = [];
+  items.forEach((item, i) => {
+    if (item.food_item_id === null) {
+      details.push({ field: `body.recognised_items.${i}.food_item_id`, code: 'missing', message: 'Pick a food' });
+    } else if (Math.round(item.grams * 10) === 0) {
+      details.push({ field: `body.recognised_items.${i}.grams`, code: 'invalid_value', message: 'Grams round to 0.0' });
+    }
+  });
+  if (items.length === 0) details.push({ field: 'body', code: 'missing', message: 'No items' });
+  if (details.length > 0) throw validationError(details);
+  const hunger = (field: string) => (typeof body[field] === 'number' ? (body[field] as number) : null);
+  return {
+    id: nutritionLogs.length + 1,
+    client_uuid: randomUUID(),
+    log_date: typeof body.log_date === 'string' ? body.log_date : new Date().toISOString().slice(0, 10),
+    meal_type: scan.doc.meal_type,
+    planned_meal_id: null,
+    meal_photo_url: null,
+    ai_confidence: scan.doc.overall_confidence,
+    ai_was_edited: scan.edited,
+    actual_cals: scan.doc.totals?.kcal ?? 0,
+    actual_protein: scan.doc.totals?.protein ?? 0,
+    actual_fat: scan.doc.totals?.fat ?? 0,
+    actual_carbs: scan.doc.totals?.carbs ?? 0,
+    hunger_level_before: hunger('hunger_level_before'),
+    hunger_level_after: hunger('hunger_level_after'),
+    logged_at: new Date().toISOString(),
+    items: items.map((item) => ({ food_item_id: item.food_item_id!, name: item.name, grams: item.grams })),
+  };
+}
+
+type ParamHandler = (req: IncomingMessage, res: ServerResponse, params: string[]) => Promise<void> | void;
+
+const patternRoutes: [RegExp, Partial<Record<string, ParamHandler>>][] = [
+  [
+    /^\/meals\/recognitions\/([0-9a-f]{24})$/,
+    {
+      GET: (req, res, [id]) => send(res, 200, ownScan(req, id).doc),
+      DELETE: (req, res, [id]) => {
+        ownScan(req, id);
+        scans.delete(id);
+        send(res, 204);
+      },
+    },
+  ],
+  [
+    /^\/meals\/recognitions\/([0-9a-f]{24})\/items$/,
+    {
+      POST: async (req, res, [id]) => {
+        const scan = ownScan(req, id);
+        const body = await readJson(req);
+        const details: Detail[] = [];
+        const match = foodFrom(body, details, true);
+        const grams = gramsFrom(body, details, true);
+        if (details.length > 0 || !match || grams === undefined) throw validationError(details);
+        const item = { ...scanItem(scan.userId, match.name, match.id, grams, 1), corrected: true };
+        scan.doc = withTotals({ ...scan.doc, recognised_items: [...scan.doc.recognised_items, item] });
+        scan.edited = true;
+        send(res, 200, scan.doc);
+      },
+    },
+  ],
+  [
+    /^\/meals\/recognitions\/([0-9a-f]{24})\/items\/(\d+)$/,
+    {
+      PATCH: async (req, res, [id, index]) => {
+        const scan = ownScan(req, id);
+        const item = scan.doc.recognised_items[Number(index)];
+        if (!item) throw new HttpError(404, 'not_found', 'No such item');
+        const body = await readJson(req);
+        const details: Detail[] = [];
+        const match = foodFrom(body, details, false);
+        const grams = gramsFrom(body, details, false);
+        if (details.length > 0) throw validationError(details);
+        if (!match && grams === undefined) {
+          throw validationError([{ field: 'body', code: 'missing', message: 'Send food_item_id or grams' }]);
+        }
+        const foodId = match ? match.id : item.food_item_id;
+        const name = match ? match.name : item.name;
+        const next = { ...scanItem(scan.userId, name, foodId, grams ?? item.grams, item.confidence), corrected: true };
+        const items = scan.doc.recognised_items.map((it, i) => (i === Number(index) ? next : it));
+        scan.doc = withTotals({ ...scan.doc, recognised_items: items });
+        scan.edited = true;
+        send(res, 200, scan.doc);
+      },
+      DELETE: (req, res, [id, index]) => {
+        const scan = ownScan(req, id);
+        if (!scan.doc.recognised_items[Number(index)]) throw new HttpError(404, 'not_found', 'No such item');
+        const items = scan.doc.recognised_items.filter((_, i) => i !== Number(index));
+        scan.doc = withTotals({ ...scan.doc, recognised_items: items });
+        scan.edited = true;
+        send(res, 200, scan.doc);
+      },
+    },
+  ],
+  [
+    /^\/meals\/recognitions\/([0-9a-f]{24})\/confirm$/,
+    {
+      POST: async (req, res, [id]) => {
+        const scan = ownScan(req, id);
+        const log = confirmScan(scan, await readJson(req));
+        nutritionLogs.push(log);
+        scans.delete(id);
+        send(res, 201, log);
+      },
+    },
+  ],
+];
+
 const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/health': {
     GET: (_req, res) => send(res, 200, { status: 'ok', postgres: 'ok', mongo: 'ok', version: 'mock' } satisfies Schemas['Health']),
@@ -395,7 +686,20 @@ const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/allergens': { GET: (req, res) => sendReference(req, res, allergens) },
   '/muscle-groups': { GET: (req, res) => sendReference(req, res, muscleGroups) },
   '/nutrition/targets': { GET: nutritionTargets },
+  '/foods': { GET: listFoods },
+  '/meals/recognitions': { POST: createRecognition },
 };
+
+/** A route with ids in the path: its handler for the method and the captured ids */
+function matchPattern(path: string, method: string): { handler?: ParamHandler; params: string[] } | undefined {
+  for (const [pattern, handlers] of patternRoutes) {
+    const found = pattern.exec(path);
+    if (found) {
+      return { handler: handlers[method], params: found.slice(1) };
+    }
+  }
+  return undefined;
+}
 
 // ---------------------------------------------------------------- server
 
@@ -410,16 +714,22 @@ const server = createServer(async (req, res) => {
   }
 
   const path = new URL(req.url ?? '/', 'http://mock').pathname;
-  const route = path.startsWith(PREFIX) ? routes[path.slice(PREFIX.length)] : undefined;
-  const handler = route?.[req.method ?? 'GET'];
+  const local = path.startsWith(PREFIX) ? path.slice(PREFIX.length) : '';
+  const method = req.method ?? 'GET';
+  const route = routes[local];
+  const pattern = route ? undefined : matchPattern(local, method);
   try {
-    if (!route) {
+    if (!route && !pattern) {
       throw new HttpError(404, 'not_found', `No mock for ${path}`);
     }
-    if (!handler) {
+    const handler = route?.[method];
+    if (route && handler) {
+      await handler(req, res);
+    } else if (pattern?.handler) {
+      await pattern.handler(req, res, pattern.params);
+    } else {
       throw new HttpError(405, 'method_not_allowed', 'Method not allowed');
     }
-    await handler(req, res);
   } catch (error) {
     if (error instanceof HttpError) {
       send(res, error.status, { code: error.code, message: error.message, details: error.details } satisfies Schemas['Error']);
