@@ -32,8 +32,13 @@ type TimeChartProps = {
   to: string;
   /** Days one bar stands for: 1 per day, 7 per week (keeps bars inside the plot) */
   stepDays?: number;
+  /** The value axis reaches at least this, for example 100 for a percentage */
+  axisMax?: number;
   format: (value: number) => string;
 };
+
+/** A point with a value; a null one (a compliance week without a plan) is a gap */
+type Valued = { date: string; value: number };
 
 /** Path of a bar with 4 px rounded corners at its data end and a square baseline */
 function barPath(x: number, y: number, width: number, height: number): string {
@@ -50,18 +55,20 @@ function barPath(x: number, y: number, width: number, height: number): string {
 }
 
 /** One series over time; tap it to read a value, or open the table (dataviz: single series, no legend) */
-export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, format }: TimeChartProps) {
+export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, axisMax, format }: TimeChartProps) {
   const { colors, spacing } = useAppTheme();
   const [width, setWidth] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [table, setTable] = useState(false);
 
   const sorted = [...points].sort((a, b) => dayNumber(a.date) - dayNumber(b.date));
-  const values = sorted.map((p) => p.value);
+  const valued = sorted.filter((p): p is Valued => p.value !== null);
+  const values = valued.map((p) => p.value);
   const low = Math.min(...values);
   const high = Math.max(...values);
+  const show = (value: number | null) => (value === null ? 'no data' : format(value));
   // Bars grow from zero; a weight line is read for its change, so its axis fits the values
-  const ticks = kind === 'bar' ? niceTicks(0, Math.max(high, 1)) : niceTicks(low, high);
+  const ticks = kind === 'bar' ? niceTicks(0, Math.max(high, axisMax ?? 1)) : niceTicks(low, high);
   const yMin = ticks[0];
   const yMax = ticks[ticks.length - 1];
 
@@ -87,16 +94,22 @@ export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, 
   };
 
   const point = selected !== null ? sorted[selected] : null;
-  const last = sorted[sorted.length - 1];
+  const last = valued[valued.length - 1];
   const summary =
-    `${title}: ${sorted.length} ${sorted.length === 1 ? 'value' : 'values'} from ${shortDate(sorted[0].date)} ` +
+    `${title}: ${valued.length} ${valued.length === 1 ? 'value' : 'values'} from ${shortDate(valued[0].date)} ` +
     `to ${shortDate(last.date)}. Lowest ${format(low)}, highest ${format(high)}, last ${format(last.value)}.`;
+  // A line breaks at a null point instead of joining across the gap
+  const linePath = sorted
+    .map((p, i) =>
+      p.value === null ? '' : `${i === 0 || sorted[i - 1].value === null ? 'M' : 'L'}${xs[i]},${y(p.value)}`,
+    )
+    .join(' ');
 
   return (
     <View style={{ gap: spacing.sm }}>
       <AppText variant="caption" color="textMuted" accessibilityLiveRegion="polite">
         {point
-          ? `${shortDate(point.date)}: ${format(point.value)}`
+          ? `${shortDate(point.date)}: ${show(point.value)}`
           : `Last: ${format(last.value)} on ${shortDate(last.date)}`}
       </AppText>
       <Pressable
@@ -150,6 +163,7 @@ export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, 
 
             {kind === 'bar'
               ? sorted.map((p, i) => {
+                  if (p.value === null) return null;
                   const top = y(Math.max(p.value, 0));
                   const height = Math.max(y(0) - top, p.value > 0 ? 1 : 0);
                   return height > 0 ? (
@@ -166,7 +180,7 @@ export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, 
             {kind === 'line' ? (
               <>
                 <Path
-                  d={sorted.map((p, i) => `${i === 0 ? 'M' : 'L'}${xs[i]},${y(p.value)}`).join(' ')}
+                  d={linePath}
                   stroke={colors[color]}
                   strokeWidth={2}
                   strokeLinejoin="round"
@@ -174,7 +188,7 @@ export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, 
                   fill="none"
                 />
                 {sorted.map((p, i) =>
-                  sorted.length <= MAX_MARKERS || i === sorted.length - 1 || i === selected ? (
+                  p.value !== null && (sorted.length <= MAX_MARKERS || i === sorted.length - 1 || i === selected) ? (
                     <Circle
                       key={p.date}
                       cx={xs[i]}
@@ -202,7 +216,7 @@ export function TimeChart({ title, points, kind, color, from, to, stepDays = 1, 
           {sorted.map((p) => (
             <View key={p.date} style={[styles.row, { borderColor: colors.border, paddingVertical: spacing.xs }]}>
               <AppText style={styles.fill}>{shortDate(p.date)}</AppText>
-              <AppText>{format(p.value)}</AppText>
+              <AppText>{show(p.value)}</AppText>
             </View>
           ))}
         </View>

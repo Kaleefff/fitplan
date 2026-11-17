@@ -10,6 +10,7 @@ import {
   describePrediction,
   formatValue,
   getAnalytics,
+  hasValues,
   oneDecimal,
   PERIOD_OPTIONS,
   signedKg,
@@ -32,12 +33,15 @@ import type { ColorName } from '@/theme/tokens';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Analytics };
 
-const CHART_STYLE: Record<ChartMetric, { kind: 'line' | 'bar'; color: ColorName; stepDays: number }> = {
-  weight: { kind: 'line', color: 'chartAnalytics', stepDays: 1 },
-  workouts_per_week: { kind: 'bar', color: 'chartAnalytics', stepDays: 7 },
-  calories: { kind: 'bar', color: 'chartKcal', stepDays: 1 },
-  tonnage: { kind: 'bar', color: 'chartAnalytics', stepDays: 1 },
-};
+const CHART_STYLE: Record<ChartMetric, { kind: 'line' | 'bar'; color: ColorName; stepDays: number; axisMax?: number }> =
+  {
+    weight: { kind: 'line', color: 'chartAnalytics', stepDays: 1 },
+    workouts_per_week: { kind: 'bar', color: 'chartAnalytics', stepDays: 7 },
+    calories: { kind: 'bar', color: 'chartKcal', stepDays: 1 },
+    tonnage: { kind: 'bar', color: 'chartAnalytics', stepDays: 1 },
+    workout_compliance: { kind: 'bar', color: 'chartAnalytics', stepDays: 7, axisMax: 100 },
+    diet_compliance: { kind: 'bar', color: 'chartKcal', stepDays: 7, axisMax: 100 },
+  };
 
 const orDash = (value: number | null | undefined, show: (value: number) => string) =>
   value === null || value === undefined ? '–' : show(value);
@@ -164,7 +168,7 @@ function ChartCard({ metric, data }: { metric: ChartMetric; data: Analytics }) {
       <AppText variant="caption" color="textMuted">
         {subtitle}
       </AppText>
-      {series.points.length === 0 ? (
+      {!hasValues(series.points) ? (
         <AppText color="textMuted">No data in this period.</AppText>
       ) : (
         <TimeChart
@@ -173,6 +177,7 @@ function ChartCard({ metric, data }: { metric: ChartMetric; data: Analytics }) {
           kind={style.kind}
           color={style.color}
           stepDays={style.stepDays}
+          axisMax={style.axisMax}
           from={data.summary.period_start}
           to={data.summary.period_end}
           format={(value) => formatValue(metric, value)}

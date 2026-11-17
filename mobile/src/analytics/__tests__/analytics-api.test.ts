@@ -115,6 +115,13 @@ describe('getAnalytics', () => {
     expect(mockGet).toHaveBeenCalledWith('/analytics/charts/{metric}', {
       params: { path: { metric: 'tonnage' }, query: { period: 'month' } },
     });
-    expect(Object.keys(data.charts).sort()).toEqual(['calories', 'tonnage', 'weight', 'workouts_per_week']);
+    expect(Object.keys(data.charts).sort()).toEqual([
+      'calories',
+      'diet_compliance',
+      'tonnage',
+      'weight',
+      'workout_compliance',
+      'workouts_per_week',
+    ]);
   });
 });

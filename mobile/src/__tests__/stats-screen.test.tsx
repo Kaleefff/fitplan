@@ -66,6 +66,15 @@ function analytics(
       ]),
       calories: series('calories', []),
       tonnage: series('tonnage', [{ date: '2026-11-12', value: 4200 }]),
+      workout_compliance: series('workout_compliance', [
+        { date: '2026-11-09', value: 100 },
+        { date: '2026-11-16', value: 50 },
+      ]),
+      // The first week had no active diet plan (algorithms.md 7 gives null)
+      diet_compliance: series('diet_compliance', [
+        { date: '2026-11-09', value: null },
+        { date: '2026-11-16', value: 57.1 },
+      ]),
     },
   };
 }
@@ -105,6 +114,26 @@ describe('StatsScreen', () => {
     await fireEvent.press(screen.getAllByRole('button', { name: 'Show as table' })[0]);
     expect(screen.getByText('14 Nov')).toBeOnTheScreen();
     expect(screen.getByText('79.9 kg')).toBeOnTheScreen();
+  });
+
+  it('shows the weekly compliance charts and a week without a plan as no data (B-23)', async () => {
+    mockGetAnalytics.mockResolvedValue(analytics());
+    await renderWithTheme(<StatsScreen />);
+
+    expect(
+      await screen.findByLabelText(
+        'Workout plan done: 2 values from 9 Nov to 16 Nov. Lowest 50 %, highest 100 %, last 50 %.',
+      ),
+    ).toBeOnTheScreen();
+    // The null week is left out of the summary but listed in the table
+    expect(
+      screen.getByLabelText(
+        'Diet days on target: 1 value from 16 Nov to 16 Nov. Lowest 57.1 %, highest 57.1 %, last 57.1 %.',
+      ),
+    ).toBeOnTheScreen();
+    // Calories have no data and no table, so the diet chart is the fourth one with a table
+    await fireEvent.press(screen.getAllByRole('button', { name: 'Show as table' })[3]);
+    expect(screen.getByText('no data')).toBeOnTheScreen();
   });
 
   it('loads the chosen period', async () => {

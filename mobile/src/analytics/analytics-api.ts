@@ -38,7 +38,14 @@ export type Analytics = {
   prediction: GoalPrediction;
 };
 
-export const CHART_METRICS: ChartMetric[] = ['weight', 'workouts_per_week', 'calories', 'tonnage'];
+export const CHART_METRICS: ChartMetric[] = [
+  'weight',
+  'workouts_per_week',
+  'workout_compliance',
+  'calories',
+  'diet_compliance',
+  'tonnage',
+];
 
 export async function getAnalytics(period: Period): Promise<Analytics> {
   const [summary, prediction, ...series] = await Promise.all([
@@ -112,7 +119,20 @@ export const CHART_TITLES: Record<ChartMetric, { title: string; subtitle: string
     title: 'Tonnage',
     subtitle: 'Reps × weight of completed sets, each workout day',
   },
+  workout_compliance: {
+    title: 'Workout plan done',
+    subtitle: 'Planned workouts done, %, week starting on Monday',
+  },
+  diet_compliance: {
+    title: 'Diet days on target',
+    subtitle: 'Days within 10 % of your calorie target, %, week starting on Monday',
+  },
 };
+
+/** A chart has something to draw when at least one point has a value (compliance weeks may be null) */
+export function hasValues(points: ChartPoint[]): boolean {
+  return points.some((p) => p.value !== null);
+}
 
 const WARNINGS: Record<GoalPrediction['warnings'][number], string> = {
   low_fit: 'Your weigh-ins vary a lot, so the trend is not a good fit.',
