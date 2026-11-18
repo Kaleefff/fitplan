@@ -35,6 +35,7 @@ from app.main import create_app
 from app.services.repositories import Repositories
 from tests.clock import today
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 TODAY = today()
@@ -42,7 +43,10 @@ TODAY = today()
 
 @functools.cache
 def _sync_engine():
-    return create_engine(database_url().set(database=TEST_DB))
+    # pre-ping: other modules (test_plan_edits, test_reminders_and_sessions) reuse this
+    # cached engine, and a module's teardown drops its database WITH (FORCE), which kills
+    # pooled connections the next module would otherwise be handed
+    return create_engine(database_url().set(database=TEST_DB), pool_pre_ping=True)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -66,9 +70,10 @@ def _scalar(sql: str, **params):
 @pytest.fixture
 def sessions(migrated_db):  # noqa: F811
     with _sync_engine().begin() as db:
+        delete_users(db)
         db.execute(
             text(
-                "TRUNCATE app_user, muscle_group, exercise, exercise_muscle_group, injury_type"
+                "TRUNCATE muscle_group, exercise, exercise_muscle_group, injury_type"
                 " RESTART IDENTITY CASCADE"
             )
         )
@@ -136,7 +141,7 @@ def test_seed_is_idempotent_and_covers_every_combination(api, sessions):
 
     async def load():
         async with factory() as session:
-            return await SqlTrainingPlanStore(session).catalogue()
+            return await SqlTrainingPlanStore(session).catalogue(0, include_custom=False)
 
     catalogue = api.portal.call(load)
     for goal, days, level, equipment in itertools.product(

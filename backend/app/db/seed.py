@@ -10,7 +10,10 @@ Exercises (DB-03) carry their muscle groups in two extra columns: `primary_group
 (exactly one) and `secondary_groups` (names separated by `;`, may be empty).
 `injury_type_excluded_exercise.csv` lists `injury_type,exercise` name pairs. For the
 exercises in exercise.csv both files are authoritative: links that are no longer
-listed are deleted (no user data references a link row).
+listed are deleted (no user data references a link row). The file holds library
+exercises only (D26): `user_id` is not a file column and stays NULL, the name is
+matched against library rows only (`ux_exercise_library_name`), and a user's custom
+exercise is never read or changed, even when it has a library exercise's name.
 
 Foods (DB-04): `suitable_meal_types` lists meal types separated by `;`; `categories`
 (at least one) and `allergens` (may be empty) list names the same way, and the food's
@@ -36,6 +39,7 @@ from typing import Any
 from sqlalchemy import (
     ARRAY,
     Column,
+    ColumnElement,
     Connection,
     Table,
     delete,
@@ -72,6 +76,8 @@ SEEDS: list[tuple[Table, str]] = [
 ]
 
 EXERCISE: Table = Exercise.__table__
+EXERCISE_NOT_IN_FILE = ("id", "user_id")
+LIBRARY_EXERCISE = EXERCISE.c.user_id.is_(None)
 EXERCISE_GROUP: Table = ExerciseMuscleGroup.__table__
 EXCLUSION: Table = InjuryTypeExcludedExercise.__table__
 GROUP_COLUMNS = ("primary_group", "secondary_groups")
@@ -152,14 +158,19 @@ def read_rows(
     key: str,
     extra: Collection[str] = (),
     required: Collection[str] = (),
+    not_in_file: Collection[str] = (),
 ) -> list[dict[str, Any]]:
-    """Rows of a seed file; `extra` columns are not in the table and stay raw text."""
+    """Rows of a seed file; `extra` columns are not in the table and stay raw text;
+    `not_in_file` columns are table columns a seed file must not set."""
     with path.open(encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
         header = reader.fieldnames or []
         unknown = [name for name in header if name not in table.c and name not in extra]
         if unknown:
             raise SeedError(f"{path.name}: unknown columns {unknown}")
+        forbidden = [name for name in header if name in not_in_file and name != "id"]
+        if forbidden:
+            raise SeedError(f"{path.name}: columns {forbidden} are not set by a seed file")
         if key not in header:
             raise SeedError(f"{path.name}: key column {key!r} missing")
         missing = [name for name in required if name not in header]
@@ -188,8 +199,18 @@ def read_rows(
     return rows
 
 
-def upsert(conn: Connection, table: Table, key: str, rows: list[dict[str, Any]]) -> TableResult:
-    """Insert new keys, update changed rows, skip identical ones."""
+def upsert(
+    conn: Connection,
+    table: Table,
+    key: str,
+    rows: list[dict[str, Any]],
+    key_where: ColumnElement[bool] | None = None,
+) -> TableResult:
+    """Insert new keys, update changed rows, skip identical ones.
+
+    `key_where` is the predicate of a partial unique index on `key`: only rows it
+    matches can conflict, so only they are updated.
+    """
     result = TableResult(table.name)
     if not rows:
         return result
@@ -198,6 +219,7 @@ def upsert(conn: Connection, table: Table, key: str, rows: list[dict[str, Any]])
     changed = or_(*(table.c[col].is_distinct_from(stmt.excluded[col]) for col in columns))
     stmt = stmt.on_conflict_do_update(
         index_elements=[key],
+        index_where=key_where,
         set_={col: stmt.excluded[col] for col in columns},
         where=changed,
     ).returning(literal_column("xmax = 0").label("inserted"))
@@ -211,8 +233,8 @@ def upsert(conn: Connection, table: Table, key: str, rows: list[dict[str, Any]])
     return result
 
 
-def name_ids(conn: Connection, name: Column) -> dict[str, int]:
-    return {row[0]: row[1] for row in conn.execute(select(name, name.table.c.id))}
+def name_ids(conn: Connection, name: Column, *where: ColumnElement[bool]) -> dict[str, int]:
+    return {row[0]: row[1] for row in conn.execute(select(name, name.table.c.id).where(*where))}
 
 
 def sync_links(
@@ -274,8 +296,15 @@ def split_names(raw: str) -> list[str]:
 def load_exercises(conn: Connection, seed_dir: Path) -> list[TableResult]:
     """exercise.csv with its muscle groups, then injury_type_excluded_exercise.csv."""
     path = seed_file(seed_dir, EXERCISE.name)
-    required = [col.name for col in EXERCISE.c if col.name != "id"] + list(GROUP_COLUMNS)
-    rows = read_rows(path, EXERCISE, "name", extra=GROUP_COLUMNS, required=required)
+    required = [col.name for col in EXERCISE.c if col.name not in EXERCISE_NOT_IN_FILE]
+    rows = read_rows(
+        path,
+        EXERCISE,
+        "name",
+        extra=GROUP_COLUMNS,
+        required=required + list(GROUP_COLUMNS),
+        not_in_file=EXERCISE_NOT_IN_FILE,
+    )
 
     group_ids = name_ids(conn, MuscleGroup.__table__.c.group_name)
     groups_by_exercise: dict[str, dict[int, bool]] = {}
@@ -297,9 +326,11 @@ def load_exercises(conn: Connection, seed_dir: Path) -> list[TableResult]:
             **{group_ids[g]: False for g in secondary},
         }
 
-    exercises = upsert(conn, EXERCISE, "name", rows)
+    exercises = upsert(conn, EXERCISE, "name", rows, key_where=LIBRARY_EXERCISE)
     exercise_ids = {
-        n: i for n, i in name_ids(conn, EXERCISE.c.name).items() if n in groups_by_exercise
+        n: i
+        for n, i in name_ids(conn, EXERCISE.c.name, LIBRARY_EXERCISE).items()
+        if n in groups_by_exercise
     }
     seeded = set(exercise_ids.values())
     links = sync_links(

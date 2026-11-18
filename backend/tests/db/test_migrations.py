@@ -15,7 +15,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, delete, inspect, text
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
@@ -39,6 +39,7 @@ from app.db.models import (
     DevicePushToken,
     DietPlan,
     Exercise,
+    ExerciseMuscleGroup,
     FoodCategory,
     FoodItem,
     Injury,
@@ -73,7 +74,8 @@ TEST_DB = "fitplan_test"
 ENUM_COUNT = 13
 TABLES_WITH_UPDATED_AT = ("workout_log", "nutrition_log", "body_metrics")
 
-# Shared library data: not owned by a user, must survive a user's deletion.
+# Shared library data: not owned by a user, must survive a user's deletion. exercise also
+# holds custom exercises (D26); test_deleting_a_user_leaves_no_owned_row checks those.
 REFERENCE_TABLES = frozenset(
     {
         "allergen",
@@ -292,6 +294,90 @@ def test_0003_links_existing_records_to_their_workout_and_downgrades(empty_db: E
     assert "workout_log_id" not in columns
 
 
+EXERCISE_REFERENCES = {
+    "session_exercise_exercise_id_fkey",
+    "session_exercise_original_exercise_id_fkey",
+    "workout_log_exercise_exercise_id_fkey",
+    "personal_record_exercise_id_fkey",
+}
+
+
+def exercise_schema(engine: Engine) -> dict:
+    with engine.connect() as connection:
+        inspector = inspect(connection)
+        deferred = connection.execute(
+            text(
+                "SELECT conname FROM pg_constraint WHERE confrelid = 'exercise'::regclass"
+                " AND condeferrable AND condeferred"
+            )
+        ).scalars()
+        return {
+            "columns": {c["name"]: c["nullable"] for c in inspector.get_columns("exercise")},
+            "uniques": {u["name"] for u in inspector.get_unique_constraints("exercise")},
+            "indexes": {i["name"] for i in inspector.get_indexes("exercise")},
+            "foreign_keys": {
+                fk["name"]: fk["options"].get("ondelete")
+                for fk in inspector.get_foreign_keys("exercise")
+            },
+            "deferred": set(deferred),
+        }
+
+
+def add_custom_exercise(engine: Engine) -> None:
+    with engine.begin() as connection:
+        user_id = connection.execute(
+            text(
+                "INSERT INTO app_user (email, password_hash, name, surname)"
+                " VALUES ('owner@example.com', 'x', 'A', 'B') RETURNING id"
+            )
+        ).scalar_one()
+        connection.execute(
+            text(
+                "INSERT INTO exercise (user_id, name, difficulty_level, equipment, description,"
+                " instruction) VALUES (:u, 'Mine', 'beginner', 'none', '', '')"
+            ),
+            {"u": user_id},
+        )
+
+
+def test_0004_adds_the_exercise_owner_and_its_downgrade_refuses_custom_rows(
+    empty_db: Engine,
+) -> None:
+    run_alembic(empty_db, "upgrade", "head")
+    schema = exercise_schema(empty_db)
+    assert schema["columns"]["user_id"] is True  # nullable: NULL is a library exercise (D26)
+    assert schema["foreign_keys"] == {"exercise_user_id_fkey": "CASCADE"}
+    assert schema["uniques"] == set()
+    assert schema["indexes"] == {"ux_exercise_library_name", "ux_exercise_custom_name"}
+    assert schema["deferred"] == EXERCISE_REFERENCES
+
+    add_custom_exercise(empty_db)
+    with pytest.raises(DBAPIError, match="custom exercises exist"):
+        run_alembic(empty_db, "downgrade", "0003")
+    assert "user_id" in exercise_schema(empty_db)["columns"]  # nothing changed
+
+    with empty_db.begin() as connection:
+        connection.execute(text("DELETE FROM exercise WHERE user_id IS NOT NULL"))
+    run_alembic(empty_db, "downgrade", "0003")
+    schema = exercise_schema(empty_db)
+    assert "user_id" not in schema["columns"]
+    assert schema["uniques"] == {"exercise_name_key"}
+    assert schema["deferred"] == set()
+
+    run_alembic(empty_db, "upgrade", "head")
+    assert exercise_schema(empty_db)["deferred"] == EXERCISE_REFERENCES
+
+
+def test_custom_name_index_serves_the_cascade_from_app_user(migrated_db: Engine) -> None:
+    """No index on user_id alone: the partial custom-name index covers `user_id = ?`."""
+    with migrated_db.begin() as connection:
+        connection.execute(text("SET LOCAL enable_seqscan = off"))
+        plan = "\n".join(
+            connection.execute(text("EXPLAIN DELETE FROM exercise WHERE user_id = 1")).scalars()
+        )
+    assert "ux_exercise_custom_name" in plan
+
+
 def add_user_with_a_row_everywhere(s: Session) -> int:
     """One user with at least one row in every user-owned table, plus the library rows it needs."""
     today = date.today()
@@ -329,6 +415,18 @@ def add_user_with_a_row_everywhere(s: Session) -> int:
     user = AppUser(email="user@example.com", password_hash="x", name="Test", surname="User")
     s.add_all([allergen, category, food, group, exercise, injury_type, user])
     s.flush()
+    # the user's custom exercise (D26), referenced below by the user's own plan
+    custom = Exercise(
+        user_id=user.id,
+        name="my push-up",
+        difficulty_level=DifficultyLevel.BEGINNER,
+        equipment=EquipmentType.NONE,
+        description="",
+        instruction="",
+    )
+    s.add(custom)
+    s.flush()
+    s.add(ExerciseMuscleGroup(exercise_id=custom.id, muscle_group_id=group.id, is_primary=True))
 
     diet_plan = DietPlan(
         user_id=user.id,
@@ -442,6 +540,7 @@ def add_user_with_a_row_everywhere(s: Session) -> int:
     session_exercise = SessionExercise(
         training_session_id=training_session.id,
         exercise_id=exercise.id,
+        original_exercise_id=custom.id,
         sort_order=1,
         planned_sets=3,
         planned_reps=10,
@@ -493,6 +592,13 @@ def add_user_with_a_row_everywhere(s: Session) -> int:
     return user.id
 
 
+def custom_exercises(engine: Engine) -> int:
+    with engine.connect() as connection:
+        return connection.execute(
+            text("SELECT count(*) FROM exercise WHERE user_id IS NOT NULL")
+        ).scalar_one()
+
+
 def row_counts(engine: Engine, tables: list[str]) -> dict[str, int]:
     with engine.connect() as connection:
         return {
@@ -510,10 +616,13 @@ def test_deleting_a_user_leaves_no_owned_row(migrated_db: Engine) -> None:
     empty = sorted(table for table, n in before.items() if n == 0)
     assert empty == [], f"seed a row for these tables or mark them as reference: {empty}"
 
+    assert custom_exercises(migrated_db) == 1
     with migrated_db.begin() as connection:
         connection.execute(delete(AppUser).where(AppUser.id == user_id))
 
     assert row_counts(migrated_db, USER_OWNED_TABLES) == dict.fromkeys(USER_OWNED_TABLES, 0)
+    # exercise mixes library and custom rows (D26): the user's custom exercise is gone
+    assert custom_exercises(migrated_db) == 0
     # The shared library is untouched.
     assert all(
         n > 0 for n in row_counts(migrated_db, ["allergen", "food_item", "exercise"]).values()

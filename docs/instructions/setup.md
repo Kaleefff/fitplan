@@ -34,7 +34,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up.
+After about 15 seconds `fitplan-postgres`, `fitplan-mongo` and `fitplan-backend` should show `healthy`, and `fitplan-mailpit` should be up. `fitplan-scheduler` (background jobs such as the expired-photo cleanup, every 15 minutes) should be up with no health status; run only one instance of it.
 
 The PostgreSQL schema is created by the Alembic migrations, and the reference data (muscle groups, injury types, allergens, food categories, exercises with their muscle groups and injury exclusions, foods with their categories and allergens) by the seed loader:
 
@@ -83,14 +83,14 @@ Expected: `postgres` and `mongo` are `ok`. The Mailpit inbox (mails sent by the 
 
 ## Daily use
 
-| Command                                | What it does                                       |
-| -------------------------------------- | -------------------------------------------------- |
-| `docker compose up -d`                 | Start all services in the background               |
-| `docker compose up -d --build backend` | Rebuild the backend after pulling backend changes  |
-| `docker compose stop`                  | Stop them; data is kept                            |
-| `docker compose down`                  | Remove the containers; data is kept in volumes     |
-| `docker compose down -v`               | Remove the containers **and all data**             |
-| `docker compose logs backend`          | Show a service's log (`postgres`, `mongo`, `mailpit` too) |
+| Command                                          | What it does                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| `docker compose up -d`                           | Start all services in the background                                   |
+| `docker compose up -d --build backend scheduler` | Rebuild the backend and the scheduler after pulling backend changes    |
+| `docker compose stop`                            | Stop them; data is kept                                                |
+| `docker compose down`                            | Remove the containers; data is kept in volumes                         |
+| `docker compose down -v`                         | Remove the containers **and all data**                                 |
+| `docker compose logs backend`                    | Show a service's log (`postgres`, `mongo`, `mailpit`, `scheduler` too) |
 
 To run the backend with `uv run uvicorn` instead, stop the container first (`docker compose stop backend`) or change `BACKEND_PORT`, since both use port 8000.
 
