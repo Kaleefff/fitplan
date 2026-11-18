@@ -26,6 +26,7 @@ from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 from tests.db.test_training_plans import _load_seed
 
@@ -46,9 +47,10 @@ def _close_sync_engine():
 @pytest.fixture
 def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
     with _sync_engine().begin() as db:
+        delete_users(db)
         db.execute(
             text(
-                "TRUNCATE app_user, muscle_group, exercise, exercise_muscle_group, injury_type,"
+                "TRUNCATE muscle_group, exercise, exercise_muscle_group, injury_type,"
                 " allergen, food_category RESTART IDENTITY CASCADE"
             )
         )

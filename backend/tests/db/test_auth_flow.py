@@ -27,6 +27,7 @@ from app.db.session import database_url
 from app.main import create_app
 from app.services.repositories import Repositories
 from tests.conftest import FakeHealthChecker, make_settings
+from tests.db.conftest import delete_users
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
 PASSWORD = "secret123"
@@ -35,7 +36,7 @@ PASSWORD = "secret123"
 @pytest.fixture
 def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
     with create_engine(database_url().set(database=TEST_DB)).begin() as connection:
-        connection.execute(text("TRUNCATE app_user RESTART IDENTITY CASCADE"))
+        delete_users(connection)
     engine = create_async_engine(database_url().set(database=TEST_DB))
     sessions = async_sessionmaker(engine, expire_on_commit=False)
     repositories = Repositories(
