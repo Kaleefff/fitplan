@@ -978,8 +978,11 @@ paths:
       tags: [schedule]
       operationId: listNotifications
       summary: The user's notifications, such as weekly reports and records (FR-P9, FR-R7)
-      x-todo:
-        - "Which rows are listed (unsent, dismissed) and their order (questions.md, D-03)"
+      description: |
+        Rows with `scheduled_at <= now`, sent or not and dismissed ones included (a
+        notification scheduled later is not listed yet), ordered by `scheduled_at` then
+        id, both newest first (api-rules.md "Reports and notifications"). There is no
+        dismiss endpoint.
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"

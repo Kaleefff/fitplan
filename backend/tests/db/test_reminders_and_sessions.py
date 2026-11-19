@@ -217,3 +217,37 @@ def test_notifications_due_newest_first_paginated(api):
         api.get("/api/v1/notifications", headers=_login(api, "bob@example.com")).json()["total"]
         == 0
     )
+
+
+def test_notifications_include_sent_and_dismissed_and_ties_go_by_id(api):
+    """api-rules.md: dismissed ones included; same scheduled_at, newest id first."""
+    headers = _login(api)
+    at = datetime.now(UTC) - timedelta(minutes=5)
+    with _sync_engine().begin() as db:
+        for message, sent, dismissed in (
+            ("first", False, False),
+            ("dismissed", True, True),
+            ("sent", True, False),
+        ):
+            db.execute(
+                text(
+                    "INSERT INTO notification (user_id, message_type, scheduled_at, message,"
+                    " is_sent, sent_at, is_dismissed) VALUES (1, 'progress_update', :at, :m,"
+                    " :sent, :sent_at, :dismissed)"
+                ),
+                {
+                    "at": at,
+                    "m": message,
+                    "sent": sent,
+                    "sent_at": at if sent else None,
+                    "dismissed": dismissed,
+                },
+            )
+
+    items = api.get("/api/v1/notifications", headers=headers).json()["items"]
+
+    assert [(n["message"], n["is_sent"], n["is_dismissed"]) for n in items] == [
+        ("sent", True, False),
+        ("dismissed", True, True),
+        ("first", False, False),
+    ]
