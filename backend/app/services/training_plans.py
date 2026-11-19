@@ -102,13 +102,18 @@ class TrainingPlanStore(Protocol):
 
     async def lock_user(self, user_id: int) -> None: ...
 
-    async def catalogue(self) -> list[ExerciseInfo]: ...
+    async def catalogue(self, user_id: int, *, include_custom: bool) -> list[ExerciseInfo]:
+        """Library exercises, plus the user's own custom ones when `include_custom` (D26)."""
+        ...
 
     async def active_injuries(self, user_id: int) -> list[ActiveInjury]: ...
 
     async def replace_draft(
         self, user_id: int, request: PlanRequest, plan: GeneratedPlan
-    ) -> int: ...
+    ) -> int | None:
+        """The new draft's id; None, with nothing written, when a planned exercise is not
+        visible to the user (D26)."""
+        ...
 
     async def get_plan(self, user_id: int, plan_id: int) -> PlanView | None: ...
 
@@ -135,8 +140,9 @@ class TrainingPlanStore(Protocol):
         `lock` takes the plan's row lock, as for every change of a plan."""
         ...
 
-    async def set_session_exercise(self, session_exercise_id: int, values: dict) -> None:
-        """Writes the given `session_exercise` columns."""
+    async def set_session_exercise(self, session_exercise_id: int, values: dict) -> bool:
+        """Writes the given `session_exercise` columns; False, with nothing written, when
+        `exercise_id` or `original_exercise_id` is not visible to the plan's owner (D26)."""
         ...
 
     async def session_exercise(self, session_exercise_id: int) -> SessionExerciseView: ...
@@ -175,7 +181,9 @@ class TrainingPlanService:
                     request.experience_level,
                     request.equipment,
                     await store.active_injuries(user_id),
-                    await store.catalogue(),
+                    # TODO(questions.md [B-29] custom-exercise-generator): proposed default,
+                    # the generator plans library exercises only
+                    await store.catalogue(user_id, include_custom=False),
                 )
             except InsufficientExercisesError as error:
                 raise AppError(
@@ -185,6 +193,8 @@ class TrainingPlanService:
                     error.details,
                 ) from None
             plan_id = await store.replace_draft(user_id, request, plan)
+            if plan_id is None:  # library exercises only, so only a broken invariant
+                raise AppError(409, ErrorCode.CONFLICT, "The exercise catalogue changed")
             return await store.get_plan(user_id, plan_id)
 
     async def get(self, user_id: int, plan_id: int) -> PlanView:
@@ -256,7 +266,8 @@ class TrainingPlanService:
         `original_exercise_id`, and swapping back to it clears it."""
         async with self._unit_of_work() as store:
             context = await self._editable(store, user_id, session_exercise_id)
-            catalogue = {e.id: e for e in await store.catalogue()}
+            # 4.9 with FR-P10: the user's own custom exercises may replace a planned one
+            catalogue = {e.id: e for e in await store.catalogue(user_id, include_custom=True)}
             problems = swap_problems(
                 catalogue[context.exercise_id],
                 catalogue.get(exercise_id),
@@ -276,13 +287,21 @@ class TrainingPlanService:
                     ],
                 )
             original = context.original_exercise_id or context.exercise_id
-            await store.set_session_exercise(
+            stored = await store.set_session_exercise(
                 session_exercise_id,
                 {
                     "exercise_id": exercise_id,
                     "original_exercise_id": None if exercise_id == original else original,
                 },
             )
+            if not stored:  # a custom exercise deleted since the check (D26)
+                code = SWAP_UNKNOWN_EXERCISE
+                raise AppError(
+                    422,
+                    ErrorCode.INVALID_SWAP,
+                    "The exercise cannot replace this one",
+                    [{"field": "body.exercise_id", "code": code, "message": SWAP_MESSAGES[code]}],
+                )
             return await store.session_exercise(session_exercise_id)
 
     @staticmethod

@@ -143,11 +143,11 @@ class WorkoutStore(Protocol):
         self, user_id: int, training_session_id: int
     ) -> SessionPlan | None: ...
 
-    async def exercise_names(self, exercise_ids: set[int]) -> dict[int, str]: ...
+    async def exercise_names(self, user_id: int, exercise_ids: set[int]) -> dict[int, str]: ...
 
     async def insert_workout(
         self, user_id: int, workout: WorkoutIn, session_exercise_ids: list[int | None]
-    ) -> int: ...
+    ) -> int | None: ...
 
     async def replace_workout(
         self,
@@ -174,7 +174,7 @@ class WorkoutStore(Protocol):
         reps: int,
         estimated_1rm: Decimal,
         achieved: date,
-    ) -> int: ...
+    ) -> int | None: ...
 
     async def notify_achievement(self, user_id: int, message: str, data: dict) -> None: ...
 
@@ -257,6 +257,10 @@ def _logged(exercise: ExerciseIn) -> list[LoggedSet]:
     return [LoggedSet(s.reps, s.weight, s.completed, s.rpe) for s in exercise.sets]
 
 
+def _unknown_exercise() -> AppError:
+    return _invalid("body.exercises", "not_found", "Unknown exercise")
+
+
 class WorkoutService:
     def __init__(self, unit_of_work: WorkoutUnitOfWork) -> None:
         self._unit_of_work = unit_of_work
@@ -282,7 +286,7 @@ class WorkoutService:
     async def _resolve(self, store: WorkoutStore, user_id: int, workout: WorkoutIn):
         """Known exercises, the user's session (locked) and the planned rows they match."""
         ids = {exercise.exercise_id for exercise in workout.exercises}
-        names = await store.exercise_names(ids)
+        names = await store.exercise_names(user_id, ids)  # D26: library and own only
         for i, exercise in enumerate(workout.exercises):
             if exercise.exercise_id not in names:
                 raise _invalid(f"body.exercises.{i}.exercise_id", "not_found", "Unknown exercise")
@@ -312,6 +316,8 @@ class WorkoutService:
         workout_id = await store.insert_workout(
             user_id, workout, [row.id if row else None for row in matched]
         )
+        if workout_id is None:  # a custom exercise deleted since _resolve (D26)
+            raise _unknown_exercise()
 
         # algorithms.md 6: only for a draft or active plan; no signal, no change
         if plan is not None and plan.plan_status in ADAPTING_PLAN_STATUSES:
@@ -343,6 +349,8 @@ class WorkoutService:
                 estimated,
                 workout.log_date,
             )
+            if record_id is None:  # the workout row holds it, so only a broken invariant
+                raise _unknown_exercise()
             await store.notify_achievement(
                 user_id,
                 f"New personal record: {names[exercise_id]}, "
