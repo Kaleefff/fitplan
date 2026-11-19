@@ -21,6 +21,7 @@ from app.services.account import AccountService, RecognitionPurger
 from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService
 from app.services.body_metrics import BodyMetricsService
+from app.services.custom_exercises import CustomExerciseService
 from app.services.diet_plans import DietPlanService
 from app.services.health import DependencyHealthChecker, HealthChecker
 from app.services.library import LibraryService
@@ -110,6 +111,9 @@ def create_app(
     app.state.diet_plan_service = DietPlanService(repositories.diet_plans)
     app.state.analytics_service = AnalyticsService(repositories.analytics)
     app.state.library_service = LibraryService(repositories.library, repositories.training_plans)
+    app.state.custom_exercise_service = CustomExerciseService(
+        repositories.custom_exercises, repositories.library
+    )
     app.state.nutrition_log_service = NutritionLogService(repositories.nutrition_logs)
     app.state.meal_suggestion_service = MealSuggestionService(
         repositories.diet_plans, repositories.nutrition_logs

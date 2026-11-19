@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.nutrition_logs import SqlNutritionLogUnitOfWork
@@ -19,6 +20,7 @@ from app.db.session import get_sessionmaker
 from app.services.analytics import AnalyticsUnitOfWork
 from app.services.auth import UserRepository
 from app.services.body_metrics import BodyMetricsUnitOfWork
+from app.services.custom_exercises import CustomExerciseWriter
 from app.services.diet_plans import DietPlanUnitOfWork
 from app.services.library import LibraryReader
 from app.services.nutrition import ProfileReader
@@ -46,6 +48,7 @@ class Repositories:
     analytics: AnalyticsUnitOfWork
     library: LibraryReader
     nutrition_logs: NutritionLogUnitOfWork
+    custom_exercises: CustomExerciseWriter
 
 
 def sql_repositories() -> Repositories:
@@ -65,4 +68,5 @@ def sql_repositories() -> Repositories:
         analytics=SqlAnalyticsUnitOfWork(sessions),
         library=SqlLibraryRepository(sessions),
         nutrition_logs=SqlNutritionLogUnitOfWork(sessions),
+        custom_exercises=SqlCustomExerciseRepository(sessions),
     )
