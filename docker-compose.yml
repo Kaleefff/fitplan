@@ -48,6 +48,9 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       PHOTO_DIR: /data/photos
+      AI_SERVICE_URL: http://ai-service:8001
+      # only ai-service holds the Gemini key (D25)
+      GEMINI_API_KEY: ""
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
@@ -75,6 +78,7 @@ services:
       MONGO_HOST: mongo
       MONGO_PORT: 27017
       PHOTO_DIR: /data/photos
+      GEMINI_API_KEY: ""
     volumes:
       - photo_data:/data/photos
     depends_on:
@@ -82,6 +86,27 @@ services:
         condition: service_healthy
       mongo:
         condition: service_healthy
+
+  # A-01, D25: internal only (no host port); the backend calls it at http://ai-service:8001.
+  # It gets the GEMINI_* variables and nothing else from .env (no database credentials).
+  ai-service:
+    build: ./ai-service
+    container_name: fitplan-ai-service
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_TIMEOUT_S: ${GEMINI_TIMEOUT_S:-7}
+      GEMINI_MEDIA_RESOLUTION: ${GEMINI_MEDIA_RESOLUTION:-medium}
+      GEMINI_THINKING_LEVEL: ${GEMINI_THINKING_LEVEL:-minimal}
+    expose:
+      - "8001"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   mailpit:
     image: axllent/mailpit:latest

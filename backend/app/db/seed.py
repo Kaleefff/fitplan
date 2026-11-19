@@ -20,7 +20,13 @@ Foods (DB-04): `suitable_meal_types` lists meal types separated by `;`; `categor
 category and allergen links are synced like the exercise links. `source` cites where
 the values per 100 g come from (`FDC:<id>` for USDA FoodData Central, `SLV:<number>` for
 the Swedish Food Agency); it is checked but not stored. `is_active` and
-`recognition_label` are not in the file, so a load never changes them.
+`recognition_label` are not in the file, so a load never changes them, with one
+exception (A-01, D25): every food without a recognition label gets lower(name), as
+migration 0005 gave the foods that existed then; a label already set, by the migration,
+an earlier load or by hand, is never changed. It is reported as its own result line
+(`food_item.recognition_label`: new labels as inserted, existing ones as unchanged), so a
+second load still changes nothing. A name longer than the label column (100 characters)
+is an error.
 
 Run from backend/:  uv run python -m app.db.seed  [--dir PATH]
 """
@@ -43,6 +49,7 @@ from sqlalchemy import (
     Connection,
     Table,
     delete,
+    func,
     literal_column,
     or_,
     select,
@@ -89,6 +96,9 @@ FOOD_ALLERGEN: Table = FoodItemAllergen.__table__
 FOOD_EXTRA = ("categories", "allergens", "source")
 FOOD_NOT_IN_FILE = ("id", "is_active", "recognition_label")
 FOOD_SOURCE = re.compile(r"(FDC|SLV):[1-9][0-9]*")
+FOOD_LABEL = FOOD.c.recognition_label
+FOOD_LABEL_RESULT = f"{FOOD.name}.{FOOD_LABEL.name}"
+MAX_LABEL_CHARS: int = FOOD_LABEL.type.length  # VARCHAR(100)
 
 # every table the loader writes, parents first
 TABLES: list[str] = [table.name for table, _ in SEEDS] + [
@@ -407,6 +417,11 @@ def load_foods(conn: Connection, seed_dir: Path) -> list[TableResult]:
         empty = [col for col in empty if col != "allergens"]
         if empty:
             raise SeedError(f"{where}: empty {empty}")
+        if len(name.lower()) > MAX_LABEL_CHARS:
+            raise SeedError(
+                f"{where}: name longer than {MAX_LABEL_CHARS} characters, "
+                f"the length of {FOOD_LABEL_RESULT}"
+            )
         source = row.pop("source").strip()
         if not FOOD_SOURCE.fullmatch(source):
             raise SeedError(f"{where}: source {source!r} is not FDC:<id> or SLV:<number>")
@@ -414,10 +429,12 @@ def load_foods(conn: Connection, seed_dir: Path) -> list[TableResult]:
         allergens[name] = link_ids(where, row.pop("allergens"), allergen_ids, "allergens", False)
 
     foods = upsert(conn, FOOD, "name", rows)
+    labels = label_foods(conn)
     food_ids = {n: i for n, i in name_ids(conn, FOOD.c.name).items() if n in categories}
     seeded = ("food_item_id", set(food_ids.values()))
     return [
         foods,
+        labels,
         sync_links(
             conn,
             FOOD_CATEGORY,
@@ -433,6 +450,26 @@ def load_foods(conn: Connection, seed_dir: Path) -> list[TableResult]:
             {(food_ids[n], a): True for n, ids in allergens.items() for a in ids},
         ),
     ]
+
+
+def label_foods(conn: Connection) -> TableResult:
+    """recognition_label = lower(name) for every food without one (A-01, D25).
+
+    Covers all foods, not only those in the file, like migration 0005. A label equal to
+    another food's existing label violates its UNIQUE constraint: a SeedError.
+    """
+    result = TableResult(FOOD_LABEL_RESULT)
+    try:
+        result.inserted = conn.execute(
+            update(FOOD).where(FOOD_LABEL.is_(None)).values({FOOD_LABEL: func.lower(FOOD.c.name)})
+        ).rowcount
+    except DBAPIError as error:
+        raise SeedError(f"{FOOD_LABEL_RESULT}: {error.orig}".strip()) from None
+    labelled = conn.execute(
+        select(func.count()).select_from(FOOD).where(FOOD_LABEL.is_not(None))
+    ).scalar_one()
+    result.unchanged = labelled - result.inserted
+    return result
 
 
 def load(conn: Connection, seed_dir: Path = SEED_DIR) -> list[TableResult]:
