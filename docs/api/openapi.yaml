@@ -525,9 +525,14 @@ paths:
       operationId: listExercises
       summary: Exercise library with filters (FR-P8)
       description: |
-        `muscle_group_id` matches an exercise that trains the group, as its primary or a
-        secondary group.
+        Library exercises and the user's own custom ones (FR-P10, D26), mixed in one
+        order; another user's custom exercise is never listed. `muscle_group_id` matches
+        an exercise that trains the group, as its primary or a secondary group.
       parameters:
+        - name: custom_only
+          in: query
+          description: Only the user's own exercises ("My exercises")
+          schema: { type: boolean, default: false }
         - name: q
           in: query
           description: Case-insensitive search in the name
@@ -548,6 +553,29 @@ paths:
               schema: { $ref: "#/components/schemas/ExercisePage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
+    post:
+      tags: [library]
+      operationId: createCustomExercise
+      summary: Add an own exercise (FR-P10)
+      description: |
+        Visible only to its author (api-rules.md "Custom exercises"). 409 `conflict` with
+        detail `duplicate` on `body.name` when one of the user's custom exercises has the
+        name (any case), or detail `limit_reached` at the per-user limit. 422 `not_found`
+        on the field of an unknown muscle group.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomExerciseInput" }
+      responses:
+        "201":
+          description: The new exercise
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /exercises/{exercise_id}:
     parameters:
@@ -556,6 +584,7 @@ paths:
       tags: [library]
       operationId: getExercise
       summary: Exercise detail with text instruction (FR-P8)
+      description: 404 for another user's custom exercise, as for a missing one.
       responses:
         "200":
           description: The exercise
@@ -564,6 +593,43 @@ paths:
               schema: { $ref: "#/components/schemas/Exercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    patch:
+      tags: [library]
+      operationId: updateCustomExercise
+      summary: Edit an own exercise (FR-P10)
+      description: |
+        At least one field; a field that is sent may not be null. Sending either muscle
+        group field replaces the groups, the other one is kept. 404 for a library
+        exercise and for another user's custom exercise; 409 for a taken name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomExercisePatch" }
+      responses:
+        "200":
+          description: The changed exercise
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [library]
+      operationId: deleteCustomExercise
+      summary: Delete an own exercise (FR-P10)
+      description: |
+        Deleted for real. 409 `conflict` with detail `in_use` while a plan (also as the
+        original of a swap), a logged workout or a personal record uses it; 404 for a
+        library exercise and for another user's custom exercise.
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
   /exercises/{exercise_id}/alternatives:
@@ -2001,7 +2067,7 @@ components:
     Exercise:
       type: object
       required:
-        [id, name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction, muscle_groups]
+        [id, name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction, is_custom, muscle_groups]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -2011,9 +2077,46 @@ components:
         is_bodyweight: { type: boolean }
         description: { type: string }
         instruction: { type: string }
+        is_custom: { type: boolean, description: "The user's own exercise (FR-P10)" }
         muscle_groups:
           type: array
           items: { $ref: "#/components/schemas/ExerciseMuscleGroup" }
+    CustomExerciseInput:
+      type: object
+      required: [name, difficulty_level, equipment, primary_muscle_group_id]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: Trimmed }
+        difficulty_level: { $ref: "#/components/schemas/DifficultyLevel" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_compound: { type: boolean, default: false }
+        is_bodyweight: { type: boolean, default: false }
+        description: { type: string, maxLength: 2000, default: "" }
+        instruction: { type: string, maxLength: 2000, default: "" }
+        primary_muscle_group_id: { type: integer, minimum: 1, description: "From GET /muscle-groups" }
+        secondary_muscle_group_ids:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          default: []
+          description: Not including the primary group
+          items: { type: integer, minimum: 1 }
+    CustomExercisePatch:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        difficulty_level: { $ref: "#/components/schemas/DifficultyLevel" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_compound: { type: boolean }
+        is_bodyweight: { type: boolean }
+        description: { type: string, maxLength: 2000 }
+        instruction: { type: string, maxLength: 2000 }
+        primary_muscle_group_id: { type: integer, minimum: 1 }
+        secondary_muscle_group_ids:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
     ExercisePage:
       allOf:
         - $ref: "#/components/schemas/PageMeta"
