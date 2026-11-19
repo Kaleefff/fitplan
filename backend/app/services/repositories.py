@@ -11,6 +11,7 @@ from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
@@ -25,6 +26,7 @@ from app.services.nutrition import ProfileReader
 from app.services.nutrition_logs import NutritionLogUnitOfWork
 from app.services.password_reset import PasswordResetRepository
 from app.services.profile import ProfileUnitOfWork
+from app.services.reports import ReportStore
 from app.services.schedule import ScheduleUnitOfWork
 from app.services.tokens import RefreshTokenRepository
 from app.services.training_plans import TrainingPlanUnitOfWork
@@ -34,6 +36,7 @@ from app.services.workouts import WorkoutUnitOfWork
 @dataclass(frozen=True)
 class Repositories:
     users: UserRepository
+    reports: ReportStore
     refresh_tokens: RefreshTokenRepository
     profiles: ProfileReader
     workouts: WorkoutUnitOfWork
@@ -53,6 +56,7 @@ def sql_repositories() -> Repositories:
     sessions = get_sessionmaker()
     return Repositories(
         users=SqlUserRepository(sessions),
+        reports=SqlReportStore(sessions),
         refresh_tokens=SqlRefreshTokenRepository(sessions),
         profiles=SqlProfileReader(sessions),
         workouts=SqlWorkoutUnitOfWork(sessions),

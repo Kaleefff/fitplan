@@ -280,6 +280,15 @@ PERIOD_DAYS = {"week": 7, "month": 30, "3months": 90}
 MIN_HISTORY_DAYS = 7  # FR-R5: distinct days with any record over the whole history
 KEY_LIFTS = 3
 
+MAX_REPORT_DAYS = 366  # a report period, not after today
+
+
+class ReportType(StrEnum):
+    WEEKLY = "weekly"  # Monday to Sunday
+    MONTHLY = "monthly"  # a calendar month
+    CUSTOM = "custom"
+
+
 # --- Section 9: goal prediction --------------------------------------------
 PREDICTION_WINDOW_DAYS = 28
 PREDICTION_MIN_WEIGH_INS = 3

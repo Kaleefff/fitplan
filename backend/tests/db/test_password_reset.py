@@ -26,6 +26,7 @@ from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
@@ -82,6 +83,7 @@ def api(migrated_db, inbox) -> Iterator[TestClient]:  # noqa: F811
     factory = async_sessionmaker(engine, expire_on_commit=False)
     repositories = Repositories(
         users=SqlUserRepository(factory),
+        reports=SqlReportStore(factory),
         refresh_tokens=SqlRefreshTokenRepository(factory),
         profiles=SqlProfileReader(factory),
         workouts=SqlWorkoutUnitOfWork(factory),
