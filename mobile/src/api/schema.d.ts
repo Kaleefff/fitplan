@@ -1158,14 +1158,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stored progress reports (FR-R1, FR-R7) */
+        /**
+         * Stored progress reports (FR-R1, FR-R7)
+         * @description The user's reports, newest generated first (then by id).
+         */
         get: operations["listReports"];
         put?: never;
         /**
          * Generate the progress report of a period (FR-R1)
-         * @description `report_type` is derived from the period. Generating the same period again
-         *     replaces the stored report. Fewer than 7 days of history is 422
-         *     `insufficient_data` (api-rules.md Reports).
+         * @description `report_type` is derived from the period (algorithms.md 8: Monday-Sunday weekly,
+         *     a calendar month monthly, else custom; at most 366 days, not after today, else
+         *     422 `validation_error` on `body.period_end`). Generating the same period again
+         *     replaces the stored report (same id). Fewer than 7 days of history is 422
+         *     `insufficient_data` (api-rules.md Reports). The figures equal the analytics of
+         *     the same period, rounded as there; the goal prediction is as of today.
          */
         post: operations["generateReport"];
         delete?: never;
@@ -1255,7 +1261,7 @@ export interface components {
     schemas: {
         Error: {
             /** @enum {string} */
-            code: "validation_error" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "rate_limited" | "payload_too_large" | "insufficient_exercises" | "insufficient_foods" | "invalid_swap" | "ai_unavailable" | "internal_error";
+            code: "validation_error" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "rate_limited" | "payload_too_large" | "insufficient_exercises" | "insufficient_foods" | "invalid_swap" | "insufficient_data" | "ai_unavailable" | "internal_error";
             /** @description Human-readable, English */
             message: string;
             details: components["schemas"]["ErrorDetail"][];
@@ -1945,7 +1951,10 @@ export interface components {
             warnings: ("low_fit" | "gaps" | "low_training_compliance")[];
             irregular_data: boolean;
         };
-        /** @description Table `progress_report` */
+        /**
+         * @description Table `progress_report`. The metrics of algorithms.md 8 over the period, rounded
+         *     as in AnalyticsSummary; null where the analytics give null.
+         */
         Report: {
             id: number;
             report_type: components["schemas"]["ReportType"];
@@ -1953,13 +1962,26 @@ export interface components {
             report_period_start: string;
             /** Format: date */
             report_period_end: string;
-            weight_difference?: number | null;
+            /** @description kg, last - first weigh-in */
+            weight_difference: number | null;
+            /** @description Tonnage in kg; 0 without workouts */
             training_volume: number;
             training_sessions_completed: number;
+            /** @description The workout compliance denominator, rounded (api-rules.md); 0 without a plan */
             training_sessions_planned: number;
-            avg_cals_daily?: number | null;
-            /** Format: date */
-            estimated_goal_completion_date?: string | null;
+            workout_compliance_pct: number | null;
+            diet_compliance_pct: number | null;
+            avg_cals_daily: number | null;
+            key_lifts: components["schemas"]["KeyLift"][];
+            /**
+             * Format: date
+             * @description As of generation
+             */
+            estimated_goal_completion_date: string | null;
+            /** @description The goal prediction had warnings (algorithms.md 9) */
+            irregular_data: boolean;
+            /** @description Made by the weekly job (FR-R7, stretch) */
+            is_auto: boolean;
             /** Format: date-time */
             generated_at: string;
         };
@@ -4078,6 +4100,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     exportReport: {
