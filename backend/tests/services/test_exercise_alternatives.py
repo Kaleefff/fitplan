@@ -28,6 +28,7 @@ def _exercise(exercise_id: int, groups: tuple[ExerciseGroupRow, ...]) -> Exercis
         is_bodyweight=True,
         description="",
         instruction="",
+        is_custom=False,
         muscle_groups=groups,
     )
 
@@ -42,8 +43,8 @@ class FakeLibrary:
     def __init__(self) -> None:
         self.asked: dict | None = None
 
-    async def get_exercise(self, exercise_id: int) -> ExerciseRow | None:
-        return PUSH_UP_ROW if exercise_id == PUSH_UP else None
+    async def get_exercise(self, user_id: int, exercise_id: int) -> ExerciseRow | None:
+        return PUSH_UP_ROW if (user_id, exercise_id) == (USER, PUSH_UP) else None
 
     async def eligible_exercises(self, user_id: int, **limits) -> list[ExerciseRow]:
         self.asked = {"user_id": user_id, **limits}

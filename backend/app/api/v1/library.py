@@ -135,7 +135,7 @@ class ExercisePage(BaseModel):
     responses={**VALIDATION_ERROR_RESPONSE, 401: UNAUTHORIZED},
 )
 async def list_exercises(
-    _: User,
+    user: User,
     service: Service,
     q: Annotated[str | None, Query(max_length=100)] = None,
     muscle_group_id: Annotated[int | None, Query(ge=1, le=INT_MAX)] = None,
@@ -144,6 +144,7 @@ async def list_exercises(
     offset: Annotated[int, Query(ge=0, le=INT_MAX)] = 0,
 ) -> ExercisePage:
     page = await service.exercises(
+        user.id,
         q=q,
         muscle_group_id=muscle_group_id,
         difficulty_level=None if difficulty_level is None else DbLevel(difficulty_level.value),
@@ -164,8 +165,8 @@ async def list_exercises(
     summary="Exercise detail with text instruction (FR-P8)",
     responses={**VALIDATION_ERROR_RESPONSE, 401: UNAUTHORIZED, 404: NOT_FOUND},
 )
-async def get_exercise(exercise_id: ExerciseId, _: User, service: Service) -> ExerciseOut:
-    return ExerciseOut.of(await service.exercise(exercise_id))
+async def get_exercise(exercise_id: ExerciseId, user: User, service: Service) -> ExerciseOut:
+    return ExerciseOut.of(await service.exercise(user.id, exercise_id))
 
 
 @router.get(

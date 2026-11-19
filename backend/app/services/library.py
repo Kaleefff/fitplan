@@ -22,7 +22,9 @@ from app.services.training_plans import TrainingPlanUnitOfWork
 class LibraryReader(Protocol):
     async def list_exercises(
         self,
+        user_id: int,
         *,
+        custom_only: bool,
         q: str | None = None,
         muscle_group_id: int | None = None,
         difficulty_level: DbLevel | None = None,
@@ -30,7 +32,9 @@ class LibraryReader(Protocol):
         offset: int = 0,
     ) -> Page[ExerciseRow]: ...
 
-    async def get_exercise(self, exercise_id: int) -> ExerciseRow | None: ...
+    async def get_exercise(self, user_id: int, exercise_id: int) -> ExerciseRow | None:
+        """None for an unknown exercise and for another user's custom one (D26)."""
+        ...
 
     async def food_categories(self) -> list[FoodCategoryRow]: ...
 
@@ -67,6 +71,7 @@ class LibraryService:
 
     async def exercises(
         self,
+        user_id: int,
         *,
         q: str | None,
         muscle_group_id: int | None,
@@ -75,6 +80,8 @@ class LibraryService:
         offset: int,
     ) -> Page[ExerciseRow]:
         return await self._library.list_exercises(
+            user_id,
+            custom_only=False,
             q=q,
             muscle_group_id=muscle_group_id,
             difficulty_level=difficulty_level,
@@ -82,8 +89,9 @@ class LibraryService:
             offset=offset,
         )
 
-    async def exercise(self, exercise_id: int) -> ExerciseRow:
-        exercise = await self._library.get_exercise(exercise_id)
+    async def exercise(self, user_id: int, exercise_id: int) -> ExerciseRow:
+        """404 for an unknown exercise and for another user's custom one (D26)."""
+        exercise = await self._library.get_exercise(user_id, exercise_id)
         if exercise is None:
             raise _not_found()
         return exercise
@@ -110,7 +118,7 @@ class LibraryService:
     ) -> list[ExerciseRow]:
         """404 for an unknown exercise, for another user's session exercise and for a
         session exercise that does not hold this exercise (questions.md, B-08)."""
-        exercise = await self.exercise(exercise_id)
+        exercise = await self.exercise(user_id, exercise_id)
         primary = next((g.muscle_group_id for g in exercise.muscle_groups if g.is_primary), None)
 
         async with self._plans() as store:
