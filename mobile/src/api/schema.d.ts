@@ -790,7 +790,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The user's notifications, such as weekly reports and records (FR-P9, FR-R7) */
+        /**
+         * The user's notifications, such as weekly reports and records (FR-P9, FR-R7)
+         * @description Rows with `scheduled_at <= now`, sent or not and dismissed ones included (a
+         *     notification scheduled later is not listed yet), ordered by `scheduled_at` then
+         *     id, both newest first (api-rules.md "Reports and notifications"). There is no
+         *     dismiss endpoint.
+         */
         get: operations["listNotifications"];
         put?: never;
         post?: never;
