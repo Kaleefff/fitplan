@@ -26,20 +26,28 @@ SERVER_SELECTION_MS = 1000
 # empties every table with a foreign key to app_user, whatever its rows hold, and since
 # migration 0004 that includes exercise (custom exercises, D26): it would wipe the seeded
 # exercise library and its links too. DELETE applies the ON DELETE rules row by row, so
-# only what users own goes (their custom exercises included), and the deferred exercise
-# foreign keys are checked at commit, as for a real account deletion. The id sequence
+# only what users own goes (their custom exercises included); the deferred exercise
+# foreign keys are then checked at once (below), with the same result as at commit. The id sequence
 # restarts as TRUNCATE ... RESTART IDENTITY did: tests rely on the first user being 1.
 DELETE_USERS = text("DELETE FROM app_user")
 RESTART_USER_IDS = text("ALTER TABLE app_user ALTER COLUMN id RESTART")
 
 
+# Deleting a user cascades to their custom exercises, whose foreign keys are deferred
+# (D26); checking them at once leaves no pending trigger events, so the same
+# transaction may still TRUNCATE exercise.
+CHECK_DEFERRED_NOW = text("SET CONSTRAINTS ALL IMMEDIATE")
+
+
 def delete_users(connection: Connection) -> None:
     connection.execute(DELETE_USERS)
+    connection.execute(CHECK_DEFERRED_NOW)
     connection.execute(RESTART_USER_IDS)
 
 
 async def delete_users_async(connection: AsyncConnection) -> None:
     await connection.execute(DELETE_USERS)
+    await connection.execute(CHECK_DEFERRED_NOW)
     await connection.execute(RESTART_USER_IDS)
 
 
