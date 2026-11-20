@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.meal_recognitions import COLLECTION, MongoMealRecognitionRepository
@@ -92,6 +93,7 @@ def api(migrated_db, buffer, tmp_path) -> Iterator[TestClient]:  # noqa: F811
         analytics=SqlAnalyticsUnitOfWork(factory),
         library=SqlLibraryRepository(factory),
         nutrition_logs=SqlNutritionLogUnitOfWork(factory),
+        custom_exercises=SqlCustomExerciseRepository(factory),
     )
     # used only on the TestClient's event loop
     mongo = AsyncMongoClient(**get_settings().mongo_client_kwargs(), serverSelectionTimeoutMS=1000)

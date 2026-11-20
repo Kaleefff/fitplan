@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.nutrition_logs import SqlNutritionLogUnitOfWork
@@ -96,6 +97,7 @@ def api(migrated_db, inbox) -> Iterator[TestClient]:  # noqa: F811
         analytics=SqlAnalyticsUnitOfWork(factory),
         library=SqlLibraryRepository(factory),
         nutrition_logs=SqlNutritionLogUnitOfWork(factory),
+        custom_exercises=SqlCustomExerciseRepository(factory),
     )
     settings = make_settings(smtp_host="127.0.0.1", smtp_port=inbox[1])
     app = create_app(

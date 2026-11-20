@@ -12,6 +12,7 @@ from app.services.account import AccountService
 from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService, UserRepository
 from app.services.body_metrics import BodyMetricsService
+from app.services.custom_exercises import CustomExerciseService
 from app.services.diet_plans import DietPlanService
 from app.services.health import HealthChecker
 from app.services.library import LibraryService
@@ -91,6 +92,10 @@ def get_report_service(request: Request) -> ReportService:
 
 def get_library_service(request: Request) -> LibraryService:
     return request.app.state.library_service
+
+
+def get_custom_exercise_service(request: Request) -> CustomExerciseService:
+    return request.app.state.custom_exercise_service
 
 
 def get_nutrition_log_service(request: Request) -> NutritionLogService:
