@@ -20,6 +20,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# D-05 evaluation photos: not committed (privacy, licences, size); shared on the team Drive
+ai-service/eval/photos/
+
 # Database dumps
 backups/
 *.dump
