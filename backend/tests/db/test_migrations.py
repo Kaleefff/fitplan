@@ -368,6 +368,85 @@ def test_0004_adds_the_exercise_owner_and_its_downgrade_refuses_custom_rows(
     assert exercise_schema(empty_db)["deferred"] == EXERCISE_REFERENCES
 
 
+def add_food(engine: Engine, name: str) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO food_item (name, cals_per_100g, protein_per_100g, fat_per_100g,"
+                " carbs_per_100g, diet_role, suitable_meal_types, default_portion_g,"
+                " min_portion_g, max_portion_g, portion_step_g)"
+                " VALUES (:name, 42, 0, 0, 10.6, 'carb', '{snack}', 330, 100, 500, 10)"
+            ),
+            {"name": name},
+        )
+
+
+def recognition_labels(engine: Engine) -> dict[str, str | None]:
+    with engine.connect() as connection:
+        rows = connection.execute(text("SELECT name, recognition_label FROM food_item"))
+        return {name: label for name, label in rows}
+
+
+def alembic_revision(engine: Engine) -> str:
+    with engine.connect() as connection:
+        return connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+
+
+def test_0005_labels_every_food_and_its_downgrade_keeps_hand_set_labels(
+    empty_db: Engine,
+) -> None:
+    run_alembic(empty_db, "upgrade", "0004")
+    add_food(empty_db, "Basmati Rice, cooked")
+    add_food(empty_db, "Żurek")
+    assert recognition_labels(empty_db) == {"Basmati Rice, cooked": None, "Żurek": None}
+
+    run_alembic(empty_db, "upgrade", "0005")
+    assert recognition_labels(empty_db) == {
+        "Basmati Rice, cooked": "basmati rice, cooked",
+        "Żurek": "żurek",
+    }
+
+    with empty_db.begin() as connection:
+        connection.execute(
+            text("UPDATE food_item SET recognition_label = 'sour rye soup' WHERE name = 'Żurek'")
+        )
+    run_alembic(empty_db, "downgrade", "0004")
+    assert recognition_labels(empty_db) == {
+        "Basmati Rice, cooked": None,
+        "Żurek": "sour rye soup",
+    }
+
+
+@pytest.mark.parametrize(
+    ("names", "message"),
+    [
+        (["x" * 101], "longer than 100 characters"),
+        (["Rice", "rice"], "names equal after lower"),
+    ],
+)
+def test_0005_stops_and_changes_nothing_when_a_name_cannot_be_a_label(
+    empty_db: Engine, names: list[str], message: str
+) -> None:
+    run_alembic(empty_db, "upgrade", "0004")
+    for name in names:
+        add_food(empty_db, name)
+
+    with pytest.raises(DBAPIError, match=message):
+        run_alembic(empty_db, "upgrade", "0005")
+
+    assert alembic_revision(empty_db) == "0004"
+    assert set(recognition_labels(empty_db).values()) == {None}
+
+
+def test_0005_accepts_a_name_of_exactly_100_characters(empty_db: Engine) -> None:
+    run_alembic(empty_db, "upgrade", "0004")
+    add_food(empty_db, "Y" * 100)
+
+    run_alembic(empty_db, "upgrade", "0005")
+
+    assert recognition_labels(empty_db) == {"Y" * 100: "y" * 100}
+
+
 def test_custom_name_index_serves_the_cascade_from_app_user(migrated_db: Engine) -> None:
     """No index on user_id alone: the partial custom-name index covers `user_id = ?`."""
     with migrated_db.begin() as connection:

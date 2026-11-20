@@ -394,12 +394,20 @@ export interface paths {
         };
         /**
          * Exercise library with filters (FR-P8)
-         * @description `muscle_group_id` matches an exercise that trains the group, as its primary or a
-         *     secondary group.
+         * @description Library exercises and the user's own custom ones (FR-P10, D26), mixed in one
+         *     order; another user's custom exercise is never listed. `muscle_group_id` matches
+         *     an exercise that trains the group, as its primary or a secondary group.
          */
         get: operations["listExercises"];
         put?: never;
-        post?: never;
+        /**
+         * Add an own exercise (FR-P10)
+         * @description Visible only to its author (api-rules.md "Custom exercises"). 409 `conflict` with
+         *     detail `duplicate` on `body.name` when one of the user's custom exercises has the
+         *     name (any case), or detail `limit_reached` at the per-user limit. 422 `not_found`
+         *     on the field of an unknown muscle group.
+         */
+        post: operations["createCustomExercise"];
         delete?: never;
         options?: never;
         head?: never;
@@ -415,14 +423,29 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Exercise detail with text instruction (FR-P8) */
+        /**
+         * Exercise detail with text instruction (FR-P8)
+         * @description 404 for another user's custom exercise, as for a missing one.
+         */
         get: operations["getExercise"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete an own exercise (FR-P10)
+         * @description Deleted for real. 409 `conflict` with detail `in_use` while a plan (also as the
+         *     original of a swap), a logged workout or a personal record uses it; 404 for a
+         *     library exercise and for another user's custom exercise.
+         */
+        delete: operations["deleteCustomExercise"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Edit an own exercise (FR-P10)
+         * @description At least one field; a field that is sent may not be null. Sending either muscle
+         *     group field replaces the groups, the other one is kept. 404 for a library
+         *     exercise and for another user's custom exercise; 409 for a taken name.
+         */
+        patch: operations["updateCustomExercise"];
         trace?: never;
     };
     "/exercises/{exercise_id}/alternatives": {
@@ -1164,14 +1187,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stored progress reports (FR-R1, FR-R7) */
+        /**
+         * Stored progress reports (FR-R1, FR-R7)
+         * @description The user's reports, newest generated first (then by id).
+         */
         get: operations["listReports"];
         put?: never;
         /**
          * Generate the progress report of a period (FR-R1)
-         * @description `report_type` is derived from the period. Generating the same period again
-         *     replaces the stored report. Fewer than 7 days of history is 422
-         *     `insufficient_data` (api-rules.md Reports).
+         * @description `report_type` is derived from the period (algorithms.md 8: Monday-Sunday weekly,
+         *     a calendar month monthly, else custom; at most 366 days, not after today, else
+         *     422 `validation_error` on `body.period_end`). Generating the same period again
+         *     replaces the stored report (same id). Fewer than 7 days of history is 422
+         *     `insufficient_data` (api-rules.md Reports). The figures equal the analytics of
+         *     the same period, rounded as there; the goal prediction is as of today.
          */
         post: operations["generateReport"];
         delete?: never;
@@ -1261,7 +1290,7 @@ export interface components {
     schemas: {
         Error: {
             /** @enum {string} */
-            code: "validation_error" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "rate_limited" | "payload_too_large" | "insufficient_exercises" | "insufficient_foods" | "invalid_swap" | "ai_unavailable" | "internal_error";
+            code: "validation_error" | "unauthorized" | "invalid_credentials" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "rate_limited" | "payload_too_large" | "insufficient_exercises" | "insufficient_foods" | "invalid_swap" | "insufficient_data" | "ai_unavailable" | "internal_error";
             /** @description Human-readable, English */
             message: string;
             details: components["schemas"]["ErrorDetail"][];
@@ -1472,7 +1501,41 @@ export interface components {
             is_bodyweight: boolean;
             description: string;
             instruction: string;
+            /** @description The user's own exercise (FR-P10) */
+            is_custom: boolean;
             muscle_groups: components["schemas"]["ExerciseMuscleGroup"][];
+        };
+        CustomExerciseInput: {
+            /** @description Trimmed */
+            name: string;
+            difficulty_level: components["schemas"]["DifficultyLevel"];
+            equipment: components["schemas"]["Equipment"];
+            /** @default false */
+            is_compound: boolean;
+            /** @default false */
+            is_bodyweight: boolean;
+            /** @default  */
+            description: string;
+            /** @default  */
+            instruction: string;
+            /** @description From GET /muscle-groups */
+            primary_muscle_group_id: number;
+            /**
+             * @description Not including the primary group
+             * @default []
+             */
+            secondary_muscle_group_ids: number[];
+        };
+        CustomExercisePatch: {
+            name?: string;
+            difficulty_level?: components["schemas"]["DifficultyLevel"];
+            equipment?: components["schemas"]["Equipment"];
+            is_compound?: boolean;
+            is_bodyweight?: boolean;
+            description?: string;
+            instruction?: string;
+            primary_muscle_group_id?: number;
+            secondary_muscle_group_ids?: number[];
         };
         ExercisePage: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["Exercise"][];
@@ -1951,7 +2014,10 @@ export interface components {
             warnings: ("low_fit" | "gaps" | "low_training_compliance")[];
             irregular_data: boolean;
         };
-        /** @description Table `progress_report` */
+        /**
+         * @description Table `progress_report`. The metrics of algorithms.md 8 over the period, rounded
+         *     as in AnalyticsSummary; null where the analytics give null.
+         */
         Report: {
             id: number;
             report_type: components["schemas"]["ReportType"];
@@ -1959,13 +2025,26 @@ export interface components {
             report_period_start: string;
             /** Format: date */
             report_period_end: string;
-            weight_difference?: number | null;
+            /** @description kg, last - first weigh-in */
+            weight_difference: number | null;
+            /** @description Tonnage in kg; 0 without workouts */
             training_volume: number;
             training_sessions_completed: number;
+            /** @description The workout compliance denominator, rounded (api-rules.md); 0 without a plan */
             training_sessions_planned: number;
-            avg_cals_daily?: number | null;
-            /** Format: date */
-            estimated_goal_completion_date?: string | null;
+            workout_compliance_pct: number | null;
+            diet_compliance_pct: number | null;
+            avg_cals_daily: number | null;
+            key_lifts: components["schemas"]["KeyLift"][];
+            /**
+             * Format: date
+             * @description As of generation
+             */
+            estimated_goal_completion_date: string | null;
+            /** @description The goal prediction had warnings (algorithms.md 9) */
+            irregular_data: boolean;
+            /** @description Made by the weekly job (FR-R7, stretch) */
+            is_auto: boolean;
             /** Format: date-time */
             generated_at: string;
         };
@@ -2785,6 +2864,8 @@ export interface operations {
     listExercises: {
         parameters: {
             query?: {
+                /** @description Only the user's own exercises ("My exercises") */
+                custom_only?: boolean;
                 /** @description Case-insensitive search in the name */
                 q?: string;
                 muscle_group_id?: number;
@@ -2811,6 +2892,33 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    createCustomExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomExerciseInput"];
+            };
+        };
+        responses: {
+            /** @description The new exercise */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getExercise: {
         parameters: {
             query?: never;
@@ -2833,6 +2941,60 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    deleteCustomExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: components["parameters"]["ExerciseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    updateCustomExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: components["parameters"]["ExerciseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomExercisePatch"];
+            };
+        };
+        responses: {
+            /** @description The changed exercise */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -4084,6 +4246,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     exportReport: {

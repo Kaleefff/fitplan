@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.nutrition_logs import SqlNutritionLogUnitOfWork
@@ -23,6 +24,7 @@ from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanStore, SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
@@ -87,6 +89,7 @@ def api(sessions) -> Iterator[TestClient]:
     engine, factory = sessions
     repositories = Repositories(
         users=SqlUserRepository(factory),
+        reports=SqlReportStore(factory),
         refresh_tokens=SqlRefreshTokenRepository(factory),
         profiles=SqlProfileReader(factory),
         workouts=SqlWorkoutUnitOfWork(factory),
@@ -99,6 +102,7 @@ def api(sessions) -> Iterator[TestClient]:
         analytics=SqlAnalyticsUnitOfWork(factory),
         library=SqlLibraryRepository(factory),
         nutrition_logs=SqlNutritionLogUnitOfWork(factory),
+        custom_exercises=SqlCustomExerciseRepository(factory),
     )
     app = create_app(
         settings=make_settings(), health_checker=FakeHealthChecker(), repositories=repositories

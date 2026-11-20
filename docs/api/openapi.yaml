@@ -525,9 +525,14 @@ paths:
       operationId: listExercises
       summary: Exercise library with filters (FR-P8)
       description: |
-        `muscle_group_id` matches an exercise that trains the group, as its primary or a
-        secondary group.
+        Library exercises and the user's own custom ones (FR-P10, D26), mixed in one
+        order; another user's custom exercise is never listed. `muscle_group_id` matches
+        an exercise that trains the group, as its primary or a secondary group.
       parameters:
+        - name: custom_only
+          in: query
+          description: Only the user's own exercises ("My exercises")
+          schema: { type: boolean, default: false }
         - name: q
           in: query
           description: Case-insensitive search in the name
@@ -548,6 +553,29 @@ paths:
               schema: { $ref: "#/components/schemas/ExercisePage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
+    post:
+      tags: [library]
+      operationId: createCustomExercise
+      summary: Add an own exercise (FR-P10)
+      description: |
+        Visible only to its author (api-rules.md "Custom exercises"). 409 `conflict` with
+        detail `duplicate` on `body.name` when one of the user's custom exercises has the
+        name (any case), or detail `limit_reached` at the per-user limit. 422 `not_found`
+        on the field of an unknown muscle group.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomExerciseInput" }
+      responses:
+        "201":
+          description: The new exercise
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /exercises/{exercise_id}:
     parameters:
@@ -556,6 +584,7 @@ paths:
       tags: [library]
       operationId: getExercise
       summary: Exercise detail with text instruction (FR-P8)
+      description: 404 for another user's custom exercise, as for a missing one.
       responses:
         "200":
           description: The exercise
@@ -564,6 +593,43 @@ paths:
               schema: { $ref: "#/components/schemas/Exercise" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    patch:
+      tags: [library]
+      operationId: updateCustomExercise
+      summary: Edit an own exercise (FR-P10)
+      description: |
+        At least one field; a field that is sent may not be null. Sending either muscle
+        group field replaces the groups, the other one is kept. 404 for a library
+        exercise and for another user's custom exercise; 409 for a taken name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomExercisePatch" }
+      responses:
+        "200":
+          description: The changed exercise
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Exercise" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [library]
+      operationId: deleteCustomExercise
+      summary: Delete an own exercise (FR-P10)
+      description: |
+        Deleted for real. 409 `conflict` with detail `in_use` while a plan (also as the
+        original of a swap), a logged workout or a personal record uses it; 404 for a
+        library exercise and for another user's custom exercise.
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
   /exercises/{exercise_id}/alternatives:
@@ -1445,6 +1511,7 @@ paths:
       tags: [analytics]
       operationId: listReports
       summary: Stored progress reports (FR-R1, FR-R7)
+      description: The user's reports, newest generated first (then by id).
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"
@@ -1462,11 +1529,12 @@ paths:
       operationId: generateReport
       summary: Generate the progress report of a period (FR-R1)
       description: |
-        `report_type` is derived from the period. Generating the same period again
-        replaces the stored report. Fewer than 7 days of history is 422
-        `insufficient_data` (api-rules.md Reports).
-      x-todo:
-        - "Error.code needs insufficient_data (api-rules.md Reports); added with B-25"
+        `report_type` is derived from the period (algorithms.md 8: Monday-Sunday weekly,
+        a calendar month monthly, else custom; at most 366 days, not after today, else
+        422 `validation_error` on `body.period_end`). Generating the same period again
+        replaces the stored report (same id). Fewer than 7 days of history is 422
+        `insufficient_data` (api-rules.md Reports). The figures equal the analytics of
+        the same period, rounded as there; the goal prediction is as of today.
       requestBody:
         required: true
         content:
@@ -1496,6 +1564,7 @@ paths:
               schema: { $ref: "#/components/schemas/Report" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /reports/{report_id}/export:
     parameters:
@@ -1727,6 +1796,7 @@ components:
             - insufficient_exercises
             - insufficient_foods
             - invalid_swap
+            - insufficient_data
             - ai_unavailable
             - internal_error
         message:
@@ -2004,7 +2074,7 @@ components:
     Exercise:
       type: object
       required:
-        [id, name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction, muscle_groups]
+        [id, name, difficulty_level, equipment, is_compound, is_bodyweight, description, instruction, is_custom, muscle_groups]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -2014,9 +2084,46 @@ components:
         is_bodyweight: { type: boolean }
         description: { type: string }
         instruction: { type: string }
+        is_custom: { type: boolean, description: "The user's own exercise (FR-P10)" }
         muscle_groups:
           type: array
           items: { $ref: "#/components/schemas/ExerciseMuscleGroup" }
+    CustomExerciseInput:
+      type: object
+      required: [name, difficulty_level, equipment, primary_muscle_group_id]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: Trimmed }
+        difficulty_level: { $ref: "#/components/schemas/DifficultyLevel" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_compound: { type: boolean, default: false }
+        is_bodyweight: { type: boolean, default: false }
+        description: { type: string, maxLength: 2000, default: "" }
+        instruction: { type: string, maxLength: 2000, default: "" }
+        primary_muscle_group_id: { type: integer, minimum: 1, description: "From GET /muscle-groups" }
+        secondary_muscle_group_ids:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          default: []
+          description: Not including the primary group
+          items: { type: integer, minimum: 1 }
+    CustomExercisePatch:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        difficulty_level: { $ref: "#/components/schemas/DifficultyLevel" }
+        equipment: { $ref: "#/components/schemas/Equipment" }
+        is_compound: { type: boolean }
+        is_bodyweight: { type: boolean }
+        description: { type: string, maxLength: 2000 }
+        instruction: { type: string, maxLength: 2000 }
+        primary_muscle_group_id: { type: integer, minimum: 1 }
+        secondary_muscle_group_ids:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
     ExercisePage:
       allOf:
         - $ref: "#/components/schemas/PageMeta"
@@ -2660,22 +2767,31 @@ components:
         irregular_data: { type: boolean }
     Report:
       type: object
-      description: Table `progress_report`
-      x-todo:
-        - "diet and workout compliance % are not stored (D-01 #17)"
-        - "weight_difference and avg_cals_daily are NOT NULL in the DB, but FR-R5 / algorithms.md 8 allow null metrics"
-      required: [id, report_type, report_period_start, report_period_end, training_volume, training_sessions_completed, training_sessions_planned, generated_at]
+      description: |
+        Table `progress_report`. The metrics of algorithms.md 8 over the period, rounded
+        as in AnalyticsSummary; null where the analytics give null.
+      required:
+        [id, report_type, report_period_start, report_period_end, weight_difference, training_volume, training_sessions_completed, training_sessions_planned, workout_compliance_pct, diet_compliance_pct, avg_cals_daily, key_lifts, estimated_goal_completion_date, irregular_data, is_auto, generated_at]
       properties:
         id: { type: integer }
         report_type: { $ref: "#/components/schemas/ReportType" }
         report_period_start: { type: string, format: date }
         report_period_end: { type: string, format: date }
-        weight_difference: { type: [number, "null"] }
-        training_volume: { type: number }
+        weight_difference: { type: [number, "null"], description: "kg, last - first weigh-in" }
+        training_volume: { type: number, description: "Tonnage in kg; 0 without workouts" }
         training_sessions_completed: { type: integer }
-        training_sessions_planned: { type: integer }
+        training_sessions_planned:
+          type: integer
+          description: The workout compliance denominator, rounded (api-rules.md); 0 without a plan
+        workout_compliance_pct: { type: [number, "null"] }
+        diet_compliance_pct: { type: [number, "null"] }
         avg_cals_daily: { type: [integer, "null"] }
-        estimated_goal_completion_date: { type: [string, "null"], format: date }
+        key_lifts:
+          type: array
+          items: { $ref: "#/components/schemas/KeyLift" }
+        estimated_goal_completion_date: { type: [string, "null"], format: date, description: As of generation }
+        irregular_data: { type: boolean, description: "The goal prediction had warnings (algorithms.md 9)" }
+        is_auto: { type: boolean, description: "Made by the weekly job (FR-R7, stretch)" }
         generated_at: { type: string, format: date-time }
     GenerateReportRequest:
       type: object

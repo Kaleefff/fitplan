@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
+from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
 from app.db.repositories.diet_plans import SqlDietPlanUnitOfWork
 from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.meal_recognitions import COLLECTION, MongoMealRecognitionRepository
@@ -24,6 +25,7 @@ from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
+from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
 from app.db.repositories.training_plans import SqlTrainingPlanUnitOfWork
 from app.db.repositories.users import SqlUserRepository
@@ -78,6 +80,7 @@ def api(migrated_db, buffer, tmp_path) -> Iterator[TestClient]:  # noqa: F811
     factory = async_sessionmaker(engine, expire_on_commit=False)
     repositories = Repositories(
         users=SqlUserRepository(factory),
+        reports=SqlReportStore(factory),
         refresh_tokens=SqlRefreshTokenRepository(factory),
         profiles=SqlProfileReader(factory),
         workouts=SqlWorkoutUnitOfWork(factory),
@@ -90,6 +93,7 @@ def api(migrated_db, buffer, tmp_path) -> Iterator[TestClient]:  # noqa: F811
         analytics=SqlAnalyticsUnitOfWork(factory),
         library=SqlLibraryRepository(factory),
         nutrition_logs=SqlNutritionLogUnitOfWork(factory),
+        custom_exercises=SqlCustomExerciseRepository(factory),
     )
     # used only on the TestClient's event loop
     mongo = AsyncMongoClient(**get_settings().mongo_client_kwargs(), serverSelectionTimeoutMS=1000)

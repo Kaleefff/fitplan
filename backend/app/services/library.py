@@ -73,6 +73,7 @@ class LibraryService:
         self,
         user_id: int,
         *,
+        custom_only: bool = False,
         q: str | None,
         muscle_group_id: int | None,
         difficulty_level: DbLevel | None,
@@ -81,7 +82,7 @@ class LibraryService:
     ) -> Page[ExerciseRow]:
         return await self._library.list_exercises(
             user_id,
-            custom_only=False,
+            custom_only=custom_only,
             q=q,
             muscle_group_id=muscle_group_id,
             difficulty_level=difficulty_level,

@@ -486,3 +486,92 @@ def test_broken_food_file_changes_nothing(db, food_seed, old, new, message):
         run(db, food_seed)
 
     assert snapshot(db) == before
+
+
+# ---------------------------------------------------------------- recognition labels (A-01)
+
+LABEL_RESULT = "food_item.recognition_label"
+
+
+def labels(engine: Engine) -> dict[str, str | None]:
+    with engine.connect() as connection:
+        rows = connection.execute(text("SELECT name, recognition_label FROM food_item"))
+        return {name: label for name, label in rows}
+
+
+def set_label(engine: Engine, name: str, label: str) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE food_item SET recognition_label = :label WHERE name = :name"),
+            {"label": label, "name": name},
+        )
+
+
+def add_food_line(path: Path, name: str) -> None:
+    with path.open("a", encoding="utf-8") as file:
+        file.write(
+            f'"{name}",361,7,0.3,79.9,carb,lunch;dinner,true,true,150,50,300,10,'
+            "Grains and cereals,,FDC:168880\n"
+        )
+
+
+def test_new_foods_get_lower_name_as_their_label(db, food_seed):
+    first = by_table(run(db, food_seed))
+    second = by_table(run(db, food_seed))
+
+    assert labels(db) == {"Tofu": "tofu", "Bagel": "bagel", "Goulash": "goulash"}
+    assert (first[LABEL_RESULT].inserted, first[LABEL_RESULT].unchanged) == (3, 0)
+    assert (second[LABEL_RESULT].inserted, second[LABEL_RESULT].unchanged) == (0, 3)
+    assert second[LABEL_RESULT].updated == second[LABEL_RESULT].deleted == 0
+
+
+def test_a_food_added_later_is_labelled_the_same_way(db, food_seed):
+    run(db, food_seed)
+    add_food_line(food_seed / "food_item.csv", "White Rice, raw")
+
+    results = by_table(run(db, food_seed))
+
+    assert labels(db)["White Rice, raw"] == "white rice, raw"
+    assert (results[LABEL_RESULT].inserted, results[LABEL_RESULT].unchanged) == (1, 3)
+
+
+def test_a_hand_set_label_is_kept_on_reload(db, food_seed):
+    run(db, food_seed)
+    set_label(db, "Bagel", "bagel, plain")
+
+    results = by_table(run(db, food_seed))
+
+    assert labels(db)["Bagel"] == "bagel, plain"
+    assert results[LABEL_RESULT].inserted == 0
+    assert results[LABEL_RESULT].unchanged == 3
+
+
+def test_name_of_exactly_100_characters_is_labelled(db, food_seed):
+    add_food_line(food_seed / "food_item.csv", "Z" * 100)
+
+    run(db, food_seed)
+
+    assert labels(db)["Z" * 100] == "z" * 100
+
+
+def test_name_longer_than_100_characters_is_an_error(db, food_seed):
+    run(db, food_seed)
+    before = snapshot(db)
+    add_food_line(food_seed / "food_item.csv", "Z" * 101)
+
+    with pytest.raises(SeedError, match="longer than 100 characters"):
+        run(db, food_seed)
+
+    assert snapshot(db) == before
+
+
+def test_label_taken_by_another_food_is_an_error(db, food_seed):
+    run(db, food_seed)
+    set_label(db, "Bagel", "white rice, raw")
+    before = snapshot(db)
+    add_food_line(food_seed / "food_item.csv", "White Rice, raw")
+
+    with pytest.raises(SeedError, match=r"food_item\.recognition_label"):
+        run(db, food_seed)
+
+    assert snapshot(db) == before

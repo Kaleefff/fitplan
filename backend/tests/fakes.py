@@ -155,6 +155,7 @@ def _no_workout_store():
 def fake_repositories(**overrides: object) -> Repositories:
     values = {
         "users": InMemoryUserRepository(),
+        "reports": _no_workout_store,
         "refresh_tokens": InMemoryRefreshTokenRepository(),
         "profiles": InMemoryProfileReader(),
         "workouts": _no_workout_store,
@@ -167,6 +168,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "analytics": _no_workout_store,
         "library": _no_workout_store,
         "nutrition_logs": _no_workout_store,
+        "custom_exercises": _no_workout_store,
         **overrides,
     }
     return Repositories(**values)
