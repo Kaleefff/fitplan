@@ -447,6 +447,56 @@ def test_0005_accepts_a_name_of_exactly_100_characters(empty_db: Engine) -> None
     assert recognition_labels(empty_db) == {"Y" * 100: "y" * 100}
 
 
+def add_users(engine: Engine, *emails: str) -> None:
+    with engine.begin() as connection:
+        for email in emails:
+            connection.execute(
+                text(
+                    "INSERT INTO app_user (email, password_hash, name, surname)"
+                    " VALUES (:e, 'x', 'A', 'A')"
+                ),
+                {"e": email},
+            )
+
+
+def user_emails(engine: Engine) -> set[str]:
+    with engine.connect() as connection:
+        return set(connection.execute(text("SELECT email FROM app_user")).scalars())
+
+
+def has_email_lower_index(engine: Engine) -> bool:
+    with engine.connect() as connection:
+        return "ux_app_user_email_lower" in {
+            index["name"] for index in inspect(connection).get_indexes("app_user")
+        }
+
+
+def test_0006_stops_and_changes_nothing_on_emails_equal_after_lower(empty_db: Engine) -> None:
+    run_alembic(empty_db, "upgrade", "0005")
+    add_users(empty_db, "Ann@example.com", "ann@example.com")
+
+    with pytest.raises(DBAPIError, match="after lower"):
+        run_alembic(empty_db, "upgrade", "0006")
+
+    assert alembic_revision(empty_db) == "0005"
+    assert not has_email_lower_index(empty_db)
+    assert user_emails(empty_db) == {"Ann@example.com", "ann@example.com"}
+
+
+def test_0006_rejects_a_second_account_differing_only_in_case(empty_db: Engine) -> None:
+    run_alembic(empty_db, "upgrade", "0005")
+    add_users(empty_db, "Ann@example.com", "bob@example.com")
+
+    run_alembic(empty_db, "upgrade", "0006")
+    assert has_email_lower_index(empty_db)
+    with pytest.raises(IntegrityError, match="ux_app_user_email_lower"):
+        add_users(empty_db, "ANN@EXAMPLE.COM")
+
+    run_alembic(empty_db, "downgrade", "0005")
+    assert not has_email_lower_index(empty_db)
+    add_users(empty_db, "ANN@EXAMPLE.COM")  # allowed again without the index
+
+
 def test_custom_name_index_serves_the_cascade_from_app_user(migrated_db: Engine) -> None:
     """No index on user_id alone: the partial custom-name index covers `user_id = ?`."""
     with migrated_db.begin() as connection:
