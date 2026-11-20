@@ -1,7 +1,8 @@
-"""SqlAnalyticsStore on PostgreSQL (DB-10; algorithms.md 7 and 8, FR-R1 to FR-R3, FR-R5).
+"""SqlAnalyticsStore on PostgreSQL (DB-10, DB-11; algorithms.md 7 to 9, FR-R1 to FR-R5).
 
-Calls the repository directly, below the endpoints of test_analytics_queries.py. Dates are
-relative to today in Europe/Warsaw; every expected value is hand-computed in a comment.
+Calls the repository directly (the prediction through prediction_as_of over it), below the
+endpoints of test_analytics_queries.py. Dates are relative to today in Europe/Warsaw; every
+expected value is hand-computed in a comment.
 Skipped without PostgreSQL.
 """
 
@@ -26,6 +27,8 @@ from app.domain.analytics import (
     window,
 )
 from app.domain.compliance import diet_compliance, workout_compliance
+from app.domain.prediction import GoalPrediction, PredictionStatus, PredictionWarning
+from app.services.analytics import prediction_as_of
 from tests.clock import today
 from tests.db.test_repositories import TEST_DB, migrated_db  # noqa: F401  (fixture)
 
@@ -502,3 +505,196 @@ async def test_target_weight_is_the_users_own(analytics):
         targets = [await store.target_weight(user) for user in (ann, bob, cid)]
 
     assert targets == [Decimal("78"), Decimal("95"), None]  # each user's own target_value
+
+
+# ------------------------------------------------------------------ e) prediction (DB-11)
+# algorithms.md 9 end to end: stored rows -> SqlAnalyticsStore -> prediction_as_of(today).
+# The window is day 27 .. today (28 days). Weigh-ins are (days ago, kg): the sets of
+# tests/domain/test_prediction.py moved from 2026-10-14 to today, so every expected date is
+# an offset from today. Lines are fitted over x = days since the first weigh-in.
+
+# the active plan runs day 40 .. day 40 - 56 = today + 16, so it covers all of day 27 .. today:
+# planned = 3 sessions x 28 days / 7 = 12
+PLAN_START, SESSIONS = 40, 3
+
+
+def _weekly(*weights) -> list[tuple[int, str]]:
+    """One weigh-in every 7 days, the last one today."""
+    n = len(weights)
+    return [(7 * (n - 1 - i), str(weight)) for i, weight in enumerate(weights)]
+
+
+def _weigh_ins(user: int, rows: Sequence[tuple[int, str]]) -> None:
+    for days_ago, weight in rows:
+        _weigh_in(user, day(days_ago), Decimal(weight))
+
+
+def _workouts(user: int, days_ago: Sequence[int]) -> None:
+    for n in days_ago:
+        _workout(user, day(n))
+
+
+async def _prediction(analytics: SqlAnalyticsUnitOfWork, user: int) -> GoalPrediction:
+    async with analytics() as store:
+        return await prediction_as_of(store, user, TODAY)
+
+
+# days 21, 14, 7 and 0, 0.49 kg less each week: an exact line, slope -0.49 / 7 = -0.07 kg/day,
+# R^2 = 1; fitted today = 82.06; (78 - 82.06) / -0.07 = 58 days
+STEADY = _weekly("83.53", "83.04", "82.55", "82.06")
+
+# x = 0, 4, 9, 13, 18, 22, 27 (first on day 27, the left edge of the window); gaps <= 5 days
+# mean x = 93 / 7 = 13.2857, mean y = 583.36 / 7 = 83.3371
+# Sxy = -21.0543, Sxx = 567.4286, slope = -0.037105 kg/day = -0.2597 kg/week
+# fitted today = 83.3371 - 0.037105 x (27 - 13.2857) = 82.8283
+# SStot = 4.3521, SSres = 3.5709, R^2 = 1 - 3.5709 / 4.3521 = 0.1795
+# (78 - 82.8283) / -0.037105 = 130.12 -> 130 days
+SCATTERED = [(27, "84.48"), (23, "82.88"), (18, "84.12"), (14, "82.52"), (9, "83.77"),
+             (5, "82.17"), (0, "83.42")]  # fmt: skip
+
+# x = 0, 12, 16, 21, 26: a 12-day gap (day 26 -> day 14) > 10
+# mean x = 75 / 5 = 15, mean y = 395 / 5 = 79
+# Sxy = -19.5, Sxx = 392, slope = -0.049745 kg/day = -0.3482 kg/week
+# fitted today = 79 - 0.049745 x (26 - 15) = 78.4528
+# SStot = 6.5, SSres = 5.5300, R^2 = 1 - 5.53 / 6.5 = 0.1492
+# with target 70: (70 - 78.4528) / -0.049745 = 2209 / 13 = 169.92 -> 170 days
+GAPPY = [(26, "80"), (14, "78"), (10, "80.5"), (5, "77.5"), (0, "79")]
+
+
+async def test_prediction_regular_loss_is_ok_without_warnings(analytics):
+    ann, bob = _user("ann@example.com"), _user("bob@example.com")
+    _profile(ann, 78)
+    _weigh_ins(ann, STEADY)
+    _weigh_in(ann, day(3), 95, deleted=True)  # soft-deleted; read, it would bend the line
+    _weigh_ins(bob, [(n, "120") for n, _ in STEADY])  # Bob's, on Ann's days
+    _training_plan(ann, "active", SESSIONS, day(PLAN_START))
+    # 11 workouts in day 27 .. today: 11 / 12 x 100 = 91.67 >= 60
+    _workouts(ann, (27, 25, 22, 20, 18, 15, 13, 11, 8, 6, 4))
+
+    p = await _prediction(analytics, ann)
+
+    assert p.status == PredictionStatus.OK
+    assert p.estimated_date == TODAY + timedelta(days=58)  # last weigh-in (today) + 58
+    assert round(p.slope_kg_per_week, 2) == -0.49  # -0.07 x 7
+    assert p.r_squared == pytest.approx(1.0)
+    assert (p.warnings, p.irregular_data) == ([], False)
+
+
+async def test_prediction_scattered_is_ok_with_low_fit_and_low_compliance(analytics):
+    ann, bob = _user("ann@example.com"), _user("bob@example.com")
+    _profile(ann, 78)
+    _weigh_ins(ann, SCATTERED)
+    _training_plan(ann, "active", SESSIONS, day(PLAN_START))
+    # 7 workouts in day 27 .. today: 7 / 12 x 100 = 58.33 < 60
+    _workouts(ann, (26, 22, 19, 15, 12, 8, 1))
+    # not counted; any one of them read would give 8 / 12 = 66.67 >= 60 and no warning
+    _workout(ann, day(28))  # before the window (the domain also counts from day 27 only)
+    _workout(ann, day(17), deleted=True)  # soft-deleted, inside the window
+    _workout(bob, day(10))  # Bob's, inside the window
+
+    p = await _prediction(analytics, ann)
+
+    assert p.status == PredictionStatus.OK
+    assert p.estimated_date == TODAY + timedelta(days=130)
+    assert round(p.slope_kg_per_week, 2) == -0.26  # -0.2597
+    assert round(p.r_squared, 2) == 0.18  # 0.1795
+    # R^2 0.18 < 0.5; compliance 58.33 < 60; largest gap 5 days <= 10
+    assert p.warnings == [PredictionWarning.LOW_FIT, PredictionWarning.LOW_TRAINING_COMPLIANCE]
+    assert p.irregular_data is True
+
+
+async def test_prediction_with_a_gap_is_ok_and_no_active_plan_gives_no_compliance_warning(
+    analytics,
+):
+    ann = _user("ann@example.com")
+    _profile(ann, 70)
+    _weigh_ins(ann, GAPPY)
+    _training_plan(ann, "draft", SESSIONS)  # a draft is not active: compliance is null
+    _workouts(ann, (20, 6))  # 2 / 12 would be 16.67 %, but there is no active plan
+
+    p = await _prediction(analytics, ann)
+
+    assert p.status == PredictionStatus.OK
+    assert p.estimated_date == TODAY + timedelta(days=170)
+    assert round(p.slope_kg_per_week, 2) == -0.35  # -0.3482
+    assert round(p.r_squared, 2) == 0.15  # 0.1492
+    # R^2 0.15 < 0.5; gap day 26 -> day 14 = 12 > 10; no low_training_compliance
+    assert p.warnings == [PredictionWarning.LOW_FIT, PredictionWarning.GAPS]
+    assert p.irregular_data is True
+
+
+async def test_prediction_flat_weight_is_no_progress(analytics):
+    ann = _user("ann@example.com")
+    _profile(ann, 75)
+    _weigh_ins(ann, _weekly(80, 80, 80, 80))  # slope 0 < 0.01 kg/day; flat R^2 = 1.0
+
+    p = await _prediction(analytics, ann)
+
+    assert (p.status, p.estimated_date) == (PredictionStatus.NO_PROGRESS, None)
+
+
+async def test_prediction_gaining_with_a_lower_target_is_moving_away(analytics):
+    ann = _user("ann@example.com")
+    _profile(ann, 75)
+    # slope +0.5 / 7 = +0.0714 kg/day; fitted today 77.5; (75 - 77.5) / 0.0714 = -35 days
+    _weigh_ins(ann, _weekly("76", "76.5", "77", "77.5"))
+
+    p = await _prediction(analytics, ann)
+
+    assert (p.status, p.estimated_date) == (PredictionStatus.MOVING_AWAY, None)
+
+
+async def test_prediction_within_half_a_kilo_is_goal_reached(analytics):
+    ann = _user("ann@example.com")
+    _profile(ann, 78)
+    # x = 0, 7, 14, 21; mean x 10.5, mean y 315.4 / 4 = 78.85; Sxy = -13.3, Sxx = 245
+    # slope = -0.054286 kg/day; fitted today = 78.85 - 0.054286 x 10.5 = 78.28
+    # |78.28 - 78| = 0.28 <= 0.5
+    _weigh_ins(ann, _weekly("79.5", "79", "78.5", "78.4"))
+
+    p = await _prediction(analytics, ann)
+
+    assert (p.status, p.estimated_date) == (PredictionStatus.GOAL_REACHED, None)
+
+
+async def test_prediction_goal_too_far_away_is_no_progress(analytics):
+    ann = _user("ann@example.com")
+    _profile(ann, 70)
+    # slope -0.1 / 7 = -0.0143 kg/day (>= 0.01); fitted today 100
+    # (70 - 100) / -0.0143 = 2100 days > 730
+    _weigh_ins(ann, _weekly("100.3", "100.2", "100.1", "100"))
+
+    p = await _prediction(analytics, ann)
+
+    assert (p.status, p.estimated_date) == (PredictionStatus.NO_PROGRESS, None)
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        pytest.param(_weekly("80", "79.5"), id="two_weigh_ins"),  # 2 < 3
+        # days 6, 3, 0: span 6 < 7; day 28 is outside the window and must not stretch it
+        # (read, it would give 4 weigh-ins over 28 days)
+        pytest.param([(28, "81"), (6, "80"), (3, "80"), (0, "80")], id="span_of_six_days"),
+    ],
+)
+async def test_prediction_with_too_few_weigh_ins_is_insufficient_data(analytics, rows):
+    ann = _user("ann@example.com")
+    _profile(ann, 77)
+    _weigh_ins(ann, rows)
+
+    p = await _prediction(analytics, ann)
+
+    assert p.status == PredictionStatus.INSUFFICIENT_DATA
+
+
+async def test_prediction_without_a_target_is_no_target(analytics):
+    ann, cid = _user("ann@example.com"), _user("cid@example.com")
+    _profile(ann, None)  # a profile with target_value null
+    # cid has no profile at all
+    for user in (ann, cid):
+        _weigh_ins(user, STEADY)  # enough weigh-ins; the target alone decides
+
+    results = [await _prediction(analytics, user) for user in (ann, cid)]
+
+    assert results == [GoalPrediction(PredictionStatus.NO_TARGET)] * 2
