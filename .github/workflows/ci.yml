@@ -97,6 +97,37 @@ jobs:
       - name: Tests
         run: uv run pytest -q -rs
 
+  ai-service:
+    name: ai-service (ruff, pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # no GEMINI_API_KEY: the tests use a fake client and never call Gemini (A-01)
+
+    defaults:
+      run:
+        working-directory: ai-service
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.5"
+          enable-cache: true
+          cache-dependency-glob: ai-service/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Tests
+        run: uv run pytest -q -rs
+
   mobile:
     name: Mobile (lint, types, tests, API types)
     runs-on: ubuntu-latest
