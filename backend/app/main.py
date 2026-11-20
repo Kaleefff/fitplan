@@ -29,6 +29,7 @@ from app.services.meal_suggestions import MealSuggestionService
 from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.reports import ReportService
 from app.services.repositories import Repositories, sql_repositories
 from app.services.schedule import ScheduleService
 from app.services.tokens import TokenService
@@ -110,6 +111,7 @@ def create_app(
     app.state.schedule_service = ScheduleService(repositories.schedule)
     app.state.diet_plan_service = DietPlanService(repositories.diet_plans)
     app.state.analytics_service = AnalyticsService(repositories.analytics)
+    app.state.report_service = ReportService(repositories.analytics, repositories.reports)
     app.state.library_service = LibraryService(repositories.library, repositories.training_plans)
     app.state.custom_exercise_service = CustomExerciseService(
         repositories.custom_exercises, repositories.library

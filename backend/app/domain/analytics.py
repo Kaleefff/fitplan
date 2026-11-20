@@ -143,9 +143,22 @@ def summary(period: str, today: date, record_days: int, data: AnalyticsData) -> 
     start, end = window(period, today)
     if not enough_history(record_days):
         return Summary("insufficient_data", start, end)
+    return period_summary(start, end, data)
+
+
+def planned_sessions(plan: ActivePlan | None, start: date, end: date) -> float | None:
+    """Section 7's workout compliance denominator: sessions per week x covered days / 7."""
+    if plan is None or (covered := _overlap(start, end, plan)) is None:
+        return None
+    first, last = covered
+    return plan.sessions_per_week * ((last - first).days + 1) / 7
+
+
+def period_summary(start: date, end: date, data: AnalyticsData) -> Summary:
+    """The metrics of section 8 over any period (an analytics window or a report)."""
     if not (data.weigh_ins or data.workouts or data.daily_kcal):
         return Summary("ok", start, end)  # a window without data: null metrics
-    days = PERIOD_DAYS[period]
+    days = (end - start).days + 1
     weights = [w for _, w in data.weigh_ins]
     total = len(data.workouts)
     return Summary(

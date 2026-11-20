@@ -29,6 +29,7 @@ class ErrorCode(StrEnum):
     INSUFFICIENT_EXERCISES = "insufficient_exercises"
     INSUFFICIENT_FOODS = "insufficient_foods"
     INVALID_SWAP = "invalid_swap"
+    INSUFFICIENT_DATA = "insufficient_data"
     AI_UNAVAILABLE = "ai_unavailable"
     INTERNAL_ERROR = "internal_error"
 

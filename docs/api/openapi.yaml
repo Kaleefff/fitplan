@@ -1508,6 +1508,7 @@ paths:
       tags: [analytics]
       operationId: listReports
       summary: Stored progress reports (FR-R1, FR-R7)
+      description: The user's reports, newest generated first (then by id).
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"
@@ -1525,11 +1526,12 @@ paths:
       operationId: generateReport
       summary: Generate the progress report of a period (FR-R1)
       description: |
-        `report_type` is derived from the period. Generating the same period again
-        replaces the stored report. Fewer than 7 days of history is 422
-        `insufficient_data` (api-rules.md Reports).
-      x-todo:
-        - "Error.code needs insufficient_data (api-rules.md Reports); added with B-25"
+        `report_type` is derived from the period (algorithms.md 8: Monday-Sunday weekly,
+        a calendar month monthly, else custom; at most 366 days, not after today, else
+        422 `validation_error` on `body.period_end`). Generating the same period again
+        replaces the stored report (same id). Fewer than 7 days of history is 422
+        `insufficient_data` (api-rules.md Reports). The figures equal the analytics of
+        the same period, rounded as there; the goal prediction is as of today.
       requestBody:
         required: true
         content:
@@ -1559,6 +1561,7 @@ paths:
               schema: { $ref: "#/components/schemas/Report" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /reports/{report_id}/export:
     parameters:
@@ -1790,6 +1793,7 @@ components:
             - insufficient_exercises
             - insufficient_foods
             - invalid_swap
+            - insufficient_data
             - ai_unavailable
             - internal_error
         message:
@@ -2760,22 +2764,31 @@ components:
         irregular_data: { type: boolean }
     Report:
       type: object
-      description: Table `progress_report`
-      x-todo:
-        - "diet and workout compliance % are not stored (D-01 #17)"
-        - "weight_difference and avg_cals_daily are NOT NULL in the DB, but FR-R5 / algorithms.md 8 allow null metrics"
-      required: [id, report_type, report_period_start, report_period_end, training_volume, training_sessions_completed, training_sessions_planned, generated_at]
+      description: |
+        Table `progress_report`. The metrics of algorithms.md 8 over the period, rounded
+        as in AnalyticsSummary; null where the analytics give null.
+      required:
+        [id, report_type, report_period_start, report_period_end, weight_difference, training_volume, training_sessions_completed, training_sessions_planned, workout_compliance_pct, diet_compliance_pct, avg_cals_daily, key_lifts, estimated_goal_completion_date, irregular_data, is_auto, generated_at]
       properties:
         id: { type: integer }
         report_type: { $ref: "#/components/schemas/ReportType" }
         report_period_start: { type: string, format: date }
         report_period_end: { type: string, format: date }
-        weight_difference: { type: [number, "null"] }
-        training_volume: { type: number }
+        weight_difference: { type: [number, "null"], description: "kg, last - first weigh-in" }
+        training_volume: { type: number, description: "Tonnage in kg; 0 without workouts" }
         training_sessions_completed: { type: integer }
-        training_sessions_planned: { type: integer }
+        training_sessions_planned:
+          type: integer
+          description: The workout compliance denominator, rounded (api-rules.md); 0 without a plan
+        workout_compliance_pct: { type: [number, "null"] }
+        diet_compliance_pct: { type: [number, "null"] }
         avg_cals_daily: { type: [integer, "null"] }
-        estimated_goal_completion_date: { type: [string, "null"], format: date }
+        key_lifts:
+          type: array
+          items: { $ref: "#/components/schemas/KeyLift" }
+        estimated_goal_completion_date: { type: [string, "null"], format: date, description: As of generation }
+        irregular_data: { type: boolean, description: "The goal prediction had warnings (algorithms.md 9)" }
+        is_auto: { type: boolean, description: "Made by the weekly job (FR-R7, stretch)" }
         generated_at: { type: string, format: date-time }
     GenerateReportRequest:
       type: object

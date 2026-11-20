@@ -21,6 +21,7 @@ from app.services.nutrition import ProfileReader
 from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.reports import ReportService
 from app.services.schedule import ScheduleService
 from app.services.training_plans import TrainingPlanService
 from app.services.workouts import WorkoutService
@@ -83,6 +84,10 @@ def get_diet_plan_service(request: Request) -> DietPlanService:
 
 def get_analytics_service(request: Request) -> AnalyticsService:
     return request.app.state.analytics_service
+
+
+def get_report_service(request: Request) -> ReportService:
+    return request.app.state.report_service
 
 
 def get_library_service(request: Request) -> LibraryService:
