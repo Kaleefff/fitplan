@@ -83,11 +83,12 @@ without a key. It never calls Gemini.
    - **Call:** one `generate_content` call. The prompt ends with the sent labels as a JSON
      array, and a JSON response schema fixes the answer's shape. Temperature is 0, with
      `GEMINI_THINKING_LEVEL` and `GEMINI_MEDIA_RESOLUTION`.
-   - **Why the labels are not a schema enum (as D25 says):** Gemini refuses an enum of
+   - **Why the labels are in the prompt, not a schema enum (D25):** Gemini refuses an enum of
      the 504 seed labels with HTTP 400 ("too many states" / "too much branching";
      gemini-3.1-flash-lite, 2026-11-19), even as a single enum with no other limits. So
      ai-service checks every label against the list itself.
-   - **Cost of the labels:** they make the prompt about 3–5k tokens longer, and that
+   - **Cost of the labels:** with the 504 seed labels and a medium-resolution photo, the
+     whole prompt is about 3,340 tokens (measured by D-05, `docs/ai_evaluation.md`). It
      grows with the number of foods.
    - **Time and retry:**
      - the whole call, the retry included, has `GEMINI_TIMEOUT_S`
@@ -151,4 +152,21 @@ to a running ai-service, one at a time.
 
 ```sh
 uv run python scripts/measure_latency.py path/to/photos --url http://localhost:8001
+```
+
+## Evaluating accuracy (costs money)
+
+`scripts/evaluate.py` runs the photo set of `eval/` through the code of `/predict`
+in-process (D-05, rerun by T-03; results in `docs/ai_evaluation.md`).
+- **Input:** `eval/manifest.csv` and the photos in `eval/photos/`. The photos are not
+  committed; see `eval/README.md`.
+- **Output:**
+  - `eval/results/<model>_<resolution>.csv`
+  - the label and alternatives hit rates, gram and kcal error, latency, tokens and cost
+    per 1000 scans
+- **Cost:** it asks before sending and refuses more than `--limit` photos (default 80).
+  CI never runs it.
+
+```sh
+uv run python -m scripts.evaluate --model gemini-3.1-flash-lite --resolution medium
 ```

@@ -108,7 +108,7 @@ Done: tests prove an injury-excluded exercise and a food with a user's allergen 
 Do: repositories for `app_user`, `refresh_token`, `password_reset_token`, `user_profile`, `injury`, `user_allergen`, `user_excluded_food`, training and diet plan persistence, `reminder`, `notification`. The others (`oauth_identity`, `device_push_token`, `progress_report`) come with B-07, S-03 and B-25 under the same rule.
 
 **D-05 · Gemini feasibility** · Reqs: FR-N1–N4, NFR-PERF · Due: before stage 3
-Do: run ≥ 50 photos including Polish meals through Gemini with the label-restricted response schema (D25); measure the correct food among an item's label and alternatives, all ingredients found, gram error against weighed portions where available, and latency. Go if the label and alternatives hold the correct food ≥ 80 % on common dishes and ≥ 60 % on Polish meals with the request under 10 s; otherwise another Gemini model or a tuned prompt (interface unchanged).
+Do: run ≥ 20 photos of common meals through the recognition code of `ai-service` in-process (`ai-service/scripts/evaluate.py`, labels in the prompt as D25); measure the correct food among an item's label and alternatives, all foods found, extra items, gram error against weighed portions where available, latency, and tokens and cost per 1000 scans. Go if the label and alternatives hold the correct food ≥ 80 %, with a p95 latency under 10 s in-process and timeouts ≤ 5 % at `GEMINI_TIMEOUT_S` (7 s); otherwise another Gemini model or a tuned prompt (interface unchanged). A model that needs a longer timeout is a quality reference only.
 Done: verdict with numbers in `docs/ai_evaluation.md`; D25 confirmed.
 
 ### API
@@ -172,7 +172,7 @@ Done: every tile navigates to its feature (placeholder until built).
 ### DATA
 
 **A-01 · ai-service** · Reqs: FR-N2, NFR-PERF · Depends: D-05
-Do: `ai-service` container with `/predict` (type and size check, resize, Gemini call with the label-restricted response schema and a timeout, the output of `algorithms.md` 11, model name and version) and `/health`; a data migration sets `recognition_label` = lower(`name`) for every food (names are unique after lower-casing), and foods added later get it the same way; `GEMINI_API_KEY` and `GEMINI_MODEL` read from the environment and never logged; compose service with resource limits.
+Do: `ai-service` container with `/predict` (type and size check, resize, Gemini call with the labels in the prompt, a response schema of the answer's shape and a timeout (D25), the output of `algorithms.md` 11, model name and version) and `/health`; a data migration sets `recognition_label` = lower(`name`) for every food (names are unique after lower-casing), and foods added later get it the same way; `GEMINI_API_KEY` and `GEMINI_MODEL` read from the environment and never logged; compose service with resource limits.
 Done: a test photo returns the documented shape; the key belongs to a billing-enabled project; a Gemini timeout or error returns an error, never a partial result; median latency documented.
 
 **DB-07 · Mongo buffer repository and photo cleanup** · Reqs: FR-N4, U5 · Depends: DB-01
@@ -354,7 +354,7 @@ Done: a backup restores into a clean instance; the API answers only over HTTPS.
 Do: size the DB pool and workers, then Locust with 500 concurrent sessions against a baseline; plan generation ≤ 3 s; photo analysis ≤ 10 s on a throttled 4G profile.
 Done: results table with pass or fail per NFR.
 
-**T-03 · AI accuracy** · DATA · Do: rerun the D-05 evaluation on the final pipeline (label accuracy, label and alternatives, gram error, latency); add to `docs/ai_evaluation.md`.
+**T-03 · AI accuracy** · DATA · Do: rerun the D-05 evaluation on the final pipeline (label accuracy, label and alternatives, gram error, latency), with weighed meals so that the gram and kcal errors are measured; add to `docs/ai_evaluation.md`.
 
 **T-08 · GDPR deletion audit** · DATA + API · Done: written audit with the queries showing nothing left in PostgreSQL (custom exercises included, FR-P10), MongoDB, photos or logs; it states that photos are sent to Gemini at analysis time only and are not stored by the app outside `PHOTO_DIR`, and records the paid Gemini tier (D25) and Google's limited abuse-monitoring logging of photos.
 
