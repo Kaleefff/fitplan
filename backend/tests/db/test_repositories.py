@@ -98,6 +98,23 @@ async def test_duplicate_email_is_email_taken(sessions):
         await users.add(email="ann@example.com", password_hash="h", name="Ann", surname="N")
 
 
+async def test_email_differing_only_in_case_is_email_taken(sessions):
+    users = SqlUserRepository(sessions)
+    await users.add(email="ann@example.com", password_hash="h", name="Ann", surname="N")
+    bob = await users.add(email="bob@example.com", password_hash="h", name="Bob", surname="N")
+    with pytest.raises(EmailTakenError):
+        await users.add(email="Ann@Example.com", password_hash="h", name="Ann", surname="N")
+    with pytest.raises(EmailTakenError):
+        await users.set_email(bob.id, "ANN@example.com")
+
+
+async def test_get_by_email_ignores_case(sessions):
+    users = SqlUserRepository(sessions)
+    created = await users.add(email="Ann@example.com", password_hash="h", name="Ann", surname="N")
+    assert await users.get_by_email("ann@example.com") == created
+    assert await users.get_by_email("ANN@EXAMPLE.COM") == created
+
+
 # ---------------------------------------------------------------- refresh tokens
 
 

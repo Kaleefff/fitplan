@@ -3,13 +3,14 @@
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import AppUser
 
-EMAIL_UNIQUE_CONSTRAINT = "app_user_email_key"
+# The exact-match UNIQUE from the baseline and the lower(email) index (DB-15, 0006).
+EMAIL_UNIQUE_CONSTRAINTS = frozenset({"app_user_email_key", "ux_app_user_email_lower"})
 
 
 class EmailTakenError(Exception):
@@ -52,15 +53,18 @@ class SqlUserRepository:
             try:
                 await session.flush()
             except IntegrityError as exc:
-                if getattr(exc.orig.diag, "constraint_name", None) == EMAIL_UNIQUE_CONSTRAINT:
+                if getattr(exc.orig.diag, "constraint_name", None) in EMAIL_UNIQUE_CONSTRAINTS:
                     raise EmailTakenError from None
                 raise
             await session.refresh(user)  # timezone and registration_date are server defaults
             return _record(user)
 
     async def get_by_email(self, email: str) -> UserRecord | None:
+        """Case-insensitive, served by the lower(email) index (DB-15)."""
         async with self._sessions() as session:
-            user = await session.scalar(select(AppUser).where(AppUser.email == email))
+            user = await session.scalar(
+                select(AppUser).where(func.lower(AppUser.email) == func.lower(email))
+            )
             return None if user is None else _record(user)
 
     async def get_by_id(self, user_id: int) -> UserRecord | None:
@@ -82,7 +86,7 @@ class SqlUserRepository:
                     update(AppUser).where(AppUser.id == user_id).values(email=email)
                 )
             except IntegrityError as exc:
-                if getattr(exc.orig.diag, "constraint_name", None) == EMAIL_UNIQUE_CONSTRAINT:
+                if getattr(exc.orig.diag, "constraint_name", None) in EMAIL_UNIQUE_CONSTRAINTS:
                     raise EmailTakenError from None
                 raise
 
