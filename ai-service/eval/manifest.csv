@@ -1,0 +1,21 @@
+photo,set,expected,grams,source,note
+c01_boiled_eggs_cheese_bread.jpg,common,"eggs, boiled;gouda|edam|emmental (swiss cheese);rye bread|multigrain bread|pumpernickel|whole wheat bread|whole wheat roll;coffee, black|espresso",,own,not weighed
+c02_grapes.jpg,common,grapes,,own,not weighed
+c03_steak_rice.jpg,common,"beef sirloin steak, grilled|beef rib eye steak, grilled|beef tenderloin steak, grilled|beef eye of round, roasted;white rice, cooked|parboiled rice, cooked|fried rice",,own,not weighed; rice with carrot
+c04_fried_eggs_bacon_tomatoes.jpg,common,"eggs, fried;bacon, pan-fried;tomatoes, raw;gouda|edam|emmental (swiss cheese);rye bread|multigrain bread|whole wheat bread;coffee, black|espresso",,own,not weighed
+c05_patty_rice_fries.jpg,common,"white rice, cooked|parboiled rice, cooked;french fries, oven-baked;ground beef 80/20, cooked|lean ground beef, cooked|extra lean ground beef, cooked|ground pork, cooked",,own,not weighed; restaurant; cream-mushroom sauce not listed (no label)
+c06_drumsticks_broccolini.jpg,common,"chicken drumstick, roasted;broccoli, boiled|broccoli, raw;parmesan|gouda|cheddar",,own,not weighed; grated cheese on the broccolini
+c07_avocado_bacon_eggs.jpg,common,"avocado;bacon, pan-fried;eggs, fried;coffee, black|espresso",,own,not weighed
+c08_chicken_rice_peas.jpg,common,"chicken breast, roasted;white rice, cooked|parboiled rice, cooked;green peas, boiled|mixed vegetables, frozen, boiled;carrots, boiled|mixed vegetables, frozen, boiled",,own,not weighed
+c09_shrimp_spaghetti.jpg,common,"pasta, cooked;shrimp, cooked;parmesan",,own,not weighed
+c10_chicken_eggs_salad.jpg,common,"chicken breast, roasted;eggs, boiled;tomatoes, raw;green leaf lettuce|iceberg lettuce|romaine lettuce",,own,not weighed; salad on a side plate
+c11_chicken_thigh_tomato_rice.jpg,common,"cucumber, raw;white rice, cooked|fried rice|parboiled rice, cooked;green peas, boiled;chicken thigh, roasted",,own,not weighed; cucumber salad in a second bowl
+c12_rice_black_beans.jpg,common,"white rice, cooked|parboiled rice, cooked|rice and beans;black beans, boiled|rice and beans;carrots, boiled;red bell pepper, raw",,own,not weighed
+c13_potatoes_kielbasa_mushrooms.jpg,common,"potatoes, baked|potatoes, boiled|french fries, oven-baked;mushrooms, cooked;polish sausage (kielbasa)|frankfurters|salami;onion, boiled|onion, raw",,own,not weighed; pan-fried potatoes
+c14_octopus_sweet_potato.jpg,common,"sweet potato, baked|butternut squash, baked|pumpkin, boiled;squid, fried",,own,not weighed; octopus mapped to the nearest label (no octopus in the seed)
+c15_chili_rice_cucumber.jpg,common,"cucumber, raw;white rice, cooked|parboiled rice, cooked;green peas, boiled;chili con carne|vegetarian chili (chili sin carne)",,own,not weighed
+c16_chicken_thigh_yellow_rice.jpg,common,"chicken thigh, roasted;white rice, cooked|fried rice|parboiled rice, cooked;cucumber, raw",,own,not weighed
+c17_tuna_sandwich.jpg,common,"yellowfin tuna, grilled;white bread|egg bread (challah);mayonnaise|mayonnaise, light;mustard;green leaf lettuce|arugula|romaine lettuce",,own,not weighed; restaurant
+c18_fruit_cheese_chorizo_eggs.jpg,common,"banana;kiwi;blueberries|blueberries, frozen;mozzarella, whole milk|mozzarella, part skim|goat cheese, soft;gouda|edam|parmesan;salami|polish sausage (kielbasa);eggs, scrambled|omelette, plain",,own,not weighed; manchego and chorizo mapped to the nearest labels
+c19_fried_chicken_bowl.jpg,common,"fried chicken, battered|chicken wings, roasted|chicken breast, roasted;avocado;mushrooms, cooked;eggs, boiled;green beans, boiled|snow peas;whole wheat bread|rye bread|multigrain bread;green leaf lettuce|arugula",,own,not weighed; restaurant; spicy sauce not listed
+c20_roast_beef_salad.jpg,common,"beef sirloin steak, grilled|beef eye of round, roasted|beef tenderloin steak, grilled;green leaf lettuce|spinach, raw|arugula;carrots, boiled|butternut squash, baked|sweet potato, baked|pumpkin, boiled;whole wheat bread|rye bread|multigrain bread",,own,not weighed; restaurant; chimichurri not listed
