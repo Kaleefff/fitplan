@@ -79,7 +79,7 @@ class InMemoryUserRepository:
     async def add(
         self, *, email: str, password_hash: str | None, name: str, surname: str
     ) -> UserRecord:
-        if any(row.email == email for row in self.rows.values()):
+        if any(row.email.lower() == email.lower() for row in self.rows.values()):
             raise EmailTakenError
         record = UserRecord(
             id=len(self.rows) + 1,
@@ -94,7 +94,7 @@ class InMemoryUserRepository:
         return record
 
     async def get_by_email(self, email: str) -> UserRecord | None:
-        return next((row for row in self.rows.values() if row.email == email), None)
+        return next((row for row in self.rows.values() if row.email.lower() == email.lower()), None)
 
     async def get_by_id(self, user_id: int) -> UserRecord | None:
         return self.rows.get(user_id)
@@ -106,7 +106,9 @@ class InMemoryUserRepository:
         return self.rows[user_id]
 
     async def set_email(self, user_id: int, email: str) -> None:
-        if any(row.email == email and row.id != user_id for row in self.rows.values()):
+        if any(
+            row.email.lower() == email.lower() and row.id != user_id for row in self.rows.values()
+        ):
             raise EmailTakenError
         self.rows[user_id] = dataclasses.replace(self.rows[user_id], email=email)
 

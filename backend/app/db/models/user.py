@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -43,6 +44,8 @@ from app.db.enums import (
 
 class AppUser(Base):
     __tablename__ = "app_user"
+    # One account per mailbox, whatever the case (DB-15, migration 0006).
+    __table_args__ = (Index("ux_app_user_email_lower", func.lower(text("email")), unique=True),)
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
     email: Mapped[str] = mapped_column(String(100), unique=True)
