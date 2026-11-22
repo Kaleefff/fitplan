@@ -18,6 +18,7 @@ const press: Exercise = {
   instruction:
     'Lie with eyes under the bar, feet flat and shoulder blades pulled back. Lower the bar to the lower chest ' +
     'with control, then press it back up over the shoulders. Use a spotter or safety arms.',
+  is_custom: false,
   muscle_groups: [
     { muscle_group_id: 3, group_name: 'triceps', is_primary: false },
     { muscle_group_id: 1, group_name: 'chest', is_primary: true },
