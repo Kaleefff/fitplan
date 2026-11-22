@@ -11,6 +11,7 @@ from app.api.v1 import (
     nutrition,
     nutrition_logs,
     profile,
+    recognition,
     reference,
     reports,
     schedule,
@@ -36,3 +37,4 @@ api_router.include_router(analytics.router)
 api_router.include_router(library.router)
 api_router.include_router(nutrition_logs.router)
 api_router.include_router(reports.router)
+api_router.include_router(recognition.router)

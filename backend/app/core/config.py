@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     max_body_bytes: int = 1024 * 1024
     max_upload_body_bytes: int = 9 * 1024 * 1024
 
+    # ai-service (A-01, D25): it answers within GEMINI_TIMEOUT_S (7 s) plus the photo
+    # preparation, so the backend waits a little longer and stays under NFR-PERF (10 s).
+    ai_service_url: str = "http://localhost:8001"
+    ai_service_timeout_seconds: float = 8.5
+
     # Meal photos, stored as meals/<user id>/<uuid>.<ext> (api-rules.md "Recognition");
     # docker compose sets /data/photos. PHOTO_DIR has no default on purpose.
     photo_dir: Path | None = None

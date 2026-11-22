@@ -18,6 +18,7 @@ from app.core.rate_limit import RateLimiter
 from app.db.repositories.meal_recognitions import MongoMealRecognitionRepository
 from app.db.session import get_async_engine
 from app.services.account import AccountService, RecognitionPurger
+from app.services.ai_client import HttpRecognitionProvider, RecognitionProvider
 from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService
 from app.services.body_metrics import BodyMetricsService
@@ -29,6 +30,7 @@ from app.services.meal_suggestions import MealSuggestionService
 from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.recognition import RecognitionService
 from app.services.reports import ReportService
 from app.services.repositories import Repositories, sql_repositories
 from app.services.schedule import ScheduleService
@@ -40,6 +42,14 @@ API_PREFIX = "/api/v1"
 DOCS_URL = f"{API_PREFIX}/docs"
 
 logger = logging.getLogger(__name__)
+
+
+def _buffer(app: FastAPI) -> MongoMealRecognitionRepository:
+    """The MongoDB buffer, once the lifespan has opened its client (DB-07)."""
+    buffer = getattr(app.state, "recognitions", None)
+    if buffer is None:
+        raise RuntimeError("MongoDB recognition buffer is not available")
+    return buffer
 
 
 class _LifespanRecognitions:
@@ -61,6 +71,7 @@ def create_app(
     repositories: Repositories | None = None,
     mail_sender: MailSender | None = None,
     recognitions: RecognitionPurger | None = None,
+    recognition_provider: RecognitionProvider | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     repositories = repositories or sql_repositories()
@@ -117,6 +128,13 @@ def create_app(
         repositories.custom_exercises, repositories.library
     )
     app.state.nutrition_log_service = NutritionLogService(repositories.nutrition_logs)
+    app.state.recognition_service = RecognitionService(
+        repositories.recognition,
+        lambda: _buffer(app),
+        recognition_provider
+        or HttpRecognitionProvider(settings.ai_service_url, settings.ai_service_timeout_seconds),
+        settings.photo_root,
+    )
     app.state.meal_suggestion_service = MealSuggestionService(
         repositories.diet_plans, repositories.nutrition_logs
     )
