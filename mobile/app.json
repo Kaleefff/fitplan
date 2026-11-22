@@ -41,7 +41,10 @@
           "photosPermission": "FitPlan Pro uses the photos you choose to recognise your meals.",
           "cameraPermission": "FitPlan Pro uses the camera to photograph your meals for recognition."
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
