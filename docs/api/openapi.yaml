@@ -1216,6 +1216,10 @@ paths:
       tags: [nutrition]
       operationId: addRecognitionItem
       summary: Add a product the model missed (FR-N4)
+      description: |
+        Appended with `corrected: true`; nutrition and `allergy_warning` from the food.
+        422 `not_found` for an unknown or inactive food and `duplicate` for a product
+        that is already listed (api-rules.md "Logs").
       requestBody:
         required: true
         content:
@@ -1243,6 +1247,10 @@ paths:
       tags: [nutrition]
       operationId: updateRecognitionItem
       summary: Correct a product or its grams (FR-N4)
+      description: |
+        At least one field. Nutrition and `allergy_warning` are recomputed and
+        `corrected` set; a new product also renames the item. 404 for an index outside
+        `recognised_items`.
       requestBody:
         required: true
         content:
@@ -1269,6 +1277,7 @@ paths:
               schema: { $ref: "#/components/schemas/Recognition" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /meals/recognitions/{recognition_id}/confirm:
     parameters:
@@ -1279,7 +1288,11 @@ paths:
       summary: Save the corrected result as a nutrition log (FR-N4)
       description: |
         Writes the nutrition log and its items in one transaction, then deletes
-        the MongoDB document. Every item must have a `food_item_id`.
+        the MongoDB document (algorithms.md 11). Every item must have a
+        `food_item_id` (422 `missing` on `recognised_items.<i>.food_item_id`); a
+        product listed twice is 422 `duplicate`, grams rounding to 0.0 are 422
+        `invalid_value`. `log_date` may be at most tomorrow. Repeating a confirm whose
+        document delete failed returns the same log; 409 when that log was deleted.
       requestBody:
         required: false
         content:
@@ -1293,6 +1306,7 @@ paths:
               schema: { $ref: "#/components/schemas/NutritionLog" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
   /nutrition-logs:

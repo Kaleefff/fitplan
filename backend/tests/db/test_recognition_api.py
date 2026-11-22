@@ -1,4 +1,4 @@
-"""Meal photo recognition through the API (B-19; FR-N1-N3) on PostgreSQL with the whole
+"""Meal photo recognition through the API (B-19, B-20; FR-N1-N4) on PostgreSQL with the whole
 seed and the MongoDB test buffer, with ai-service replaced by a fake. The matching rules
 are DB-08's (test_recognition.py); these tests check the HTTP flow, the stored photo,
 the allergen flag, the 404 for other users and that an AI error stores nothing.
@@ -43,19 +43,16 @@ class FakeProvider:
     def __init__(self) -> None:
         self.error: Exception | None = None
         self.calls: list[tuple[bytes, str, list[str]]] = []
+        self.detections = (
+            Detection(YOGURT, 0.8, 150.0, ()),
+            Detection(OIL, 0.25, 10.0, (("butter", 0.1),)),
+        )
 
     async def predict(self, photo, content_type, labels):
         self.calls.append((photo, content_type, labels))
         if self.error:
             raise self.error
-        return Prediction(
-            "gemini-3.1-flash-lite",
-            "gemini-3.1-flash-lite",
-            (
-                Detection(YOGURT, 0.8, 150.0, ()),
-                Detection(OIL, 0.25, 10.0, (("butter", 0.1),)),
-            ),
-        )
+        return Prediction("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", self.detections)
 
 
 @pytest.fixture
@@ -215,3 +212,89 @@ def test_invalid_uploads_are_rejected_before_the_ai(api, provider):
     ]
     assert no_meal_type.status_code == 422
     assert provider.calls == []
+
+
+# ---------------------------------------------------------------- review and confirm (B-20)
+
+
+def _food_id(name: str) -> int:
+    with deletion._sync_engine().connect() as db:
+        return db.execute(
+            text("SELECT id FROM food_item WHERE name = :n"), {"n": name}
+        ).scalar_one()
+
+
+def test_review_then_confirm_writes_the_log_and_deletes_the_document(
+    api, provider, buffer, tmp_path
+):
+    headers = _login(api)
+    provider.detections = (
+        Detection(YOGURT, 0.8, 150.0, ()),
+        Detection(OIL, 0.25, 10.0, ()),
+        Detection("dragon fruit", 0.5, None, ()),  # no food matches it
+    )
+    recognition = _upload(api, headers).json()
+    url = f"{RECOGNITIONS}/{recognition['id']}"
+    assert [i["food_item_id"] is None for i in recognition["recognised_items"]] == [
+        False,
+        False,
+        True,
+    ]
+
+    unmatched = api.post(f"{url}/confirm", headers=headers)
+    assert unmatched.status_code == 422, unmatched.text
+    assert [(d["field"], d["code"]) for d in unmatched.json()["details"]] == [
+        ("recognised_items.2.food_item_id", "missing")
+    ]
+
+    # grams of the yogurt: 200 g x 97 kcal/100 g = 194 kcal, corrected
+    grams = api.patch(f"{url}/items/0", json={"grams": 200}, headers=headers)
+    assert grams.status_code == 200, grams.text
+    yogurt = grams.json()["recognised_items"][0]
+    assert (yogurt["grams"], yogurt["nutrition"]["kcal"], yogurt["corrected"]) == (
+        200.0,
+        194.0,
+        True,
+    )
+    # the user picks a product for the unknown item
+    rice = _food_id("White rice, cooked")
+    picked = api.patch(f"{url}/items/2", json={"food_item_id": rice, "grams": 120}, headers=headers)
+    assert picked.json()["recognised_items"][2]["name"] == "White rice, cooked"
+    # oil again is a duplicate; removing the oil works; another product is added
+    oil = recognition["recognised_items"][1]["food_item_id"]
+    duplicate = api.post(f"{url}/items", json={"food_item_id": oil, "grams": 5}, headers=headers)
+    assert duplicate.status_code == 422
+    assert api.delete(f"{url}/items/1", headers=headers).status_code == 200
+    banana = _food_id("Banana")
+    added = api.post(f"{url}/items", json={"food_item_id": banana, "grams": 100}, headers=headers)
+    assert added.status_code == 200, added.text
+    reviewed = added.json()
+    assert [i["food_item_id"] for i in reviewed["recognised_items"]] == [
+        yogurt["food_item_id"],
+        rice,
+        banana,
+    ]
+    assert api.patch(f"{url}/items/9", json={"grams": 1}, headers=headers).status_code == 404
+    bob = _login(api, "bob@example.com")
+    assert api.post(f"{url}/confirm", headers=bob).status_code == 404
+
+    confirmed = api.post(f"{url}/confirm", json={"hunger_level_before": 4}, headers=headers)
+
+    assert confirmed.status_code == 201, confirmed.text
+    log = confirmed.json()
+    assert log["actual_cals"] == reviewed["totals"]["kcal"]
+    assert (log["meal_photo_url"], log["meal_type"], log["hunger_level_before"]) == (
+        recognition["photo_url"],
+        "lunch",
+        4,
+    )
+    assert (log["ai_confidence"], log["ai_was_edited"]) == (0.8, True)
+    assert sorted(i["food_item_id"] for i in log["items"]) == sorted(
+        [yogurt["food_item_id"], rice, banana]
+    )
+    # the document is gone, the photo of a confirmed meal stays (api-rules.md)
+    assert api.get(url, headers=headers).status_code == 404
+    assert buffer.count_documents({}) == 0
+    assert (tmp_path / recognition["photo_url"]).exists()
+    logs = api.get("/api/v1/nutrition-logs", headers=headers).json()
+    assert [entry["id"] for entry in logs["items"]] == [log["id"]]
