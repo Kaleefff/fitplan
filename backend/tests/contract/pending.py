@@ -16,7 +16,6 @@ PENDING_OPERATIONS = (
     "updateRecognitionItem",  # PATCH /meals/recognitions/{recognition_id}/items/{item_index}
     "deleteRecognitionItem",  # DELETE /meals/recognitions/{recognition_id}/items/{item_index}
     "confirmRecognition",  # POST /meals/recognitions/{recognition_id}/confirm
-    "exportReport",  # GET /reports/{report_id}/export
     "syncPush",  # POST /sync/push
     "syncPull",  # GET /sync/pull
 )
