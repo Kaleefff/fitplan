@@ -14,6 +14,7 @@ const press: Exercise = {
   equipment: 'gym',
   is_compound: true,
   is_bodyweight: false,
+  is_custom: false,
   description: 'Horizontal press with a barbell.',
   instruction:
     'Lie with eyes under the bar, feet flat and shoulder blades pulled back. Lower the bar to the lower chest ' +

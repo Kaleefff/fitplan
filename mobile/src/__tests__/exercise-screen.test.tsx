@@ -24,6 +24,7 @@ const squat: Exercise = {
   equipment: 'gym',
   is_compound: true,
   is_bodyweight: false,
+  is_custom: false,
   description: 'The main lower-body strength lift.',
   instruction: 'Set the bar on the upper back. Sit down between the heels until the thighs are level. Stand up.',
   is_custom: false,
