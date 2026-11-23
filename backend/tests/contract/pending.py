@@ -9,9 +9,6 @@ PENDING_OPERATIONS = (
     "signInWithApple",  # POST /auth/apple
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
-    "createRecognition",  # POST /meals/recognitions
-    "getRecognition",  # GET /meals/recognitions/{recognition_id}
-    "discardRecognition",  # DELETE /meals/recognitions/{recognition_id}
     "addRecognitionItem",  # POST /meals/recognitions/{recognition_id}/items
     "updateRecognitionItem",  # PATCH /meals/recognitions/{recognition_id}/items/{item_index}
     "deleteRecognitionItem",  # DELETE /meals/recognitions/{recognition_id}/items/{item_index}

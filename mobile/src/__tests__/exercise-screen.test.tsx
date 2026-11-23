@@ -27,6 +27,7 @@ const squat: Exercise = {
   is_custom: false,
   description: 'The main lower-body strength lift.',
   instruction: 'Set the bar on the upper back. Sit down between the heels until the thighs are level. Stand up.',
+  is_custom: false,
   muscle_groups: [
     { muscle_group_id: 6, group_name: 'quadriceps', is_primary: true },
     { muscle_group_id: 8, group_name: 'glutes', is_primary: false },

@@ -1198,6 +1198,7 @@ paths:
               schema: { $ref: "#/components/schemas/Recognition" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
     delete:
       tags: [nutrition]
       operationId: discardRecognition
@@ -1206,6 +1207,7 @@ paths:
         "204": { description: Discarded }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /meals/recognitions/{recognition_id}/items:
     parameters:

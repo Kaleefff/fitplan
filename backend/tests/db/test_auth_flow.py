@@ -19,6 +19,7 @@ from app.db.repositories.nutrition_logs import SqlNutritionLogUnitOfWork
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
+from app.db.repositories.recognition_store import SqlRecognitionStore
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
 from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
@@ -46,6 +47,7 @@ def api(migrated_db) -> Iterator[TestClient]:  # noqa: F811
         reports=SqlReportStore(sessions),
         refresh_tokens=SqlRefreshTokenRepository(sessions),
         profiles=SqlProfileReader(sessions),
+        recognition=SqlRecognitionStore(sessions),
         workouts=SqlWorkoutUnitOfWork(sessions),
         training_plans=SqlTrainingPlanUnitOfWork(sessions),
         profile_data=SqlProfileUnitOfWork(sessions),
