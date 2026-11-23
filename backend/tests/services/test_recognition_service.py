@@ -1,8 +1,10 @@
-"""The recognition upload flow (B-19) with fakes: no database, no ai-service."""
+"""The recognition upload (B-19) and review (B-20) flows with fakes: no database, no
+ai-service."""
 
 import asyncio
+import dataclasses
 import io
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from PIL import Image
@@ -13,11 +15,23 @@ from app.db.repositories.meal_recognitions import (
     Nutrition,
     RecognisedItem,
 )
+from app.db.repositories.nutrition_logs import ClientUuidDeletedError, DuplicateFoodError
+from app.db.repositories.recognition import (
+    FoodNotAvailableError,
+    PricedItem,
+    UnmatchedItemError,
+)
 from app.domain.constants import PHOTO_MAX_BYTES, MealType
 from app.services.ai_client import AiUnavailableError, InvalidImageError, Prediction
-from app.services.recognition import LABELS_TTL_SECONDS, RecognitionService
+from app.services.recognition import (
+    LABELS_TTL_SECONDS,
+    MANUAL_ITEM_CONFIDENCE,
+    RecognitionService,
+)
 
 USER = 3
+FOODS = {5: ("Basmati rice, cooked", 1.3), 9: ("Olive oil", 8.84)}  # id: (name, kcal/g)
+TODAY = date(2026, 11, 22)
 ITEM = RecognisedItem(
     name="Basmati rice, cooked",
     food_item_id=5,
@@ -49,7 +63,24 @@ class FakeStore:
 
     async def match(self, user_id, detections):
         self.matched = (user_id, detections)
-        return (ITEM,), 0.9
+        return self.items, 0.9
+
+    items = (ITEM,)
+    confirm_result: object = "log"
+
+    async def price_item(self, user_id, food_item_id, grams):
+        if food_item_id not in FOODS:
+            raise FoodNotAvailableError(food_item_id)
+        name, kcal_per_g = FOODS[food_item_id]
+        return PricedItem(
+            food_item_id, name, float(grams), Nutrition(kcal_per_g * grams, 0, 0, 0), False
+        )
+
+    async def confirm(self, buffer, user_id, recognition_id, log_date, before, after):
+        self.confirmed = (user_id, recognition_id, log_date, before, after)
+        if isinstance(self.confirm_result, Exception):
+            raise self.confirm_result
+        return self.confirm_result
 
 
 class FakeBuffer:
@@ -82,6 +113,13 @@ class FakeBuffer:
 
     async def delete(self, user_id, recognition_id):
         return self.docs.pop(recognition_id, None) is not None
+
+    async def update_items(self, user_id, recognition_id, items):
+        doc = await self.get(user_id, recognition_id)
+        if doc is None:
+            return None
+        self.docs[recognition_id] = dataclasses.replace(doc, recognised_items=tuple(items))
+        return self.docs[recognition_id]
 
 
 class FakeProvider:
@@ -190,3 +228,109 @@ def test_discard_deletes_the_document_and_the_photo(tmp_path):
 
     assert buffer.docs == {} and _photos(tmp_path) == []
     assert _status(service.discard(USER, recognition.id)) == 404
+
+
+# ---------------------------------------------------------------- review (B-20)
+
+UNMATCHED = dataclasses.replace(
+    ITEM, name="dragon fruit", food_item_id=None, grams=0.0, nutrition=Nutrition(0, 0, 0, 0)
+)
+
+
+def _uploaded(tmp_path, items=(ITEM,)):
+    store = FakeStore()
+    store.items = tuple(items)
+    service, _ = _service(tmp_path, store=store)
+    recognition = asyncio.run(service.create(USER, MealType.LUNCH, _jpeg()))
+    return service, store, recognition.id
+
+
+def test_an_added_product_is_certain_corrected_and_priced(tmp_path):
+    service, _, rid = _uploaded(tmp_path)
+
+    items = asyncio.run(service.add_item(USER, rid, 9, 10.0)).recognised_items
+
+    added = items[-1]
+    assert (added.name, added.food_item_id, added.grams, added.nutrition.kcal) == (
+        "Olive oil",
+        9,
+        10.0,
+        88.4,
+    )
+    assert (added.confidence, added.low_confidence, added.corrected) == (
+        MANUAL_ITEM_CONFIDENCE,
+        False,
+        True,
+    )
+    assert _status(service.add_item(USER, rid, 5, 50.0)) == 422  # rice is already listed
+    assert _status(service.add_item(USER, rid, 404, 50.0)) == 422  # unknown food
+    assert _status(service.add_item(USER + 1, rid, 9, 10.0)) == 404
+
+
+def test_new_grams_reprice_and_a_new_product_renames(tmp_path):
+    service, _, rid = _uploaded(tmp_path)
+
+    grams = asyncio.run(service.update_item(USER, rid, 0, None, 200.0)).recognised_items[0]
+    food = asyncio.run(service.update_item(USER, rid, 0, 9, None)).recognised_items[0]
+
+    assert (grams.name, grams.grams, grams.nutrition.kcal, grams.corrected) == (
+        ITEM.name,
+        200.0,
+        260.0,
+        True,
+    )
+    assert (food.name, food.food_item_id, food.grams) == ("Olive oil", 9, 200.0)
+    assert _status(service.update_item(USER, rid, 1, None, 5.0)) == 404  # no such index
+
+
+def test_grams_alone_on_an_unmatched_item_round_half_up(tmp_path):
+    service, _, rid = _uploaded(tmp_path, items=(UNMATCHED,))
+
+    item = asyncio.run(service.update_item(USER, rid, 0, None, 12.25)).recognised_items[0]
+
+    assert (item.grams, item.food_item_id, item.nutrition.kcal, item.corrected) == (
+        12.3,
+        None,
+        0,
+        True,
+    )
+
+
+def test_delete_item_keeps_the_others_in_order(tmp_path):
+    second = dataclasses.replace(ITEM, name="second", food_item_id=9)
+    service, _, rid = _uploaded(tmp_path, items=(ITEM, second))
+
+    items = asyncio.run(service.delete_item(USER, rid, 0)).recognised_items
+
+    assert [i.name for i in items] == ["second"]
+    assert _status(service.delete_item(USER, rid, 1)) == 404
+
+
+def test_confirm_defaults_to_today_and_refuses_after_tomorrow(tmp_path):
+    service, store, rid = _uploaded(tmp_path)
+
+    assert asyncio.run(service.confirm(USER, rid, None, 3, None, TODAY)) == "log"
+    assert store.confirmed == (USER, rid, TODAY, 3, None)
+    later = TODAY + timedelta(days=2)
+    assert _status(service.confirm(USER, rid, later, None, None, TODAY)) == 422
+
+
+@pytest.mark.parametrize(
+    ("result", "status", "field"),
+    [
+        (None, 404, None),
+        (UnmatchedItemError(1), 422, "recognised_items.1.food_item_id"),
+        (DuplicateFoodError(0), 422, "recognised_items.0.food_item_id"),
+        (ClientUuidDeletedError(), 409, None),
+    ],
+)
+def test_confirm_errors(tmp_path, result, status, field):
+    service, store, rid = _uploaded(tmp_path)
+    store.confirm_result = result
+
+    with pytest.raises(AppError) as error:
+        asyncio.run(service.confirm(USER, rid, None, None, None, TODAY))
+
+    assert error.value.status_code == status
+    if field:
+        assert error.value.details[0]["field"] == field
