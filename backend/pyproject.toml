@@ -22,6 +22,9 @@ dependencies = [
     "secure>=2.0.1",
     "scipy>=1.14",
     "aiosmtplib>=5.1.3",
+    "httpx>=0.27",
+    "python-multipart>=0.0.20",
+    "pillow>=11.0",
     "fpdf2>=2.8",
 ]
 

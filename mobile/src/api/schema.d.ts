@@ -952,7 +952,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a product the model missed (FR-N4) */
+        /**
+         * Add a product the model missed (FR-N4)
+         * @description Appended with `corrected: true`; nutrition and `allergy_warning` from the food.
+         *     422 `not_found` for an unknown or inactive food and `duplicate` for a product
+         *     that is already listed (api-rules.md "Logs").
+         */
         post: operations["addRecognitionItem"];
         delete?: never;
         options?: never;
@@ -979,7 +984,12 @@ export interface paths {
         delete: operations["deleteRecognitionItem"];
         options?: never;
         head?: never;
-        /** Correct a product or its grams (FR-N4) */
+        /**
+         * Correct a product or its grams (FR-N4)
+         * @description At least one field. Nutrition and `allergy_warning` are recomputed and
+         *     `corrected` set; a new product also renames the item. 404 for an index outside
+         *     `recognised_items`.
+         */
         patch: operations["updateRecognitionItem"];
         trace?: never;
     };
@@ -998,7 +1008,11 @@ export interface paths {
         /**
          * Save the corrected result as a nutrition log (FR-N4)
          * @description Writes the nutrition log and its items in one transaction, then deletes
-         *     the MongoDB document. Every item must have a `food_item_id`.
+         *     the MongoDB document (algorithms.md 11). Every item must have a
+         *     `food_item_id` (422 `missing` on `recognised_items.<i>.food_item_id`); a
+         *     product listed twice is 422 `duplicate`, grams rounding to 0.0 are 422
+         *     `invalid_value`. `log_date` may be at most tomorrow. Repeating a confirm whose
+         *     document delete failed returns the same log; 409 when that log was deleted.
          */
         post: operations["confirmRecognition"];
         delete?: never;
@@ -3724,6 +3738,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     discardRecognition: {
@@ -3747,6 +3762,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     addRecognitionItem: {
@@ -3804,6 +3820,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     updateRecognitionItem: {
@@ -3865,6 +3882,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };

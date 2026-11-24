@@ -21,6 +21,7 @@ from app.services.nutrition import ProfileReader
 from app.services.nutrition_logs import NutritionLogService
 from app.services.password_reset import PasswordResetService
 from app.services.profile import ProfileService
+from app.services.recognition import RecognitionService
 from app.services.reports import ReportService
 from app.services.schedule import ScheduleService
 from app.services.training_plans import TrainingPlanService
@@ -100,6 +101,10 @@ def get_custom_exercise_service(request: Request) -> CustomExerciseService:
 
 def get_nutrition_log_service(request: Request) -> NutritionLogService:
     return request.app.state.nutrition_log_service
+
+
+def get_recognition_service(request: Request) -> RecognitionService:
+    return request.app.state.recognition_service
 
 
 def get_meal_suggestion_service(request: Request) -> MealSuggestionService:

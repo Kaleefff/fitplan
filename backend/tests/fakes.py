@@ -160,6 +160,7 @@ def fake_repositories(**overrides: object) -> Repositories:
         "reports": _no_workout_store,
         "refresh_tokens": InMemoryRefreshTokenRepository(),
         "profiles": InMemoryProfileReader(),
+        "recognition": _no_workout_store,
         "workouts": _no_workout_store,
         "training_plans": _no_workout_store,
         "profile_data": _no_workout_store,

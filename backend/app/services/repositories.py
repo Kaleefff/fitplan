@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from app.db.repositories.analytics import SqlAnalyticsUnitOfWork
 from app.db.repositories.body_metrics import SqlBodyMetricsUnitOfWork
 from app.db.repositories.custom_exercises import SqlCustomExerciseRepository
@@ -11,6 +13,7 @@ from app.db.repositories.nutrition_logs import SqlNutritionLogUnitOfWork
 from app.db.repositories.password_resets import SqlPasswordResetRepository
 from app.db.repositories.profile_data import SqlProfileUnitOfWork
 from app.db.repositories.profiles import SqlProfileReader
+from app.db.repositories.recognition_store import SqlRecognitionStore
 from app.db.repositories.refresh_tokens import SqlRefreshTokenRepository
 from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleUnitOfWork
@@ -28,6 +31,7 @@ from app.services.nutrition import ProfileReader
 from app.services.nutrition_logs import NutritionLogUnitOfWork
 from app.services.password_reset import PasswordResetRepository
 from app.services.profile import ProfileUnitOfWork
+from app.services.recognition import RecognitionStore
 from app.services.reports import ReportStore
 from app.services.schedule import ScheduleUnitOfWork
 from app.services.tokens import RefreshTokenRepository
@@ -41,6 +45,7 @@ class Repositories:
     reports: ReportStore
     refresh_tokens: RefreshTokenRepository
     profiles: ProfileReader
+    recognition: RecognitionStore
     workouts: WorkoutUnitOfWork
     training_plans: TrainingPlanUnitOfWork
     profile_data: ProfileUnitOfWork
@@ -54,14 +59,16 @@ class Repositories:
     custom_exercises: CustomExerciseWriter
 
 
-def sql_repositories() -> Repositories:
-    """No connection is opened here; the shared engine connects on first use."""
-    sessions = get_sessionmaker()
+def sql_repositories(sessions: async_sessionmaker[AsyncSession] | None = None) -> Repositories:
+    """No connection is opened here; the shared engine connects on first use. Tests pass
+    the sessions of their own database."""
+    sessions = sessions or get_sessionmaker()
     return Repositories(
         users=SqlUserRepository(sessions),
         reports=SqlReportStore(sessions),
         refresh_tokens=SqlRefreshTokenRepository(sessions),
         profiles=SqlProfileReader(sessions),
+        recognition=SqlRecognitionStore(sessions),
         workouts=SqlWorkoutUnitOfWork(sessions),
         training_plans=SqlTrainingPlanUnitOfWork(sessions),
         profile_data=SqlProfileUnitOfWork(sessions),

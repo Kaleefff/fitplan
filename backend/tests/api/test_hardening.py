@@ -26,10 +26,6 @@ def hardened_client():
     async def echo(request: Request) -> dict:
         return {"size": len(await request.body())}
 
-    @router.post("/meals/recognitions")
-    async def upload(request: Request) -> dict:
-        return {"size": len(await request.body())}
-
     app.include_router(router, prefix="/api/v1")
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
@@ -116,9 +112,9 @@ def test_streamed_body_over_the_limit_is_413(hardened_client):
 
 
 def test_upload_route_has_the_larger_limit(hardened_client):
-    assert hardened_client.post("/api/v1/meals/recognitions", content=b"x" * 200).json() == {
-        "size": 200
-    }
+    # 200 bytes pass the body limit and reach the real route, which wants a token first
+    at_limit = hardened_client.post("/api/v1/meals/recognitions", content=b"x" * 200)
+    assert at_limit.status_code == 401
     response = hardened_client.post("/api/v1/meals/recognitions", content=b"x" * 201)
     assert response.status_code == 413
 
