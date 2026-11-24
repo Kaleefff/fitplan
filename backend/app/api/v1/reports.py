@@ -1,9 +1,10 @@
-"""Progress reports (B-25; FR-R1, FR-R5; api-rules.md "Reports and notifications")."""
+"""Progress reports and their export (B-25, S-04; FR-R1, FR-R5, FR-R6; api-rules.md
+"Reports and notifications")."""
 
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import BaseModel, Field
 
 from app.api.deps import CurrentUser, get_current_user, get_report_service, get_user_repository
@@ -11,6 +12,7 @@ from app.api.v1.analytics import KeyLiftOut, _timezone
 from app.core.errors import VALIDATION_ERROR_RESPONSE, Error
 from app.domain.constants import ReportType
 from app.services.auth import UserRepository
+from app.services.report_export import to_csv, to_pdf
 from app.services.reports import ReportService, ReportView
 
 router = APIRouter(prefix="/reports", tags=["analytics"])
@@ -136,3 +138,47 @@ async def get_report(
     report_id: Annotated[int, Path(ge=1, le=INT_MAX)], user: User, service: Service
 ) -> ReportOut:
     return ReportOut.of(await service.get(user.id, report_id))
+
+
+EXPORTS = {
+    "pdf": ("application/pdf", to_pdf),
+    "csv": ("text/csv; charset=utf-8", to_csv),
+}
+
+
+@router.get(
+    "/{report_id}/export",
+    operation_id="exportReport",
+    summary="Export a report to PDF or CSV (FR-R6)",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "The file",
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "contentMediaType": "application/pdf"}
+                },
+                "text/csv": {"schema": {"type": "string"}},
+            },
+        },
+        **VALIDATION_ERROR_RESPONSE,
+        401: UNAUTHORIZED,
+        404: {"model": Error, "description": "No such report of the user"},
+    },
+)
+async def export_report(
+    report_id: Annotated[int, Path(ge=1, le=INT_MAX)],
+    format: Annotated[Literal["pdf", "csv"], Query()],
+    user: User,
+    service: Service,
+) -> Response:
+    """The figures of `GET /reports/{id}`: CSV `section,key,value` with a BOM, or a PDF
+    with an embedded Unicode font (api-rules.md)."""
+    report = ReportOut.of(await service.get(user.id, report_id)).model_dump(mode="json")
+    media_type, build = EXPORTS[format]
+    filename = f"fitplan-report-{report['report_period_start']}-{report_id}.{format}"
+    return Response(
+        build(report),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

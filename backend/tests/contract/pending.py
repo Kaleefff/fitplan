@@ -9,7 +9,6 @@ PENDING_OPERATIONS = (
     "signInWithApple",  # POST /auth/apple
     "registerPushToken",  # POST /devices/push-token
     "unregisterPushToken",  # DELETE /devices/push-token
-    "exportReport",  # GET /reports/{report_id}/export
     "syncPush",  # POST /sync/push
     "syncPull",  # GET /sync/pull
 )
