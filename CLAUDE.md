@@ -58,5 +58,6 @@ Code and tests green in CI; linters clean; OpenAPI conformance (backend contract
 - Start data stores: `docker compose up -d`
 - Apply schema migrations: `cd backend && uv run alembic upgrade head`
 - Load reference data (after migrations): `cd backend && uv run python -m app.db.seed`
+- Load the demo users (after the reference data; replaces only demo-<slug>@example.com): `cd backend && uv run python -m app.db.demo_seed`
 - Reset local data (deletes it): `docker compose down -v && docker compose up -d`, then apply the migrations and load the seed again
 - Setup and troubleshooting: `docs/instructions/setup.md`

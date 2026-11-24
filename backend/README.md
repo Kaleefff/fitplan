@@ -8,6 +8,7 @@ FastAPI application, API prefix `/api/v1`. Uses Python 3.12 and [uv](https://doc
 cd backend
 uv run alembic upgrade head               # create or update the PostgreSQL schema
 uv run python -m app.db.seed              # load or refresh the reference data
+uv run python -m app.db.demo_seed         # demo users for the Stats screen (password demo12345)
 uv run uvicorn app.main:app --reload      # http://localhost:8000/api/v1/docs
 ```
 
