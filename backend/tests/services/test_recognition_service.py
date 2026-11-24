@@ -170,6 +170,9 @@ def test_upload_stores_the_photo_and_a_pending_document(tmp_path):
 @pytest.mark.parametrize(
     ("raw", "status"),
     [(b"x" * (PHOTO_MAX_BYTES + 1), 413), (b"not a photo", 422)],
+    # short ids: pytest would name the case after the bytes (megabytes), and Windows
+    # refuses PYTEST_CURRENT_TEST above 32767 characters
+    ids=["too_large", "unreadable"],
 )
 def test_too_large_or_unreadable_photos_never_reach_the_ai(tmp_path, raw, status):
     provider = FakeProvider()
