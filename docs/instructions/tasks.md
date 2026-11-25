@@ -340,6 +340,20 @@ Started by an owner only after their core tasks of the current stage are merged.
 
 Done: S-01 a forged or expired provider token is rejected and an existing email account is linked, not duplicated. S-02 a workout and a nutrition entry made in airplane mode reach the server once after reconnecting; replaying a push changes nothing. S-03 a double run creates one report per user and week. S-04 the file opens in an external app with the on-screen figures. S-05 a double run creates one notification per injury; the injury stays active until the user ends it.
 
+### S-02 · Offline sync tasks
+
+**DB-13 · Sync change queries** · DATA · Reqs: NFR-OFF · Depends: DB-09, DB-12
+Do: `app/db/repositories/sync.py`: change feed of `workout_log`, `nutrition_log` and `body_metrics` for one user after a cursor, ordered by (`updated_at`, kind, id), `limit` across kinds, tombstones (soft-deleted rows) included without data, a has-more flag, the last page's cursor from the database clock (`api-rules.md` Sync); lookup by `client_uuid` including tombstones, locked for update, for push conflicts; every write that changes a log's child rows (sets, items) also updates the parent row so `updated_at` moves; migration with an index (`user_id`, `updated_at`, `id`) on the three tables; the feed added to `app/db/query_review.py`.
+Done: paging with equal timestamps returns every row once and in order; a delete comes back once as a tombstone; a row committed late (`updated_at` up to 60 s before the last cursor) is returned by the next pull; another user's rows never appear; the number of queries per page does not grow with the page size; no sequential scan with `enable_seqscan = off`.
+
+**B-27 · Sync endpoints** · API · Reqs: NFR-OFF · Depends: DB-13, B-15, B-17, B-21
+Do: `POST /sync/push` and `GET /sync/pull` on DB-13 by `api-rules.md` Sync; push applies each item in its own transaction through the same services as the online endpoints (validation, totals, personal records) but never adapts the plan; contract PR with this task, reviewed by API and APP: item payloads, results and cursor errors, `updated_at` in `SyncPushResult`, the pull `limit` default of 100, and removal of the `x-todo` of `/sync/push` and the "D-07" comment on the sync schemas.
+Done: S-02; replaying the same push gives `unchanged` for every item and changes no row; a stale `base_updated_at` gives `conflict` with `server_copy`; a malformed cursor gives 422; 201 items give 422.
+
+**M-20 · Offline mode** · APP · Reqs: NFR-OFF · Depends: M-13, M-14, M-17, B-27 contract PR
+Do: `expo-sqlite` store for the offline scope of `api-rules.md` Sync; every log write goes to the local store and a sync queue with the entity's client UUID; a sync run (push, then pull) on app start, on reconnect and after a local write while online; offline banner; online-only actions show a message instead of failing; a conflict keeps the server copy and tells the user; the queue is compacted before each push: a create and a delete of the same unpushed `client_uuid` are both dropped, and a create followed by edits becomes one create with the latest data; a delete or edit of a pushed row uses the `updated_at` from its last push result or pull.
+Done: S-02; in airplane mode a workout, a nutrition entry and a weigh-in are logged, the app is killed and reopened online, and each reaches the server exactly once; a workout created and then edited offline, and a weigh-in created and then deleted offline, leave exactly one workout and no weigh-in after the push; the offline states of D-09 are implemented.
+
 ---
 
 ## Stage 5 · Tests and optimisation (30 Nov – 6 Dec)
