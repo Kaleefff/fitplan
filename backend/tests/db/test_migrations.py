@@ -497,6 +497,57 @@ def test_0006_rejects_a_second_account_differing_only_in_case(empty_db: Engine) 
     add_users(empty_db, "ANN@EXAMPLE.COM")  # allowed again without the index
 
 
+SYNC_INDEX_COLUMNS = ("user_id", "updated_at", "id")
+
+
+def sync_indexes(engine: Engine) -> dict[str, tuple]:
+    """name -> (table, columns, partial predicate) of the *_user_updated indexes."""
+    with engine.connect() as connection:
+        inspector = inspect(connection)
+        return {
+            index["name"]: (
+                table,
+                tuple(index["column_names"]),
+                index.get("dialect_options", {}).get("postgresql_where"),
+            )
+            for table in TABLES_WITH_UPDATED_AT
+            for index in inspector.get_indexes(table)
+            if index["name"].endswith("_user_updated")
+        }
+
+
+def test_0007_adds_the_sync_indexes_on_every_row_and_downgrades(empty_db: Engine) -> None:
+    """DB-13: (user_id, updated_at, id) on the three synced tables, not partial (tombstones
+    are pulled too); the models declare the same indexes."""
+    expected = {
+        f"ix_{table}_user_updated": (table, SYNC_INDEX_COLUMNS, None)
+        for table in TABLES_WITH_UPDATED_AT
+    }
+    declared = {
+        index.name: (
+            table,
+            tuple(c.name for c in index.columns),
+            index.dialect_options["postgresql"]["where"],
+        )
+        for table in TABLES_WITH_UPDATED_AT
+        for index in Base.metadata.tables[table].indexes
+        if index.name.endswith("_user_updated")
+    }
+    assert declared == expected
+
+    run_alembic(empty_db, "upgrade", "0006")
+    assert sync_indexes(empty_db) == {}
+
+    run_alembic(empty_db, "upgrade", "0007")
+    assert sync_indexes(empty_db) == expected
+
+    run_alembic(empty_db, "downgrade", "0006")
+    assert sync_indexes(empty_db) == {}
+
+    run_alembic(empty_db, "upgrade", "0007")  # the downgrade leaves nothing in the way
+    assert sync_indexes(empty_db) == expected
+
+
 def test_custom_name_index_serves_the_cascade_from_app_user(migrated_db: Engine) -> None:
     """No index on user_id alone: the partial custom-name index covers `user_id = ?`."""
     with migrated_db.begin() as connection:

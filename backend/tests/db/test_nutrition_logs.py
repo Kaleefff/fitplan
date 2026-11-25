@@ -41,6 +41,7 @@ CRAB = "Crab, cooked"  # 97 kcal, 19.4 g protein, 1.54 g fat, 0 g carbs per 100 
 YOGURT = "Greek yogurt, plain, whole milk"  # 97, 9, 5, 3.98
 OIL = "Olive oil"  # 884, 0, 100, 0
 INACTIVE = "Inactive test food"
+TWINS = ("Twin test food A", "Twin test food B")  # equal values per 100 g
 
 
 @pytest.fixture
@@ -86,6 +87,16 @@ def seeded(migrated_db):  # noqa: F811
             ),
             {"n": INACTIVE},
         )
+        for name in TWINS:
+            db.execute(
+                text(
+                    "INSERT INTO food_item (name, cals_per_100g, protein_per_100g, fat_per_100g,"
+                    " carbs_per_100g, diet_role, suitable_meal_types, default_portion_g,"
+                    " min_portion_g, max_portion_g, portion_step_g)"
+                    " VALUES (:n, 120, 10, 5, 8, 'other', '{snack}', 100, 10, 200, 10)"
+                ),
+                {"n": name},
+            )
 
 
 @pytest.fixture
@@ -353,6 +364,26 @@ async def test_patch_with_items_replaces_them_and_recomputes_the_totals(logs):
             await store.update(ann, saved.id, {}, _items((CRAB, "10"), (CRAB, "20")))
     async with logs() as store:
         assert await store.get(ann, saved.id) == fields_only  # nothing of the failed patch
+
+
+def _updated_at(log_id: int):
+    return _rows("SELECT updated_at FROM nutrition_log WHERE id = :i", i=log_id)[0][0]
+
+
+async def test_a_patch_of_the_items_only_moves_updated_at(logs):
+    """DB-13 (NFR-OFF): sync pulls by updated_at, which the trigger moves only on an UPDATE
+    of nutrition_log. Swapping a food for one with equal values per 100 g leaves the totals,
+    and so every column of the log, unchanged."""
+    ann = _user()
+    saved = await _create(logs, ann, _log((TWINS[0], "150")))
+    before = _updated_at(saved.id)
+
+    async with logs() as store:
+        patched = await store.update(ann, saved.id, {}, _items((TWINS[1], "150")))
+
+    assert [item.name for item in patched.items] == [TWINS[1]]
+    assert patched.totals == saved.totals
+    assert _updated_at(saved.id) > before
 
 
 async def test_history_is_newest_first_filtered_and_paginated(logs):

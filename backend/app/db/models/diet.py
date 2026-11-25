@@ -216,6 +216,7 @@ class NutritionLog(Base):
         ),
         UniqueConstraint("user_id", "client_uuid", name="nutrition_log_user_id_client_uuid_key"),
         Index("ix_nutrition_log_user_date", "user_id", "log_date"),
+        Index("ix_nutrition_log_user_updated", "user_id", "updated_at", "id"),  # sync pull
         Index("ix_nutrition_log_planned_meal_id", "planned_meal_id"),
     )
 

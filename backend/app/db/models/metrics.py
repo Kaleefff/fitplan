@@ -45,6 +45,7 @@ class BodyMetrics(Base):
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        Index("ix_body_metrics_user_updated", "user_id", "updated_at", "id"),  # sync pull
     )
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)

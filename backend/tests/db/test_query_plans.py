@@ -12,7 +12,7 @@ PostgreSQL.
 """
 
 from collections.abc import AsyncIterator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 from app.db.query_review import (
+    INDEX_SCANS,
     LARGE_TABLES,
     REVIEWS,
     Context,
@@ -65,7 +66,9 @@ INSERT INTO food_item_category (food_item_id, food_category_id) VALUES (1, 1), (
 INSERT INTO food_item_allergen (food_item_id, allergen_id) VALUES (3, 1);
 """
 
-# Per user :u, ids built from :u so the two users' rows interleave in every table.
+# Per user :u, ids built from :u so the two users' rows interleave in every table. The synced
+# tables get updated_at from their day (soft-deleted meal logs: now()), so a sync cursor can
+# fall mid-history (DB-13).
 # Plans: <u>1 archived (days 120..57 ago), <u>2 active (56 days ago .. 27 days ahead).
 # Workouts every 3 days over 120 days, each with 2 exercises of 3 sets; every 5th adapts the
 # plan; personal records on the newest ones; 3 meal logs a day for 60 days with 2 items;
@@ -97,10 +100,10 @@ SELECT s.id * 10 + j, s.id, j, j, 3, 8, 50, 90
 FROM training_session s
 JOIN training_plan p ON p.id = s.training_plan_id AND p.user_id = :u, generate_series(1, 2) j;
 
-INSERT INTO workout_log (id, user_id, training_session_id, log_date, rpe_rating)
+INSERT INTO workout_log (id, user_id, training_session_id, log_date, rpe_rating, updated_at)
 SELECT :u * 1000 + n, :u,
        (CASE WHEN 3 * (n - 1) <= 56 THEN :u * 10 + 2 ELSE :u * 10 + 1 END) * 10 + (n - 1) % 3 + 1,
-       CAST(:today AS date) - 3 * (n - 1), 7
+       CAST(:today AS date) - 3 * (n - 1), 7, CAST(:today AS date) - 3 * (n - 1) + TIME '19:00'
 FROM generate_series(1, 40) n;
 INSERT INTO workout_log_exercise (id, workout_log_id, exercise_id, session_exercise_id,
                                   sort_order)
@@ -138,17 +141,19 @@ FROM meal m JOIN diet_plan p ON p.id = m.diet_plan_id AND p.user_id = :u,
 
 INSERT INTO nutrition_log (id, user_id, log_date, meal_type, planned_meal_id, actual_cals,
                            actual_protein, actual_fat, actual_carbs, hunger_level_before,
-                           deleted_at)
+                           deleted_at, updated_at)
 SELECT :u * 10000 + d * 10 + k, :u, CAST(:today AS date) - d,
        (ARRAY['breakfast', 'lunch', 'dinner'])[k]::meal_type,
        CASE WHEN d <= 56 THEN (:u * 10 + 2) * 100 + 10 + k END, 442.5, 52.55, 5.85, 42,
-       4, CASE WHEN d % 10 = 5 AND k = 3 THEN now() END
+       4, CASE WHEN d % 10 = 5 AND k = 3 THEN now() END,
+       CASE WHEN d % 10 = 5 AND k = 3 THEN now()
+            ELSE CAST(:today AS date) - d + make_time(4 + 4 * k, 30, 0) END
 FROM generate_series(0, 59) d, generate_series(1, 3) k;
 INSERT INTO nutrition_log_food_item (nutrition_log_id, food_item_id, grams)
 SELECT l.id, f, 150 FROM nutrition_log l, generate_series(1, 2) f WHERE l.user_id = :u;
 
-INSERT INTO body_metrics (user_id, measured_on, weight, waist)
-SELECT :u, CAST(:today AS date) - d, 80 + d / 30.0, 85
+INSERT INTO body_metrics (user_id, measured_on, weight, waist, updated_at)
+SELECT :u, CAST(:today AS date) - d, 80 + d / 30.0, 85, CAST(:today AS date) - d + TIME '07:00'
 FROM generate_series(0, 119, 3) d;
 
 INSERT INTO notification (user_id, message_type, scheduled_at, message, is_sent, sent_at)
@@ -203,6 +208,10 @@ async def test_every_review_runs_on_a_fixture_that_fills_every_large_table(seede
     conn, context = seeded
     assert context.active_session_ids and context.workout_id and context.exercise_id
     assert context.nutrition_log_id and context.level and context.equipment
+    assert context.workout_uuid and context.nutrition_log_uuid and context.body_metrics_uuid
+    # the middle change of 260 (180 meal logs in the last 60 days) is weeks back, not at an end
+    middle = context.sync_cursor.updated_at
+    assert context.now - timedelta(days=60) < middle < context.now - timedelta(days=7)
 
     results = await review(conn, context, no_seqscan=True)
 
@@ -222,12 +231,77 @@ async def test_no_sequential_scan_on_a_large_table(seeded):
     assert offenders == [], report(context, results, no_seqscan=True)
 
 
+SYNCED = {
+    "body_metrics": "body_metrics",
+    "nutrition_log": "nutrition_log",
+    "workout": "workout_log",
+}
+
+
+# At fixture volume (80 rows a table) a bitmap scan of any index that leads with user_id costs
+# about the same as the index meant, and the planner flips between them as the rolled-back
+# fixtures of earlier tests bloat the heap; with bitmap and sequential scans off, an Index
+# Scan on the index meant shows that it is the one that fits. Only the two sync tests below
+# assert an index by name: the "no Seq Scan" criterion of DB-12 holds without this setting.
+NO_BITMAPSCAN = "SET LOCAL enable_bitmapscan = off"
+
+
+def _reviews(prefix: str) -> tuple:
+    return tuple(r for r in REVIEWS if r.name.startswith(prefix))
+
+
+async def test_each_sync_pull_branch_is_a_range_of_its_sync_index(seeded):
+    """DB-13: in the page query every table is read through ix_<table>_user_updated with an
+    Index Cond on user_id and, after a cursor, on updated_at: a range, already in order.
+    Bitmap scans off: see NO_BITMAPSCAN."""
+    conn, context = seeded
+    await conn.exec_driver_sql(NO_BITMAPSCAN)  # rolled back with the fixture
+
+    results = await review(conn, context, no_seqscan=True, reviews=_reviews("sync.changes_since"))
+
+    assert [m.method for m in results] == ["sync.changes_since(start)", "sync.changes_since(mid)"]
+    for m in results:
+        page = m.statements[0]  # then the data of the live rows of the page
+        assert "UNION ALL" in page.sql
+        assert sorted(scan.table for scan in page.scans) == sorted(SYNCED.values())
+        for scan in page.scans:
+            assert scan.node in INDEX_SCANS, (m.method, scan)  # so cond is the Index Cond
+            assert scan.index == f"ix_{scan.table}_user_updated", (m.method, scan)
+            assert "user_id" in scan.cond, (m.method, scan)
+            if m.method.endswith("(mid)"):  # without a cursor there is no updated_at to search
+                assert "updated_at" in scan.cond, (m.method, scan)
+            assert scan.rows > 0  # the page reads rows of every kind
+
+
+async def test_the_push_lookup_locks_through_the_client_uuid_unique_index(seeded):
+    """DB-13: lookup's SELECT ... FOR UPDATE finds the row through UNIQUE (user_id,
+    client_uuid) of migration 0003, on each synced table, both columns in the Index Cond.
+    Bitmap scans off: see NO_BITMAPSCAN."""
+    conn, context = seeded
+    await conn.exec_driver_sql(NO_BITMAPSCAN)  # rolled back with the fixture
+
+    results = await review(conn, context, no_seqscan=True, reviews=_reviews("sync.lookup"))
+
+    assert sorted(m.method for m in results) == [f"sync.lookup({kind})" for kind in SYNCED]
+    for m in results:
+        table = SYNCED[m.method.removeprefix("sync.lookup(").removesuffix(")")]
+        (statement,) = m.statements
+        assert "FOR UPDATE" in statement.sql
+        (scan,) = statement.scans
+        assert scan.node in INDEX_SCANS, (m.method, scan)  # so cond is the Index Cond
+        assert scan.index == f"{table}_user_id_client_uuid_key", (m.method, scan)
+        assert "user_id" in scan.cond and "client_uuid" in scan.cond, (m.method, scan)
+        assert scan.rows == 1
+
+
 async def test_a_missing_index_shows_as_a_sequential_scan(seeded):
-    """The guard sees a missing index. Both workout_log indexes that lead with user_id go:
+    """The guard sees a missing index. Every workout_log index that leads with user_id goes:
     without ix_workout_log_user_date alone the planner takes the UNIQUE (user_id,
-    client_uuid) of migration 0003, and no Seq Scan appears."""
+    client_uuid) of migration 0003 or the sync index (user_id, updated_at, id) of 0007,
+    and no Seq Scan appears."""
     conn, context = seeded
     await conn.exec_driver_sql("DROP INDEX ix_workout_log_user_date")
+    await conn.exec_driver_sql("DROP INDEX ix_workout_log_user_updated")
     await conn.exec_driver_sql(
         "ALTER TABLE workout_log DROP CONSTRAINT workout_log_user_id_client_uuid_key"
     )
@@ -241,4 +315,7 @@ async def test_a_missing_index_shows_as_a_sequential_scan(seeded):
         ("analytics.data(T-89..T)", "workout_log"),
         ("workouts.list_workouts(all)", "workout_log"),
         ("workouts.list_workouts(T-29..T)", "workout_log"),
+        ("sync.changes_since(start)", "workout_log"),
+        ("sync.changes_since(mid)", "workout_log"),
+        ("sync.lookup(workout)", "workout_log"),
     }

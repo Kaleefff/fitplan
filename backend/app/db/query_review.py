@@ -1,5 +1,5 @@
-"""EXPLAIN ANALYZE of the generator, log and analytics reads of one user (DB-12; NFR-PERF,
-NFR-SCALE).
+"""EXPLAIN ANALYZE of the generator, log, analytics and sync reads of one user (DB-12, DB-13;
+NFR-PERF, NFR-SCALE, NFR-OFF).
 
 Calls the real repository methods (REVIEWS) for one user inside one transaction that is
 rolled back at the end, so nothing is kept. A before_cursor_execute listener on the
@@ -30,13 +30,14 @@ import asyncio
 import json
 import re
 import sys
+import uuid
 from collections.abc import Awaitable, Callable, Iterator, Mapping
 from dataclasses import dataclass, fields
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, union_all
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncSession,
@@ -62,6 +63,16 @@ from app.db.repositories.library import SqlLibraryRepository
 from app.db.repositories.nutrition_logs import SqlNutritionLogStore
 from app.db.repositories.reports import SqlReportStore
 from app.db.repositories.schedule import SqlScheduleStore
+from app.db.repositories.sync import (
+    BODY_METRICS,
+    KINDS,
+    NUTRITION_LOG,
+    TABLES,
+    WORKOUT,
+    SqlSyncStore,
+    SyncCursor,
+    _branch,
+)
 from app.db.repositories.training_plans import SqlTrainingPlanStore
 from app.db.repositories.workouts import SqlWorkoutStore
 from app.db.session import database_url
@@ -116,6 +127,10 @@ class Context:
     nutrition_log_id: int | None
     level: DifficultyLevel | None
     equipment: EquipmentType | None
+    sync_cursor: SyncCursor | None  # the key of the middle one of the user's sync changes
+    workout_uuid: uuid.UUID | None  # the client_uuid of the newest row, tombstones included
+    nutrition_log_uuid: uuid.UUID | None
+    body_metrics_uuid: uuid.UUID | None
 
 
 @dataclass(frozen=True)
@@ -129,6 +144,7 @@ class Stores:
     library: SqlLibraryRepository
     reports: SqlReportStore
     schedule: SqlScheduleStore
+    sync: SqlSyncStore
 
 
 def _stores(session: AsyncSession, sessions: async_sessionmaker[AsyncSession]) -> Stores:
@@ -142,6 +158,7 @@ def _stores(session: AsyncSession, sessions: async_sessionmaker[AsyncSession]) -
         library=SqlLibraryRepository(sessions),
         reports=SqlReportStore(sessions),
         schedule=SqlScheduleStore(session),
+        sync=SqlSyncStore(session),
     )
 
 
@@ -235,7 +252,56 @@ REVIEWS: tuple[Review, ...] = (
         "schedule.notifications",
         lambda s, c: s.schedule.notifications(c.user_id, c.now, PAGE, 0),
     ),
+    # sync (DB-13): a full download, a pull from mid-history, the row lock of push
+    Review(
+        "sync.changes_since(start)",
+        lambda s, c: s.sync.changes_since(c.user_id, None, PAGE),
+    ),
+    Review(
+        "sync.changes_since(mid)",
+        lambda s, c: s.sync.changes_since(c.user_id, c.sync_cursor, PAGE),
+        needs=("sync_cursor",),
+    ),
+    Review(
+        "sync.lookup(workout)",
+        lambda s, c: s.sync.lookup(c.user_id, WORKOUT, c.workout_uuid),
+        needs=("workout_uuid",),
+    ),
+    Review(
+        "sync.lookup(nutrition_log)",
+        lambda s, c: s.sync.lookup(c.user_id, NUTRITION_LOG, c.nutrition_log_uuid),
+        needs=("nutrition_log_uuid",),
+    ),
+    Review(
+        "sync.lookup(body_metrics)",
+        lambda s, c: s.sync.lookup(c.user_id, BODY_METRICS, c.body_metrics_uuid),
+        needs=("body_metrics_uuid",),
+    ),
 )
+
+
+async def _middle_change(conn: AsyncConnection, user_id: int) -> SyncCursor | None:
+    """A cursor mid-history: the key of the middle one of the user's changes in pull order."""
+    changes = union_all(*(_branch(kind, user_id, None, None) for kind in KINDS)).subquery()
+    count = await conn.scalar(select(func.count()).select_from(changes))
+    if not count:
+        return None
+    middle = (
+        await conn.execute(
+            select(changes.c.updated_at, changes.c.kind, changes.c.id)
+            .order_by(changes.c.updated_at, changes.c.kind, changes.c.id)
+            .offset(count // 2)
+            .limit(1)
+        )
+    ).one()
+    return SyncCursor(middle.updated_at, middle.kind, middle.id)
+
+
+async def _newest_uuid(conn: AsyncConnection, kind: str, user_id: int) -> uuid.UUID | None:
+    table = TABLES[kind]
+    return await conn.scalar(
+        select(table.client_uuid).where(table.user_id == user_id).order_by(table.id.desc()).limit(1)
+    )
 
 
 async def load_context(conn: AsyncConnection, user_id: int, now: datetime | None = None) -> Context:
@@ -296,6 +362,10 @@ async def load_context(conn: AsyncConnection, user_id: int, now: datetime | None
         nutrition_log_id=nutrition_log_id,
         level=None if limits is None else limits.experience_level,
         equipment=None if limits is None else limits.equipment,
+        sync_cursor=await _middle_change(conn, user_id),
+        workout_uuid=await _newest_uuid(conn, WORKOUT, user_id),
+        nutrition_log_uuid=await _newest_uuid(conn, NUTRITION_LOG, user_id),
+        body_metrics_uuid=await _newest_uuid(conn, BODY_METRICS, user_id),
     )
 
 
@@ -312,6 +382,8 @@ class Scan:
     # (ORDER BY, merge join). With enable_seqscan off this is how a missing index can show
     # instead of a Seq Scan, so the report lists these on large tables; not asserted.
     full: bool = False
+    # the condition the index is searched with (Index Cond; Recheck Cond of a bitmap scan)
+    cond: str | None = None
 
     @property
     def large(self) -> bool:
@@ -372,7 +444,8 @@ def scans(node: Mapping[str, Any]) -> Iterator[Scan]:
             else node.get("Index Name")
         )
         full = kind in INDEX_SCANS and "Index Cond" not in node
-        yield Scan(node["Relation Name"], kind, index, _node_rows(node), full)
+        cond = node.get("Index Cond") or node.get("Recheck Cond")
+        yield Scan(node["Relation Name"], kind, index, _node_rows(node), full, cond)
     for child in node.get("Plans", ()):
         yield from scans(child)
 

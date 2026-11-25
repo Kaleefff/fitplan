@@ -245,6 +245,7 @@ class WorkoutLog(Base):
         CheckConstraint("rpe_rating BETWEEN 1 AND 10"),
         UniqueConstraint("user_id", "client_uuid", name="workout_log_user_id_client_uuid_key"),
         Index("ix_workout_log_user_date", "user_id", "log_date"),
+        Index("ix_workout_log_user_updated", "user_id", "updated_at", "id"),  # sync pull
         Index("ix_workout_log_training_session_id", "training_session_id"),
     )
 
