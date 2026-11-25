@@ -5,7 +5,7 @@ and everything it changes commit together.
 """
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -160,6 +160,9 @@ class SqlWorkoutStore:
         log.training_session_id = workout.training_session_id
         log.log_date = workout.log_date
         log.rpe_rating = workout.rpe_rating
+        # always UPDATE the parent, even when only exercises and sets change: the trigger
+        # moves updated_at only on an UPDATE of this row, and sync pulls by it (DB-13)
+        log.updated_at = func.now()
         await self._session.execute(
             delete(WorkoutLogExercise).where(WorkoutLogExercise.workout_log_id == workout_id)
         )
@@ -345,7 +348,7 @@ class SqlWorkoutStore:
             .limit(limit)
             .offset(offset)
         )
-        return total, [await self._view(log) for log in logs]
+        return total, await self._views(logs.all())
 
     async def soft_delete(self, user_id: int, workout_id: int) -> bool:
         result = await self._session.execute(
@@ -360,40 +363,54 @@ class SqlWorkoutStore:
         return result.rowcount == 1
 
     async def _view(self, log: WorkoutLog) -> WorkoutView:
-        rows = await self._session.execute(
-            select(WorkoutLogExercise, Exercise.name)
-            .join(Exercise, Exercise.id == WorkoutLogExercise.exercise_id)
-            .where(WorkoutLogExercise.workout_log_id == log.id)
-            .order_by(WorkoutLogExercise.sort_order)
-        )
-        exercises = []
-        for logged, name in rows:
-            sets = await self._session.scalars(
+        return (await self._views([log]))[0]
+
+    async def _views(self, logs: Sequence[WorkoutLog]) -> list[WorkoutView]:
+        """The views of `logs`, in the order given: one query for the exercises of all of
+        them and one for their sets, whatever their number (also used by sync, DB-13)."""
+        exercises: dict[int, list[tuple[WorkoutLogExercise, str]]] = {log.id: [] for log in logs}
+        sets: dict[int, list[SetView]] = {}
+        if exercises:
+            rows = await self._session.execute(
+                select(WorkoutLogExercise, Exercise.name)
+                .join(Exercise, Exercise.id == WorkoutLogExercise.exercise_id)
+                .where(WorkoutLogExercise.workout_log_id.in_(exercises))
+                .order_by(WorkoutLogExercise.workout_log_id, WorkoutLogExercise.sort_order)
+            )
+            for logged, name in rows:
+                exercises[logged.workout_log_id].append((logged, name))
+                sets[logged.id] = []
+        if sets:
+            for s in await self._session.scalars(
                 select(WorkoutSet)
-                .where(WorkoutSet.workout_log_exercise_id == logged.id)
-                .order_by(WorkoutSet.set_number)
-            )
-            exercises.append(
-                ExerciseView(
-                    exercise_id=logged.exercise_id,
-                    exercise_name=name,
-                    session_exercise_id=logged.session_exercise_id,
-                    sort_order=logged.sort_order,
-                    sets=tuple(
-                        SetView(s.set_number, s.reps, s.weight, s.completed, s.rpe) for s in sets
-                    ),
+                .where(WorkoutSet.workout_log_exercise_id.in_(sets))
+                .order_by(WorkoutSet.workout_log_exercise_id, WorkoutSet.set_number)
+            ):
+                sets[s.workout_log_exercise_id].append(
+                    SetView(s.set_number, s.reps, s.weight, s.completed, s.rpe)
                 )
+        return [
+            WorkoutView(
+                id=log.id,
+                user_id=log.user_id,
+                training_session_id=log.training_session_id,
+                log_date=log.log_date,
+                rpe_rating=log.rpe_rating,
+                logged_at=log.logged_at,
+                deleted=log.deleted_at is not None,
+                exercises=tuple(
+                    ExerciseView(
+                        exercise_id=logged.exercise_id,
+                        exercise_name=name,
+                        session_exercise_id=logged.session_exercise_id,
+                        sort_order=logged.sort_order,
+                        sets=tuple(sets[logged.id]),
+                    )
+                    for logged, name in exercises[log.id]
+                ),
             )
-        return WorkoutView(
-            id=log.id,
-            user_id=log.user_id,
-            training_session_id=log.training_session_id,
-            log_date=log.log_date,
-            rpe_rating=log.rpe_rating,
-            logged_at=log.logged_at,
-            deleted=log.deleted_at is not None,
-            exercises=tuple(exercises),
-        )
+            for log in logs
+        ]
 
 
 class SqlWorkoutUnitOfWork:

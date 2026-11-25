@@ -491,6 +491,33 @@ def test_edit_keeps_the_uuid_and_does_not_adapt(api):
     assert str(stored) == client_uuid
 
 
+def _updated_at(workout_id: int) -> datetime:
+    with _sync_engine().connect() as db:
+        return db.execute(
+            text("SELECT updated_at FROM workout_log WHERE id = :id"), {"id": workout_id}
+        ).scalar_one()
+
+
+def test_an_edit_of_the_sets_only_moves_updated_at(api):
+    """DB-13 (NFR-OFF): sync pulls by updated_at, which the trigger moves only on an UPDATE
+    of workout_log; a PUT with the same date, session and RPE changes only child rows."""
+    headers = _login(api)
+    plan = _plan(1)
+    created = _post(api, headers, _workout(plan, BENCH, _sets([60, 60, 60]), 8))
+    workout_id = created.json()["workout"]["id"]
+    before = _updated_at(workout_id)
+
+    edited = api.put(
+        f"/api/v1/workouts/{workout_id}",
+        json=_workout(plan, BENCH, _sets([62.5, 62.5]), 8),
+        headers=headers,
+    )
+
+    assert edited.status_code == 200
+    assert [s["weight"] for s in edited.json()["exercises"][0]["sets"]] == [62.5, 62.5]
+    assert _updated_at(workout_id) > before
+
+
 def test_edit_and_delete_of_another_users_workout_are_404(api):
     ann = _login(api)
     bob = _login(api, "bob@example.com")

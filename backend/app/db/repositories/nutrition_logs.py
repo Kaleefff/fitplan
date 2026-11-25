@@ -281,6 +281,9 @@ class SqlNutritionLogStore:
             _set_totals(row, totals)
         for field, value in changes.items():
             setattr(row, field, DbMealType(value.value) if field == "meal_type" else value)
+        # always UPDATE the parent, even when only the items change and the totals stay
+        # equal: the trigger moves updated_at only on an UPDATE, sync pulls by it (DB-13)
+        row.updated_at = func.now()
         await self._session.flush()
         return await self.get(user_id, log_id)
 
